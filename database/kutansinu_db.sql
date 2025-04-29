@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 29, 2025 at 01:06 AM
+-- Generation Time: Apr 29, 2025 at 11:36 AM
 -- Server version: 10.4.32-MariaDB
--- PHP Version: 8.0.30
+-- PHP Version: 8.3.19
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -18,8 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
-CREATE DATABASE IF NOT EXISTS kutansinu_db;
-USE kutansinu_db;
+-- Database: `kutansinu_db`
 --
 
 -- --------------------------------------------------------
@@ -27,8 +26,6 @@ USE kutansinu_db;
 --
 -- Table structure for table `akun`
 --
-
-
 
 CREATE TABLE `akun` (
   `id` int(11) NOT NULL,
@@ -49,7 +46,7 @@ CREATE TABLE `akun` (
 INSERT INTO `akun` (`id`, `kode_akun`, `nama_akun`, `kategori`, `sub_kategori`, `tipe_akun`, `saldo`, `deskripsi`, `created_at`) VALUES
 (103, '1-10001', 'Kas', 'aktiva', 'Kas & Bank', 'debit', 11650000.00, 'Uang tunai yang dimiliki oleh perusahaan dan siap digunakan untuk transaksi sehari-hari.', '2025-04-23 02:04:45'),
 (104, '1-10002', 'Rekening Bank', 'aktiva', 'Kas & Bank', 'debit', 0.00, 'Saldo uang perusahaan yang disimpan di rekening bank.', '2025-04-23 02:04:45'),
-(105, '1-10003', 'Bank Mandiri', 'aktiva', 'Kas & Bank', 'debit', 0.00, 'Saldo uang perusahaan yang disimpan di Bank Mandiri.', '2025-04-23 02:04:45'),
+(105, '1-10003', 'Bank Mandiri', 'aktiva', 'Kas & Bank', 'debit', 12540000.00, 'Saldo uang perusahaan yang disimpan di Bank Mandiri.', '2025-04-23 02:04:45'),
 (106, '1-10004', 'Bank Negara Indonesia (BNI)', 'aktiva', 'Kas & Bank', 'debit', 0.00, 'Saldo uang perusahaan yang disimpan di Bank Negara Indonesia.', '2025-04-23 02:04:45'),
 (107, '1-10005', 'Bank Rakyat Indonesia (BRI)', 'aktiva', 'Kas & Bank', 'debit', 0.00, 'Saldo uang perusahaan yang disimpan di Bank Rakyat Indonesia.', '2025-04-23 02:04:45'),
 (108, '1-10006', 'Bank Tabungan Negara (BTN)', 'aktiva', 'Kas & Bank', 'debit', 0.00, 'Saldo uang perusahaan yang disimpan di Bank Tabungan Negara.', '2025-04-23 02:04:45'),
@@ -113,7 +110,7 @@ INSERT INTO `akun` (`id`, `kode_akun`, `nama_akun`, `kategori`, `sub_kategori`, 
 (166, '3-30200', 'Deviden', 'modal', 'Modal', 'kredit', 0.00, 'Bagian laba yang dibagikan kepada pemegang saham.', '2025-04-23 02:04:45'),
 (167, '3-30300', 'Pendapatan Komprehensif Lainnya', 'modal', 'Modal', 'kredit', 0.00, 'Pendapatan lainnya yang tidak termasuk dalam pendapatan operasional.', '2025-04-23 02:04:45'),
 (168, '3-30999', 'Saldo Awal', 'modal', 'Modal', 'kredit', 0.00, 'Saldo awal modal pada periode akuntansi.', '2025-04-23 02:04:45'),
-(169, '4-40000', 'Pendapatan', 'pendapatan', 'Pendapatan', 'kredit', 12000000.00, 'Pendapatan utama perusahaan dari penjualan barang/jasa.', '2025-04-23 02:04:45'),
+(169, '4-40000', 'Pendapatan', 'pendapatan', 'Pendapatan', 'kredit', 24540000.00, 'Pendapatan utama perusahaan dari penjualan barang/jasa.', '2025-04-23 02:04:45'),
 (170, '4-40100', 'Diskon Penjualan', 'pendapatan', 'Pendapatan', 'kredit', 0.00, 'Diskon yang diberikan kepada pelanggan atas penjualan barang/jasa.', '2025-04-23 02:04:45'),
 (171, '4-40200', 'Pengembalian Penjualan', 'pendapatan', 'Pendapatan', 'kredit', 0.00, 'Pengembalian barang dari pelanggan yang mengurangi pendapatan karena barang yang telah dijual dikembalikan.', '2025-04-23 02:04:45'),
 (172, '5-50000', 'Beban Pokok Pendapatan', 'beban', 'Harga Pokok Penjualan', 'debit', 0.00, 'Biaya langsung yang terkait dengan produksi barang atau jasa yang dijual.', '2025-04-23 02:04:45'),
@@ -203,6 +200,7 @@ CREATE TABLE `transaksi` (
   `total` decimal(15,2) NOT NULL,
   `file_lampiran` varchar(255) DEFAULT NULL,
   `penanggung_jawab` text DEFAULT NULL,
+  `tag` varchar(50) DEFAULT NULL,
   `created_by` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -211,9 +209,10 @@ CREATE TABLE `transaksi` (
 -- Dumping data for table `transaksi`
 --
 
-INSERT INTO `transaksi` (`id`, `tanggal`, `id_akun_debit`, `id_akun_kredit`, `keterangan`, `jenis`, `jumlah`, `pajak`, `bunga`, `total`, `file_lampiran`, `penanggung_jawab`, `created_by`, `created_at`) VALUES
-(19, '2025-04-23', 103, 169, 'tes', 'pemasukan', 12000000.00, 0.00, 0.00, 12000000.00, '', 'aryo', 1, '2025-04-23 18:08:05'),
-(20, '2025-04-23', 179, 103, 'tes ayok', 'pengeluaran', 350000.00, 0.00, 0.00, 350000.00, '', 'aryo', 1, '2025-04-23 18:11:42');
+INSERT INTO `transaksi` (`id`, `tanggal`, `id_akun_debit`, `id_akun_kredit`, `keterangan`, `jenis`, `jumlah`, `pajak`, `bunga`, `total`, `file_lampiran`, `penanggung_jawab`, `tag`, `created_by`, `created_at`) VALUES
+(19, '2025-04-23', 103, 169, 'tes', 'pemasukan', 12000000.00, 0.00, 0.00, 12000000.00, '', 'aryo', NULL, 1, '2025-04-23 18:08:05'),
+(20, '2025-04-23', 179, 103, 'tes ayok', 'pengeluaran', 350000.00, 0.00, 0.00, 350000.00, '', 'aryo', NULL, 1, '2025-04-23 18:11:42'),
+(21, '2025-04-29', 105, 169, 'bosss', 'pemasukan', 12540000.00, 0.00, 0.00, 12540000.00, 'uploads/transaksi/1745902065_Banner Event Olahraga Jalan Modern 3D Ilustratif Putih Merah (1080 x 1080 piksel).png', 'arya', 'aa', 1, '2025-04-29 04:47:45');
 
 --
 -- Triggers `transaksi`
@@ -299,7 +298,7 @@ ALTER TABLE `akun`
 -- AUTO_INCREMENT for table `transaksi`
 --
 ALTER TABLE `transaksi`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT for table `users`
