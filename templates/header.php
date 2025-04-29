@@ -54,6 +54,7 @@
                             Laporan
                         </a>
                         <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/kutansinu/laporan/transaksi.php">Transaksi</a></li>
                             <li><a class="dropdown-item" href="/kutansinu/laporan/neraca.php">Neraca</a></li>
                             <li><a class="dropdown-item" href="/kutansinu/laporan/laba-rugi.php">Laba Rugi</a></li>
                             <li><a class="dropdown-item" href="/kutansinu/laporan/arus-kas.php">Arus Kas</a></li>

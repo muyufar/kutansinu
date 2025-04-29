@@ -10,11 +10,13 @@ requireLogin();
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'edit') {
     $id = validateInput($_POST['id']);
     $tanggal = validateInput($_POST['tanggal']);
-    $id_akun = validateInput($_POST['id_akun']);
+    $id_akun_debit = validateInput($_POST['id_akun_debit']);
+    $id_akun_kredit = validateInput($_POST['id_akun_kredit']);
     $keterangan = validateInput($_POST['keterangan']);
     $jenis = validateInput($_POST['jenis']);
     $jumlah = validateInput($_POST['jumlah']);
     $penanggung_jawab = validateInput($_POST['penanggung_jawab']);
+    $tag = validateInput($_POST['tag']);
 
     // Debugging input POST
     error_log("POST Data: " . print_r($_POST, true));
@@ -47,12 +49,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 
     try {
         // Update data transaksi
-        $stmt = $db->prepare("UPDATE transaksi SET tanggal = ?, id_akun = ?, keterangan = ?, file_lampiran = ?, penanggung_jawab = ?, jenis = ?, jumlah = ? WHERE id = ?");
-        $stmt->execute([$tanggal, $id_akun, $keterangan, $file_lampiran, $penanggung_jawab, $jenis, $jumlah, $id]);
+        $stmt = $db->prepare("UPDATE transaksi SET tanggal = ?, id_akun_debit = ?, id_akun_kredit = ?,  keterangan = ?, file_lampiran = ?, penanggung_jawab = ?, jenis = ?, jumlah = ?, tag = ? WHERE id = ?");
+        $stmt->execute([$tanggal, $id_akun_debit, $id_akun_kredit, $keterangan, $file_lampiran, $penanggung_jawab, $jenis, $jumlah, $tag, $id]);
 
         // Debugging hasil update
         error_log("Update Query: " . $stmt->queryString);
-        error_log("Update Params: " . json_encode([$tanggal, $id_akun, $keterangan, $file_lampiran, $penanggung_jawab, $jenis, $jumlah, $id]));
+        error_log("Update Params: " . json_encode([$tanggal, $id_akun_debit, $id_akun_kredit, $keterangan, $file_lampiran, $penanggung_jawab, $jenis, $jumlah, $id]));
 
         $_SESSION['success'] = 'Transaksi berhasil diperbarui.';
         header('Location: index.php');
@@ -137,9 +139,9 @@ include '../templates/header.php';
                             <tr>
                                 <td><?php echo date('d/m/Y', strtotime($transaksi['tanggal'])); ?></td>
                                 <td>
-    <div>Debit: <?php echo htmlspecialchars($transaksi['kode_akun_debit'] . ' - ' . $transaksi['nama_akun_debit']); ?></div>
-    <div>Kredit: <?php echo htmlspecialchars($transaksi['kode_akun_kredit'] . ' - ' . $transaksi['nama_akun_kredit']); ?></div>
-</td>
+                                    <div>Debit: <?php echo htmlspecialchars($transaksi['kode_akun_debit'] . ' - ' . $transaksi['nama_akun_debit']); ?></div>
+                                    <div>Kredit: <?php echo htmlspecialchars($transaksi['kode_akun_kredit'] . ' - ' . $transaksi['nama_akun_kredit']); ?></div>
+                                </td>
                                 <td><?php echo htmlspecialchars($transaksi['keterangan']); ?></td>
                                 <td>
                                     <span class="badge <?php echo $transaksi['jenis'] == 'pemasukan' ? 'bg-success' : 'bg-danger'; ?>">
@@ -163,6 +165,7 @@ include '../templates/header.php';
                                         data-akun-debit="<?php echo htmlspecialchars($transaksi['kode_akun_debit'] . ' - ' . $transaksi['nama_akun_debit']); ?>"
                                         data-akun-kredit="<?php echo htmlspecialchars($transaksi['kode_akun_kredit'] . ' - ' . $transaksi['nama_akun_kredit']); ?>"
                                         data-keterangan="<?php echo htmlspecialchars($transaksi['keterangan']); ?>"
+                                        data-tag="<?php echo htmlspecialchars($transaksi['tag']); ?>"
                                         data-jenis="<?php echo $transaksi['jenis']; ?>"
                                         data-jumlah="<?php echo formatRupiah($transaksi['jumlah']); ?>"
                                         data-pj="<?php echo htmlspecialchars($transaksi['penanggung_jawab']); ?>"
@@ -174,8 +177,10 @@ include '../templates/header.php';
                                         data-bs-target="#modalEditTransaksi"
                                         data-id="<?php echo $transaksi['id']; ?>"
                                         data-tanggal="<?php echo $transaksi['tanggal']; ?>"
-                                        data-akun="<?php echo $transaksi['id_akun_kredit']; ?>"
+                                        data-akun-kredit="<?php echo $transaksi['id_akun_kredit']; ?>"
+                                        data-akun-debit="<?php echo $transaksi['id_akun_debit']; ?>"
                                         data-keterangan="<?php echo htmlspecialchars($transaksi['keterangan']); ?>"
+                                        data-tag="<?php echo htmlspecialchars($transaksi['tag']); ?>"
                                         data-jenis="<?php echo $transaksi['jenis']; ?>"
                                         data-jumlah="<?php echo $transaksi['jumlah']; ?>"
                                         data-pj="<?php echo htmlspecialchars($transaksi['penanggung_jawab']); ?>"
@@ -214,8 +219,19 @@ include '../templates/header.php';
                         <input type="date" class="form-control" id="edit_tanggal" name="tanggal" required>
                     </div>
                     <div class="mb-3">
-                        <label for="edit_id_akun" class="form-label">Akun</label>
-                        <select class="form-select" id="edit_id_akun" name="id_akun" required>
+                        <label for="edit_id_akun_debit" class="form-label">Akun Debit</label>
+                        <select class="form-select" id="edit_id_akun_debit" name="id_akun_debit" required>
+                            <option value="">Pilih Akun</option>
+                            <?php foreach ($akun_list as $akun): ?>
+                                <option value="<?php echo $akun['id']; ?>">
+                                    <?php echo htmlspecialchars($akun['kode_akun'] . ' - ' . $akun['nama_akun']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_id_akun_kredit" class="form-label">Akun Kredit</label>
+                        <select class="form-select" id="edit_id_akun_kredit" name="id_akun_kredit" required>
                             <option value="">Pilih Akun</option>
                             <?php foreach ($akun_list as $akun): ?>
                                 <option value="<?php echo $akun['id']; ?>">
@@ -242,6 +258,10 @@ include '../templates/header.php';
                     <div class="mb-3">
                         <label for="edit_pj" class="form-label">Penanggung Jawab</label>
                         <input type="text" class="form-control" id="edit_pj" name="penanggung_jawab" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_tag" class="form-label">Tag</label>
+                        <input type="text" class="form-control" id="edit_tag" name="tag" required>
                     </div>
                     <div class="mb-3">
                         <label for="edit_file_lampiran" class="form-label">File Lampiran</label>
@@ -272,12 +292,19 @@ include '../templates/header.php';
                     <p id="view_tanggal" class="form-control-static"></p>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Akun</label>
-                    <p id="view_akun" class="form-control-static"></p>
+                    <label class="form-label">Akun Debit</label>
+                    <p id="view_akun_debit" class="form-control-static"></p>
                 </div>
+                <div class="mb-3">
+                    <label class="form-label">Akun Kredit</label>
+                    <p id="view_akun_kredit" class="form-control-static"></p>
                 <div class="mb-3">
                     <label class="form-label">Keterangan</label>
                     <p id="view_keterangan" class="form-control-static"></p>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tag</label>
+                    <p id="view_tag" class="form-control-static"></p>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Jenis Transaksi</label>
@@ -305,8 +332,10 @@ include '../templates/header.php';
     document.getElementById('modalViewTransaksi').addEventListener('show.bs.modal', function(event) {
         var button = event.relatedTarget;
         var tanggal = button.getAttribute('data-tanggal');
-        var akun = button.getAttribute('data-akun');
+        var akun_debit = button.getAttribute('data-akun-debit');
+        var akun_kredit = button.getAttribute('data-akun-kredit');
         var keterangan = button.getAttribute('data-keterangan');
+        var tag = button.getAttribute('data-tag');
         var jenis = button.getAttribute('data-jenis');
         var jumlah = button.getAttribute('data-jumlah');
         var penanggung_jawab = button.getAttribute('data-pj');
@@ -314,8 +343,10 @@ include '../templates/header.php';
 
         var modal = this;
         modal.querySelector('#view_tanggal').textContent = new Date(tanggal).toLocaleDateString('id-ID');
-        modal.querySelector('#view_akun').textContent = akun;
+        modal.querySelector('#view_akun_debit').textContent = akun_debit;
+        modal.querySelector('#view_akun_kredit').textContent = akun_kredit;
         modal.querySelector('#view_keterangan').textContent = keterangan;
+        modal.querySelector('#view_tag').textContent = tag || '-';
         modal.querySelector('#view_jenis').textContent = jenis.charAt(0).toUpperCase() + jenis.slice(1);
         modal.querySelector('#view_jumlah').textContent = jumlah;
         modal.querySelector('#view_pj').textContent = penanggung_jawab || '-';
@@ -336,8 +367,10 @@ include '../templates/header.php';
         var button = event.relatedTarget;
         var id = button.getAttribute('data-id');
         var tanggal = button.getAttribute('data-tanggal');
-        var id_akun = button.getAttribute('data-akun');
+        var id_akun_debit = button.getAttribute('data-akun-debit');
+        var id_akun_kredit = button.getAttribute('data-akun-kredit');
         var keterangan = button.getAttribute('data-keterangan');
+        var tag = button.getAttribute('data-tag');
         var jenis = button.getAttribute('data-jenis');
         var jumlah = button.getAttribute('data-jumlah');
         var penanggung_jawab = button.getAttribute('data-pj');
@@ -346,8 +379,10 @@ include '../templates/header.php';
         var modal = this;
         modal.querySelector('#edit_id').value = id;
         modal.querySelector('#edit_tanggal').value = tanggal;
-        modal.querySelector('#edit_id_akun').value = id_akun;
+        modal.querySelector('#edit_id_akun_debit').value = id_akun_debit;
+        modal.querySelector('#edit_id_akun_kredit').value = id_akun_kredit;
         modal.querySelector('#edit_keterangan').value = keterangan;
+        modal.querySelector('#edit_tag').value = tag;
         modal.querySelector('#edit_jenis').value = jenis;
         modal.querySelector('#edit_jumlah').value = jumlah;
         modal.querySelector('#edit_pj').value = penanggung_jawab;
