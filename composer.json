@@ -1,0 +1,13 @@
+{
+    "name": "kutansinu/sistem-keuangan",
+    "description": "Sistem Pelaporan Keuangan",
+    "type": "project",
+    "require": {
+        "mpdf/mpdf": "^8.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    }
+}
