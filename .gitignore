@@ -1,0 +1,23 @@
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore configuration files that may contain sensitive information
+config/database.php
+
+# Ignore temporary files
+*.log
+*.tmp
+
+# Ignore user uploaded content
+# Uncomment if you don't want to include uploaded files
+# uploads/
+
+# Ignore IDE and editor folders
+.idea/
+.vscode/
+*.sublime-*
+
+# Ignore dependencies
+vendor/
+node_modules/
