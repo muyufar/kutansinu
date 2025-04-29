@@ -32,8 +32,9 @@ if (!$is_valid) {
 // Ambil data perusahaan
 $stmt = $db->prepare("SELECT * FROM perusahaan WHERE id = ?");
 $stmt->execute([$perusahaan_id]);
-$perusahaan = $stmt->fetch();
+$perusahaan = $stmt->fetch(PDO::FETCH_ASSOC);
 
+// Debug: Cek apakah data perusahaan berhasil diambil
 if (!$perusahaan) {
     $_SESSION['error'] = 'Perusahaan tidak ditemukan';
     header('Location: perusahaan.php');
@@ -50,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_perusahaan'])) 
     $jenis = validateInput($_POST['jenis'] ?? 'regular');
     
     // Upload logo jika ada
-    $logo = $perusahaan['logo'];
+    $logo = isset($perusahaan['logo']) ? $perusahaan['logo'] : null;
     if (isset($_FILES['logo']) && $_FILES['logo']['error'] == 0) {
         $upload_dir = '../uploads/perusahaan/';
         if (!file_exists($upload_dir)) {
@@ -64,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_perusahaan'])) 
             $logo = 'uploads/perusahaan/' . $file_name;
             
             // Hapus logo lama jika ada
-            if ($perusahaan['logo'] && file_exists('../' . $perusahaan['logo'])) {
+            if (isset($perusahaan['logo']) && $perusahaan['logo'] && file_exists('../' . $perusahaan['logo'])) {
                 unlink('../' . $perusahaan['logo']);
             }
         }
@@ -145,7 +146,7 @@ include '../templates/header.php';
                 <div class="card-body">
                     <form method="POST" enctype="multipart/form-data">
                         <div class="text-center mb-4">
-                            <?php if ($perusahaan['logo']): ?>
+                            <?php if (isset($perusahaan['logo']) && $perusahaan['logo']): ?>
                                 <img src="../<?= $perusahaan['logo'] ?>" alt="<?= htmlspecialchars($perusahaan['nama']) ?>" class="img-fluid" style="max-height: 150px;">
                             <?php else: ?>
                                 <div class="bg-light rounded d-flex align-items-center justify-content-center mx-auto" style="width: 150px; height: 150px;">
@@ -160,7 +161,7 @@ include '../templates/header.php';
 
                         <div class="mb-3">
                             <label for="nama" class="form-label">Nama Perusahaan <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="nama" name="nama" value="<?= htmlspecialchars($perusahaan['nama']) ?>" required>
+                            <input type="text" class="form-control" id="nama" name="nama" value="<?= htmlspecialchars(isset($perusahaan['nama']) ? $perusahaan['nama'] : '') ?>" required>
                         </div>
                         
                         <div class="mb-3">
@@ -187,8 +188,8 @@ include '../templates/header.php';
                         <div class="mb-3">
                             <label for="jenis" class="form-label">Jenis Akun</label>
                             <select class="form-select" id="jenis" name="jenis">
-                                <option value="regular" <?= ($perusahaan['jenis'] == 'regular') ? 'selected' : '' ?>>Regular</option>
-                                <option value="premium" <?= ($perusahaan['jenis'] == 'premium') ? 'selected' : '' ?>>Premium</option>
+                                <option value="regular" <?= (isset($perusahaan['jenis']) && $perusahaan['jenis'] == 'regular') ? 'selected' : '' ?>>Regular</option>
+                                <option value="premium" <?= (isset($perusahaan['jenis']) && $perusahaan['jenis'] == 'premium') ? 'selected' : '' ?>>Premium</option>
                             </select>
                         </div>
                         
