@@ -11,6 +11,8 @@ $tanggal_awal = isset($_GET['tanggal_awal']) ? $_GET['tanggal_awal'] : date('Y-m
 $tanggal_akhir = isset($_GET['tanggal_akhir']) ? $_GET['tanggal_akhir'] : date('Y-m-t');
 $kontak = isset($_GET['kontak']) ? $_GET['kontak'] : '';
 $tag = isset($_GET['tag']) ? $_GET['tag'] : '';
+$tipe = isset($_GET['tipe']) ? $_GET['tipe'] : '';
+
 
 // Buat query dasar
 $sql = "SELECT t.*, 
@@ -46,9 +48,49 @@ $stmt = $db->prepare($sql);
 $stmt->execute($params);
 $transaksi_list = $stmt->fetchAll();
 
+// Jika tipe adalah jurnal, gunakan query khusus untuk jurnal umum
+if ($tipe == 'jurnal') {
+    $sql_jurnal = "SELECT t.*, 
+            t.tanggal as tanggal_transaksi,
+            t.jenis as jenis_transaksi,
+            ad.kode_akun as kode_akun_debit, 
+            ad.nama_akun as nama_akun_debit,
+            ak.kode_akun as kode_akun_kredit, 
+            ak.nama_akun as nama_akun_kredit
+            FROM transaksi t 
+            LEFT JOIN akun ad ON t.id_akun_debit = ad.id
+            LEFT JOIN akun ak ON t.id_akun_kredit = ak.id
+            WHERE t.tanggal BETWEEN :tanggal_awal AND :tanggal_akhir
+            ORDER BY t.tanggal ASC, t.id ASC";
+
+    $params_jurnal = [
+        ':tanggal_awal' => $tanggal_awal,
+        ':tanggal_akhir' => $tanggal_akhir
+    ];
+
+    $stmt_jurnal = $db->prepare($sql_jurnal);
+    $stmt_jurnal->execute($params_jurnal);
+    $jurnal_list = $stmt_jurnal->fetchAll();
+    
+    // Hitung total debit dan kredit
+    $total_debit = 0;
+    $total_kredit = 0;
+    foreach ($jurnal_list as $jurnal) {
+        $total_debit += $jurnal['jumlah'];
+        $total_kredit += $jurnal['jumlah'];
+    }
+}
+
 // Set header untuk download file Excel
 header('Content-Type: application/vnd.ms-excel');
-header('Content-Disposition: attachment;filename="Laporan_Transaksi_' . date('Ymd') . '.xls"');
+
+// Set nama file berdasarkan tipe laporan
+if ($tipe == 'jurnal') {
+    header('Content-Disposition: attachment;filename="Jurnal_Umum_' . date('Ymd') . '.xls"');
+} else {
+    header('Content-Disposition: attachment;filename="Laporan_Transaksi_' . date('Ymd') . '.xls"');
+}
+
 header('Cache-Control: max-age=0');
 
 // Mulai output Excel
@@ -108,7 +150,87 @@ echo "<?mso-application progid=\"Excel.Sheet\"?>\n";
    <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="11" ss:Color="#FF0000"/>
   </Style>
  </Styles>
- <Worksheet ss:Name="Laporan Transaksi">
+ <Worksheet ss:Name="<?php echo ($tipe == 'jurnal' ? 'Jurnal Umum' : 'Laporan Transaksi'); ?>">
+  <?php if ($tipe == 'jurnal'): ?>
+  <Table ss:ExpandedColumnCount="7" ss:ExpandedRowCount="<?php echo (count($jurnal_list) * 2) + 4; ?>" x:FullColumns="1" x:FullRows="1">
+   <Column ss:Width="80"/>
+   <Column ss:Width="100"/>
+   <Column ss:Width="60"/>
+   <Column ss:Width="150"/>
+   <Column ss:Width="100"/>
+   <Column ss:Width="100"/>
+   <Column ss:Width="200"/>
+   
+   <!-- Judul Laporan -->
+   <Row ss:Height="30">
+    <Cell ss:MergeAcross="6" ss:StyleID="Title"><Data ss:Type="String">JURNAL UMUM</Data></Cell>
+   </Row>
+   <Row ss:Height="20">
+    <Cell ss:MergeAcross="6" ss:StyleID="Default"><Data ss:Type="String">Periode: <?php echo date('d/m/Y', strtotime($tanggal_awal)); ?> - <?php echo date('d/m/Y', strtotime($tanggal_akhir)); ?></Data></Cell>
+   </Row>
+   
+   <!-- Header Tabel -->
+   <Row ss:Height="25">
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Tanggal</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Transaksi</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Kode</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Akun</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Debit</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Kredit</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Catatan</Data></Cell>
+   </Row>
+   
+   <!-- Data Jurnal -->
+   <?php 
+   $current_date = null;
+   $current_transaction_id = null;
+   foreach ($jurnal_list as $index => $jurnal): 
+       $show_date = ($current_date != $jurnal['tanggal_transaksi']);
+       $show_transaction = ($current_transaction_id != $jurnal['id']);
+       $current_date = $jurnal['tanggal_transaksi'];
+       $current_transaction_id = $jurnal['id'];
+   ?>
+   <!-- Baris untuk akun debit -->
+   <Row>
+    <?php if ($show_date): ?>
+    <Cell ss:MergeDown="1"><Data ss:Type="String"><?php echo date('d/m/Y H:i:s', strtotime($jurnal['tanggal_transaksi'])); ?></Data></Cell>
+    <?php else: ?>
+    <Cell ss:Index="2"></Cell>
+    <?php endif; ?>
+    
+    <?php if ($show_transaction): ?>
+    <Cell ss:MergeDown="1"><Data ss:Type="String"><?php echo ucfirst($jurnal['jenis_transaksi']); ?></Data></Cell>
+    <?php else: ?>
+    <Cell ss:Index="3"></Cell>
+    <?php endif; ?>
+    
+    <Cell><Data ss:Type="String"><?php echo $jurnal['kode_akun_debit']; ?></Data></Cell>
+    <Cell><Data ss:Type="String"><?php echo $jurnal['nama_akun_debit']; ?></Data></Cell>
+    <Cell><Data ss:Type="Number"><?php echo $jurnal['jumlah']; ?></Data></Cell>
+    <Cell><Data ss:Type="String"></Data></Cell>
+    
+    <?php if ($show_transaction): ?>
+    <Cell ss:MergeDown="1"><Data ss:Type="String"><?php echo $jurnal['keterangan']; ?></Data></Cell>
+    <?php endif; ?>
+   </Row>
+   
+   <!-- Baris untuk akun kredit -->
+   <Row>
+    <Cell><Data ss:Type="String"><?php echo $jurnal['kode_akun_kredit']; ?></Data></Cell>
+    <Cell><Data ss:Type="String"><?php echo $jurnal['nama_akun_kredit']; ?></Data></Cell>
+    <Cell><Data ss:Type="String"></Data></Cell>
+    <Cell><Data ss:Type="Number"><?php echo $jurnal['jumlah']; ?></Data></Cell>
+   </Row>
+   <?php endforeach; ?>
+   
+   <!-- Baris total -->
+   <Row ss:StyleID="Header">
+    <Cell ss:MergeAcross="3"><Data ss:Type="String">TOTAL</Data></Cell>
+    <Cell><Data ss:Type="Number"><?php echo $total_debit; ?></Data></Cell>
+    <Cell><Data ss:Type="Number"><?php echo $total_kredit; ?></Data></Cell>
+    <Cell><Data ss:Type="String"></Data></Cell>
+   </Row>
+  <?php else: ?>
   <Table ss:ExpandedColumnCount="7" ss:ExpandedRowCount="<?php echo count($transaksi_list) + 3; ?>" x:FullColumns="1" x:FullRows="1">
    <Column ss:Width="30"/>
    <Column ss:Width="80"/>
@@ -149,6 +271,7 @@ echo "<?mso-application progid=\"Excel.Sheet\"?>\n";
     <Cell><Data ss:Type="String"><?php echo $transaksi['penanggung_jawab'] ?? ''; ?></Data></Cell>
    </Row>
    <?php endforeach; ?>
+  <?php endif; ?>
   </Table>
   <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
    <PageSetup>

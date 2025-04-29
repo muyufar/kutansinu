@@ -11,6 +11,8 @@ $tanggal_awal = isset($_GET['tanggal_awal']) ? $_GET['tanggal_awal'] : date('Y-m
 $tanggal_akhir = isset($_GET['tanggal_akhir']) ? $_GET['tanggal_akhir'] : date('Y-m-t');
 $kontak = isset($_GET['kontak']) ? $_GET['kontak'] : '';
 $tag = isset($_GET['tag']) ? $_GET['tag'] : '';
+$tipe = isset($_GET['tipe']) ? $_GET['tipe'] : '';
+
 
 // Buat query dasar
 $sql = "SELECT t.*, 
@@ -45,6 +47,39 @@ $sql .= " ORDER BY t.tanggal DESC, t.id DESC";
 $stmt = $db->prepare($sql);
 $stmt->execute($params);
 $transaksi_list = $stmt->fetchAll();
+
+// Jika tipe adalah jurnal, gunakan query khusus untuk jurnal umum
+if ($tipe == 'jurnal') {
+    $sql_jurnal = "SELECT t.*, 
+            t.tanggal as tanggal_transaksi,
+            t.jenis as jenis_transaksi,
+            ad.kode_akun as kode_akun_debit, 
+            ad.nama_akun as nama_akun_debit,
+            ak.kode_akun as kode_akun_kredit, 
+            ak.nama_akun as nama_akun_kredit
+            FROM transaksi t 
+            LEFT JOIN akun ad ON t.id_akun_debit = ad.id
+            LEFT JOIN akun ak ON t.id_akun_kredit = ak.id
+            WHERE t.tanggal BETWEEN :tanggal_awal AND :tanggal_akhir
+            ORDER BY t.tanggal ASC, t.id ASC";
+
+    $params_jurnal = [
+        ':tanggal_awal' => $tanggal_awal,
+        ':tanggal_akhir' => $tanggal_akhir
+    ];
+
+    $stmt_jurnal = $db->prepare($sql_jurnal);
+    $stmt_jurnal->execute($params_jurnal);
+    $jurnal_list = $stmt_jurnal->fetchAll();
+    
+    // Hitung total debit dan kredit
+    $total_debit = 0;
+    $total_kredit = 0;
+    foreach ($jurnal_list as $jurnal) {
+        $total_debit += $jurnal['jumlah'];
+        $total_kredit += $jurnal['jumlah'];
+    }
+}
 
 // Hitung total pemasukan dan pengeluaran berdasarkan filter
 $sql_total = "SELECT 
@@ -97,7 +132,7 @@ $html = '<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Laporan Transaksi</title>
+    <title>' . ($tipe == 'jurnal' ? 'Jurnal Umum' : 'Laporan Transaksi') . '</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -182,11 +217,11 @@ $html = '<!DOCTYPE html>
 </head>
 <body>
     <div class="header">
-        <h1>LAPORAN TRANSAKSI</h1>
+        <h1>' . ($tipe == 'jurnal' ? 'JURNAL UMUM' : 'LAPORAN TRANSAKSI') . '</h1>
         <p>Periode: ' . date('d/m/Y', strtotime($tanggal_awal)) . ' - ' . date('d/m/Y', strtotime($tanggal_akhir)) . '</p>
     </div>
     
-    <div class="summary">
+    ' . ($tipe != 'jurnal' ? '<div class="summary">
         <div class="summary-item">
             <strong>Total Pemasukan:</strong> ' . formatRupiah($total['total_pemasukan'] ?? 0) . '
         </div>
@@ -196,40 +231,110 @@ $html = '<!DOCTYPE html>
         <div class="summary-item">
             <strong>Saldo:</strong> ' . formatRupiah(($total['total_pemasukan'] ?? 0) - ($total['total_pengeluaran'] ?? 0)) . '
         </div>
-    </div>
+    </div>' : '') . '
     
     <table>
         <thead>
-            <tr>
+            <tr>' . 
+    ($tipe == 'jurnal' ? 
+    '
+                <th>Tanggal</th>
+                <th>Transaksi</th>
+                <th>Kode</th>
+                <th>Akun</th>
+                <th>Debit</th>
+                <th>Kredit</th>
+                <th>Catatan</th>' 
+    : 
+    '
                 <th>No</th>
                 <th>Tanggal</th>
                 <th>Transaksi</th>
                 <th>Catatan</th>
                 <th>Total</th>
                 <th>Tag</th>
-                <th>Penanggung Jawab</th>
+                <th>Penanggung Jawab</th>'
+    ) . '
             </tr>
         </thead>
         <tbody>';
 
-$no = 1;
-foreach ($transaksi_list as $transaksi) {
-    $jenisBadge = getJenisBadgeClass($transaksi['jenis']);
-    $html .= '<tr>
-        <td class="text-center">' . $no++ . '</td>
-        <td>' . date('d M Y', strtotime($transaksi['tanggal'])) . '<br>
-            <small>' . date('H:i:s', strtotime($transaksi['tanggal'])) . '</small>
-        </td>
-        <td><span class="badge badge-' . $jenisBadge . '">' . ucfirst($transaksi['jenis']) . '</span></td>
-        <td>' . htmlspecialchars($transaksi['keterangan']) . '</td>
-        <td class="text-right ' . ($transaksi['jenis'] == 'pemasukan' ? 'text-success' : 'text-danger') . '">' . formatRupiah($transaksi['jumlah']) . '</td>
-        <td>' . (!empty($transaksi['tag']) ? $transaksi['tag'] : '') . '</td>
-        <td>' . (!empty($transaksi['penanggung_jawab']) ? $transaksi['penanggung_jawab'] : '') . '</td>
-    </tr>';
-}
+// Tampilkan data berdasarkan tipe laporan
+if ($tipe == 'jurnal') {
+    // Tampilkan data jurnal umum
+    $current_date = null;
+    $current_transaction_id = null;
+    
+    if (empty($jurnal_list)) {
+        $html .= '<tr><td colspan="7" class="text-center">Tidak ada data jurnal</td></tr>';
+    } else {
+        foreach ($jurnal_list as $index => $jurnal) {
+            $show_date = ($current_date != $jurnal['tanggal_transaksi']);
+            $show_transaction = ($current_transaction_id != $jurnal['id']);
+            $current_date = $jurnal['tanggal_transaksi'];
+            $current_transaction_id = $jurnal['id'];
+            $jenisBadge = getJenisBadgeClass($jurnal['jenis_transaksi']);
+            
+            // Baris untuk akun debit
+            $html .= '<tr>';
+            if ($show_date) {
+                $html .= '<td rowspan="2">' . date('d M Y', strtotime($jurnal['tanggal_transaksi'])) . '<br>
+                    <small>' . date('H:i:s', strtotime($jurnal['tanggal_transaksi'])) . '</small></td>';
+            }
+            
+            if ($show_transaction) {
+                $html .= '<td rowspan="2"><span class="badge badge-' . $jenisBadge . '">' . ucfirst($jurnal['jenis_transaksi']) . '</span></td>';
+            }
+            
+            $html .= '<td>' . $jurnal['kode_akun_debit'] . '</td>
+                <td>' . $jurnal['nama_akun_debit'] . '</td>
+                <td class="text-right">' . formatRupiah($jurnal['jumlah']) . '</td>
+                <td></td>';
+            
+            if ($show_transaction) {
+                $html .= '<td rowspan="2">' . htmlspecialchars($jurnal['keterangan']) . '</td>';
+            }
+            
+            $html .= '</tr>';
+            
+            // Baris untuk akun kredit
+            $html .= '<tr>';
+            $html .= '<td>' . $jurnal['kode_akun_kredit'] . '</td>
+                <td>' . $jurnal['nama_akun_kredit'] . '</td>
+                <td></td>
+                <td class="text-right">' . formatRupiah($jurnal['jumlah']) . '</td>';
+            $html .= '</tr>';
+        }
+        
+        // Baris total
+        $html .= '<tr style="background-color: #f2f2f2; font-weight: bold;">
+            <td colspan="4" class="text-right">TOTAL</td>
+            <td class="text-right">' . formatRupiah($total_debit) . '</td>
+            <td class="text-right">' . formatRupiah($total_kredit) . '</td>
+            <td></td>
+        </tr>';
+    }
+} else {
+    // Tampilkan data transaksi biasa
+    $no = 1;
+    foreach ($transaksi_list as $transaksi) {
+        $jenisBadge = getJenisBadgeClass($transaksi['jenis']);
+        $html .= '<tr>
+            <td class="text-center">' . $no++ . '</td>
+            <td>' . date('d M Y', strtotime($transaksi['tanggal'])) . '<br>
+                <small>' . date('H:i:s', strtotime($transaksi['tanggal'])) . '</small>
+            </td>
+            <td><span class="badge badge-' . $jenisBadge . '">' . ucfirst($transaksi['jenis']) . '</span></td>
+            <td>' . htmlspecialchars($transaksi['keterangan']) . '</td>
+            <td class="text-right ' . ($transaksi['jenis'] == 'pemasukan' ? 'text-success' : 'text-danger') . '">' . formatRupiah($transaksi['jumlah']) . '</td>
+            <td>' . (!empty($transaksi['tag']) ? $transaksi['tag'] : '') . '</td>
+            <td>' . (!empty($transaksi['penanggung_jawab']) ? $transaksi['penanggung_jawab'] : '') . '</td>
+        </tr>';
+    }
 
-if (empty($transaksi_list)) {
-    $html .= '<tr><td colspan="7" class="text-center">Tidak ada data transaksi</td></tr>';
+    if (empty($transaksi_list)) {
+        $html .= '<tr><td colspan="7" class="text-center">Tidak ada data transaksi</td></tr>';
+    }
 }
 
 $html .= '</tbody>
