@@ -42,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     }
 
     $penanggung_jawab = validateInput($_POST['penanggung_jawab']);
+    $tag = validateInput($_POST['tag']);
 
     // Validasi saldo sebelum melakukan transaksi
     if ($jenis == 'pengeluaran' || $jenis == 'tarik_modal' || $jenis == 'transfer_uang' || $jenis == 'transfer_hutang') {
@@ -53,8 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     }
 
     try {
-        $stmt = $db->prepare("INSERT INTO transaksi (tanggal, id_akun_debit, id_akun_kredit, keterangan, jenis, jumlah, pajak, bunga, total, file_lampiran, penanggung_jawab, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$tanggal, $id_akun_debit, $id_akun_kredit, $keterangan, $jenis, $jumlah, $pajak, $bunga, $total, $file_lampiran, $penanggung_jawab, $_SESSION['user_id']]);
+        $stmt = $db->prepare("INSERT INTO transaksi (tanggal, id_akun_debit, id_akun_kredit, keterangan, jenis, jumlah, pajak, bunga, total, file_lampiran, penanggung_jawab, tag, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$tanggal, $id_akun_debit, $id_akun_kredit, $keterangan, $jenis, $jumlah, $pajak, $bunga, $total, $file_lampiran, $penanggung_jawab, $tag, $_SESSION['user_id']]);
         $_SESSION['success'] = 'Transaksi berhasil ditambahkan';
         header('Location: index.php');
         exit();
@@ -162,6 +163,11 @@ include '../templates/header.php';
                             <input type="text" class="form-control" id="penanggung_jawab" name="penanggung_jawab" required>
                         </div>
 
+                        <div class="mb-3">
+                            <label for="tag" class="form-label">Tag</label>
+                            <input type="text" class="form-control" id="tag" name="tag" placeholder="Masukkan tag (pisahkan dengan koma)">
+                        </div>
+
                         <div class="d-flex justify-content-between">
                             <a href="index.php" class="btn btn-secondary">Kembali</a>
                             <button type="button" class="btn btn-primary" onclick="showKonfirmasi()">Simpan Transaksi</button>
@@ -206,7 +212,7 @@ include '../templates/header.php';
                                         </div>
                                         <div class="mb-3">
                                             <label class="fw-bold">Tag</label>
-                                            <p id="konfirmasi-tag">-</p>
+                                            <p id="konfirmasi-tag"></p>
                                         </div>
                                         <div class="mb-3">
                                             <label class="fw-bold">Ayat Jurnal</label>
@@ -353,6 +359,13 @@ include '../templates/header.php';
         document.getElementById('konfirmasi-akun-kredit').textContent = akunKredit.options[akunKredit.selectedIndex].text;
         document.getElementById('konfirmasi-nilai-debit').textContent = formattedTotal;
         document.getElementById('konfirmasi-nilai-kredit').textContent = formattedTotal;
+
+        // Tampilkan tag jika ada
+        
+        if (tag) {
+            const tag = document.getElementById('tag').value;
+            document.getElementById('konfirmasi-tag').textContent = tag;
+        }
 
         // Tampilkan nama file lampiran jika ada
         if (fileLampiran) {

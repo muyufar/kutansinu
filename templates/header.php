@@ -35,31 +35,95 @@
     </style>
 </head>
 <body>
+    <?php
+    // Cek role user untuk menampilkan menu yang sesuai
+    $is_viewer = false;
+    $user_role = '';
+    if (isset($_SESSION['user_id']) && isset($db)) {
+        $user_id = $_SESSION['user_id'];
+        
+        // Ambil perusahaan default user
+        $stmt = $db->prepare("SELECT default_company FROM users WHERE id = ?");
+        $stmt->execute([$user_id]);
+        $user_data = $stmt->fetch();
+        $default_company_id = $user_data['default_company'];
+        
+        // Cek role user
+        if ($default_company_id) {
+            $stmt = $db->prepare("SELECT role FROM user_perusahaan WHERE user_id = ? AND perusahaan_id = ?");
+            $stmt->execute([$user_id, $default_company_id]);
+            $user_role = $stmt->fetchColumn();
+            $is_viewer = ($user_role === 'viewer');
+            
+            // Jika user adalah viewer dan mencoba mengakses halaman selain laporan, redirect ke halaman laporan
+            if ($is_viewer) {
+                $current_path = $_SERVER['REQUEST_URI'];
+                if (strpos($current_path, '/laporan/') === false && $current_path !== '/kutansinu/index.php' && $current_path !== '/kutansinu/') {
+                    header('Location: /kutansinu/laporan/transaksi.php');
+                    exit();
+                }
+            }
+        }
+    }
+    ?>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="/kutansinu/index.php">SiKeu</a>
+            <a class="navbar-brand" href="/kutansinu/index.php">
+                <?php
+                // Ambil nama perusahaan yang sedang aktif untuk user yang login
+                if (isset($_SESSION['user_id'])) {
+                    $user_id = $_SESSION['user_id'];
+                    
+                    // Cek apakah ada perusahaan aktif untuk user ini
+                    $stmt = $db->prepare("SELECT p.nama FROM perusahaan p 
+                                         JOIN user_perusahaan up ON p.id = up.perusahaan_id 
+                                         WHERE up.user_id = ? AND up.status = 'active' 
+                                         LIMIT 1");
+                    $stmt->execute([$user_id]);
+                    $perusahaan = $stmt->fetch();
+                    
+                    if ($perusahaan) {
+                        echo htmlspecialchars($perusahaan['nama']);
+                    } else {
+                        echo "SiKeu";
+                    }
+                } else {
+                    echo "SiKeu";
+                }
+                ?>
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
+                    <?php
+                    // Tampilkan menu Transaksi dan Daftar Akun hanya jika bukan viewer
+                    if (!$is_viewer) :
+                    ?>
                     <li class="nav-item">
-                        <a class="nav-link" href="/kutansinu/transaksi/index.php">Transaksi</a>
+                        <a class="nav-link" href="/kutansinu/transaksi/index.php"><i class="fas fa-exchange-alt me-1"></i> Transaksi</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/kutansinu/akun/index.php">Daftar Akun</a>
+                        <a class="nav-link" href="/kutansinu/akun/index.php"><i class="fas fa-list-alt me-1"></i> Daftar Akun</a>
                     </li>
+                    <?php endif; ?>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                            Laporan
+                            <i class="fas fa-chart-bar me-1"></i> Laporan
                         </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="/kutansinu/laporan/transaksi.php">Transaksi</a></li>
-                            <li><a class="dropdown-item" href="/kutansinu/laporan/neraca.php">Neraca</a></li>
-                            <li><a class="dropdown-item" href="/kutansinu/laporan/laba-rugi.php">Laba Rugi</a></li>
-                            <li><a class="dropdown-item" href="/kutansinu/laporan/arus-kas.php">Arus Kas</a></li>
+                        <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                            <li><a class="dropdown-item" href="/kutansinu/laporan/transaksi.php"><i class="fas fa-exchange-alt me-1"></i> Transaksi</a></li>
+                            <li><a class="dropdown-item" href="/kutansinu/laporan/neraca.php"><i class="fas fa-balance-scale me-1"></i> Neraca</a></li>
+                            <li><a class="dropdown-item" href="/kutansinu/laporan/laba_rugi.php"><i class="fas fa-chart-line me-1"></i> Laba Rugi</a></li>
+                            <li><a class="dropdown-item" href="/kutansinu/laporan/arus_kas.php"><i class="fas fa-money-bill-wave me-1"></i> Arus Kas</a></li>
                         </ul>
                     </li>
+                    <?php if (!$is_viewer) : ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/kutansinu/pengaturan/index.php"><i class="fas fa-cog me-1"></i> Pengaturan</a>
+                    </li>
+                    <?php endif; ?>
                 </ul>
                 <ul class="navbar-nav">
                     <li class="nav-item">

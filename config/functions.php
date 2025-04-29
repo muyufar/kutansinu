@@ -5,6 +5,37 @@ function formatRupiah($angka)
     return 'Rp ' . number_format($angka, 0, ',', '.');
 }
 
+// Fungsi untuk memeriksa role pengguna pada perusahaan tertentu
+function checkUserRole($db, $user_id, $perusahaan_id, $required_role = 'admin')
+{
+    $stmt = $db->prepare("SELECT role FROM user_perusahaan WHERE user_id = ? AND perusahaan_id = ?");
+    $stmt->execute([$user_id, $perusahaan_id]);
+    $user_role = $stmt->fetchColumn();
+    
+    // Jika role tidak ditemukan, user tidak memiliki akses
+    if (!$user_role) {
+        return false;
+    }
+    
+    // Cek berdasarkan hierarki role
+    switch ($required_role) {
+        case 'viewer':
+            // Viewer hanya bisa melihat, semua role bisa melihat
+            return in_array($user_role, ['admin', 'editor', 'viewer']);
+            
+        case 'editor':
+            // Editor bisa edit, admin juga bisa edit
+            return in_array($user_role, ['admin', 'editor']);
+            
+        case 'admin':
+            // Hanya admin yang bisa melakukan tindakan admin
+            return $user_role === 'admin';
+            
+        default:
+            return false;
+    }
+}
+
 // Mendapatkan total pemasukan
 function getTotalPemasukan($db)
 {
@@ -27,6 +58,37 @@ function getTotalPengeluaran($db)
 function getSaldo($db)
 {
     return getTotalPemasukan($db) - getTotalPengeluaran($db);
+}
+
+// Mendapatkan kelas badge untuk role
+function getRoleBadgeClass($role)
+{
+    switch ($role) {
+        case 'admin':
+            return 'primary';
+        case 'editor':
+            return 'warning';
+        case 'viewer':
+            return 'info';
+        case 'staff':
+            return 'success';
+        default:
+            return 'secondary';
+    }
+}
+
+// Menghasilkan password acak
+function generateRandomPassword($length = 8)
+{
+    $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_-=+;:,.?';
+    $password = '';
+    $max = strlen($chars) - 1;
+    
+    for ($i = 0; $i < $length; $i++) {
+        $password .= $chars[random_int(0, $max)];
+    }
+    
+    return $password;
 }
 
 // Validasi input
