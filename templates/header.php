@@ -128,7 +128,7 @@
                 <ul class="navbar-nav">
                     <?php if (isset($_SESSION['user_id'])) : 
                         // Ambil username pengguna yang login
-                        $stmt = $db->prepare("SELECT username FROM users WHERE id = ?");
+                        $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
                         $stmt->execute([$_SESSION['user_id']]);
                         $user = $stmt->fetch();
                         $username = $user['username'] ?? 'Pengguna';

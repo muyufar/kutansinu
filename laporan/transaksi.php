@@ -159,7 +159,7 @@ include '../templates/header.php';
     </div>
 
     <!-- Ringkasan -->
-    <div class="row mb-4">
+    <!-- <div class="row mb-4">
         <div class="col-md-4">
             <div class="card bg-success text-white">
                 <div class="card-body">
@@ -184,7 +184,7 @@ include '../templates/header.php';
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
 
     <!-- Tabel Transaksi -->
     <div class="card">
