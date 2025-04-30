@@ -83,14 +83,22 @@ if (isset($_GET['action']) && $_GET['action'] == 'hapus' && isset($_GET['id'])) 
 // Ambil daftar akun untuk dropdown
 $akun_list = getDaftarAkun($db);
 
-// Ambil daftar transaksi dengan informasi akun debit dan kredit
-$stmt = $db->query("SELECT t.*, 
+// Ambil id_perusahaan dari default_company pengguna
+$stmt_company = $db->prepare("SELECT default_company FROM users WHERE id = ?");
+$stmt_company->execute([$_SESSION['user_id']]);
+$user_data = $stmt_company->fetch();
+$id_perusahaan = $user_data['default_company'];
+
+// Ambil daftar transaksi dengan informasi akun debit dan kredit, hanya untuk perusahaan pengguna yang login
+$stmt = $db->prepare("SELECT t.*, 
                     ad.kode_akun as kode_akun_debit, ad.nama_akun as nama_akun_debit,
                     ak.kode_akun as kode_akun_kredit, ak.nama_akun as nama_akun_kredit
                     FROM transaksi t 
                     LEFT JOIN akun ad ON t.id_akun_debit = ad.id
                     LEFT JOIN akun ak ON t.id_akun_kredit = ak.id
+                    WHERE t.id_perusahaan = ?
                     ORDER BY t.tanggal DESC, t.id DESC");
+$stmt->execute([$id_perusahaan]);
 $transaksi_list = $stmt->fetchAll();
 
 // Header

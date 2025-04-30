@@ -10,7 +10,20 @@ requireLogin();
 $tanggal_awal = isset($_GET['tanggal_awal']) ? $_GET['tanggal_awal'] : date('Y-m-01');
 $tanggal_akhir = isset($_GET['tanggal_akhir']) ? $_GET['tanggal_akhir'] : date('Y-m-t');
 
-// Buat query untuk mengambil data jurnal
+// Ambil id_perusahaan dari default_company pengguna
+$stmt_company = $db->prepare("SELECT default_company FROM users WHERE id = ?");
+$stmt_company->execute([$_SESSION['user_id']]);
+$user_data = $stmt_company->fetch();
+$id_perusahaan = $user_data['default_company'];
+
+// Pastikan pengguna memiliki perusahaan default
+if (!$id_perusahaan) {
+    $_SESSION['error'] = 'Anda belum memiliki perusahaan default. Silakan tambahkan perusahaan terlebih dahulu.';
+    header('Location: ../pengaturan/perusahaan.php');
+    exit();
+}
+
+// Buat query untuk mengambil data jurnal dengan filter perusahaan
 $sql = "SELECT t.*, 
         t.tanggal as tanggal_transaksi,
         t.jenis as jenis_transaksi,
@@ -22,11 +35,13 @@ $sql = "SELECT t.*,
         LEFT JOIN akun ad ON t.id_akun_debit = ad.id
         LEFT JOIN akun ak ON t.id_akun_kredit = ak.id
         WHERE t.tanggal BETWEEN :tanggal_awal AND :tanggal_akhir
+        AND t.id_perusahaan = :id_perusahaan
         ORDER BY t.tanggal ASC, t.id ASC";
 
 $params = [
     ':tanggal_awal' => $tanggal_awal,
-    ':tanggal_akhir' => $tanggal_akhir
+    ':tanggal_akhir' => $tanggal_akhir,
+    ':id_perusahaan' => $id_perusahaan
 ];
 
 // Eksekusi query

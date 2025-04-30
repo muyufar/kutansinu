@@ -10,37 +10,54 @@ requireLogin();
 $tanggal_awal = isset($_GET['tanggal_awal']) ? $_GET['tanggal_awal'] : date('Y-m-01');
 $tanggal_akhir = isset($_GET['tanggal_akhir']) ? $_GET['tanggal_akhir'] : date('Y-m-t');
 
+// Ambil id_perusahaan dari default_company pengguna
+$stmt_company = $db->prepare("SELECT default_company FROM users WHERE id = ?");
+$stmt_company->execute([$_SESSION['user_id']]);
+$user_data = $stmt_company->fetch();
+$id_perusahaan = $user_data['default_company'];
+
+// Pastikan pengguna memiliki perusahaan default
+if (!$id_perusahaan) {
+    $_SESSION['error'] = 'Anda belum memiliki perusahaan default. Silakan tambahkan perusahaan terlebih dahulu.';
+    header('Location: ../pengaturan/perusahaan.php');
+    exit();
+}
+
 // Filter kontak (penanggung jawab)
 $kontak = isset($_GET['kontak']) ? $_GET['kontak'] : '';
 
 // Filter tag
 $tag = isset($_GET['tag']) ? $_GET['tag'] : '';
 
-// Ambil daftar kontak unik untuk dropdown filter
-$stmt_kontak = $db->query("SELECT DISTINCT penanggung_jawab FROM transaksi WHERE penanggung_jawab IS NOT NULL AND penanggung_jawab != '' ORDER BY penanggung_jawab ASC");
+// Ambil daftar kontak unik untuk dropdown filter dengan filter perusahaan
+$stmt_kontak = $db->prepare("SELECT DISTINCT penanggung_jawab FROM transaksi WHERE penanggung_jawab IS NOT NULL AND penanggung_jawab != '' AND id_perusahaan = ? ORDER BY penanggung_jawab ASC");
+$stmt_kontak->execute([$id_perusahaan]);
 $daftar_kontak = $stmt_kontak->fetchAll(PDO::FETCH_COLUMN);
 
-// Ambil daftar tag unik untuk dropdown filter
+// Ambil daftar tag unik untuk dropdown filter dengan filter perusahaan
 try {
-    $stmt_tag = $db->query("SELECT DISTINCT tag FROM transaksi WHERE tag IS NOT NULL AND tag != '' ORDER BY tag ASC");
+    $stmt_tag = $db->prepare("SELECT DISTINCT tag FROM transaksi WHERE tag IS NOT NULL AND tag != '' AND id_perusahaan = ? ORDER BY tag ASC");
+    $stmt_tag->execute([$id_perusahaan]);
     $daftar_tag = $stmt_tag->fetchAll(PDO::FETCH_COLUMN);
 } catch (PDOException $e) {
     // Jika terjadi error, set array kosong
     $daftar_tag = [];
 }
 
-// Buat query dasar
+// Buat query dasar dengan filter perusahaan
 $sql = "SELECT t.*, 
         ad.kode_akun as kode_akun_debit, ad.nama_akun as nama_akun_debit,
         ak.kode_akun as kode_akun_kredit, ak.nama_akun as nama_akun_kredit
         FROM transaksi t 
         LEFT JOIN akun ad ON t.id_akun_debit = ad.id
         LEFT JOIN akun ak ON t.id_akun_kredit = ak.id
-        WHERE t.tanggal BETWEEN :tanggal_awal AND :tanggal_akhir";
+        WHERE t.tanggal BETWEEN :tanggal_awal AND :tanggal_akhir
+        AND t.id_perusahaan = :id_perusahaan";
 
 $params = [
     ':tanggal_awal' => $tanggal_awal,
-    ':tanggal_akhir' => $tanggal_akhir
+    ':tanggal_akhir' => $tanggal_akhir,
+    ':id_perusahaan' => $id_perusahaan
 ];
 
 // Tambahkan filter kontak jika ada

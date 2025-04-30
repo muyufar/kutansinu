@@ -126,6 +126,20 @@
                     <?php endif; ?>
                 </ul>
                 <ul class="navbar-nav">
+                    <?php if (isset($_SESSION['user_id'])) : 
+                        // Ambil username pengguna yang login
+                        $stmt = $db->prepare("SELECT username FROM users WHERE id = ?");
+                        $stmt->execute([$_SESSION['user_id']]);
+                        $user = $stmt->fetch();
+                        $username = $user['username'] ?? 'Pengguna';
+                    ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/kutansinu/pengaturan/profil.php">
+                            <i class="fas fa-user me-1"></i>
+                            <span><?php echo htmlspecialchars($username); ?></span>
+                        </a>
+                    </li>
+                    <?php endif; ?>
                     <li class="nav-item">
                         <div class="theme-switch" onclick="toggleTheme()">
                             <i class="fas fa-moon"></i>

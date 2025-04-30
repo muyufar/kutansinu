@@ -53,15 +53,34 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         }
     }
 
+    // Ambil id_perusahaan dari default_company pengguna
+    $stmt_company = $db->prepare("SELECT default_company FROM users WHERE id = ?");
+    $stmt_company->execute([$_SESSION['user_id']]);
+    $user_data = $stmt_company->fetch();
+    $id_perusahaan = $user_data['default_company'];
+    
     try {
-        $stmt = $db->prepare("INSERT INTO transaksi (tanggal, id_akun_debit, id_akun_kredit, keterangan, jenis, jumlah, pajak, bunga, total, file_lampiran, penanggung_jawab, tag, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$tanggal, $id_akun_debit, $id_akun_kredit, $keterangan, $jenis, $jumlah, $pajak, $bunga, $total, $file_lampiran, $penanggung_jawab, $tag, $_SESSION['user_id']]);
+        $stmt = $db->prepare("INSERT INTO transaksi (tanggal, id_akun_debit, id_akun_kredit, keterangan, jenis, jumlah, pajak, bunga, total, file_lampiran, penanggung_jawab, tag, created_by, id_perusahaan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$tanggal, $id_akun_debit, $id_akun_kredit, $keterangan, $jenis, $jumlah, $pajak, $bunga, $total, $file_lampiran, $penanggung_jawab, $tag, $_SESSION['user_id'], $id_perusahaan]);
         $_SESSION['success'] = 'Transaksi berhasil ditambahkan';
         header('Location: index.php');
         exit();
     } catch (PDOException $e) {
         $_SESSION['error'] = 'Gagal menambahkan transaksi: ' . $e->getMessage();
     }
+}
+
+// Ambil id_perusahaan dari default_company pengguna
+$stmt_company = $db->prepare("SELECT default_company FROM users WHERE id = ?");
+$stmt_company->execute([$_SESSION['user_id']]);
+$user_data = $stmt_company->fetch();
+$id_perusahaan = $user_data['default_company'];
+
+// Pastikan pengguna memiliki perusahaan default
+if (!$id_perusahaan) {
+    $_SESSION['error'] = 'Anda belum memiliki perusahaan default. Silakan tambahkan perusahaan terlebih dahulu.';
+    header('Location: ../pengaturan/perusahaan.php');
+    exit();
 }
 
 // Ambil daftar akun untuk dropdown

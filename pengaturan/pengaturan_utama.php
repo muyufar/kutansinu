@@ -26,24 +26,47 @@ if ($default_company_id) {
 $user_id = $_SESSION['user_id'];
 
 // Ambil pengaturan user
-$stmt = $db->prepare("SELECT * FROM pengaturan WHERE user_id = ?");
-$stmt->execute([$user_id]);
-$pengaturan = $stmt->fetch();
-
-// Jika belum ada pengaturan, buat default
-if (!$pengaturan) {
+try {
+    // Cek apakah tabel pengaturan sudah ada
+    $tableExists = false;
     try {
-        $stmt = $db->prepare("INSERT INTO pengaturan (user_id, preview_transaksi, format_angka, created_at) 
-                             VALUES (?, 1, '1.000.000,00', NOW())");
-        $stmt->execute([$user_id]);
-        
-        // Ambil pengaturan yang baru dibuat
+        $checkTable = $db->query("SHOW TABLES LIKE 'pengaturan'");
+        $tableExists = ($checkTable->rowCount() > 0);
+    } catch (PDOException $e) {
+        // Tabel tidak ada, lanjutkan dengan pengaturan default
+    }
+    
+    if ($tableExists) {
         $stmt = $db->prepare("SELECT * FROM pengaturan WHERE user_id = ?");
         $stmt->execute([$user_id]);
         $pengaturan = $stmt->fetch();
-    } catch (PDOException $e) {
-        $_SESSION['error'] = 'Gagal membuat pengaturan default: ' . $e->getMessage();
+        
+        // Jika belum ada pengaturan, buat default
+        if (!$pengaturan) {
+            $stmt = $db->prepare("INSERT INTO pengaturan (user_id, preview_transaksi, format_angka, created_at) 
+                                 VALUES (?, 1, '1.000.000,00', NOW())");
+            $stmt->execute([$user_id]);
+            
+            // Ambil pengaturan yang baru dibuat
+            $stmt = $db->prepare("SELECT * FROM pengaturan WHERE user_id = ?");
+            $stmt->execute([$user_id]);
+            $pengaturan = $stmt->fetch();
+        }
+    } else {
+        // Tabel belum ada, gunakan pengaturan default
+        $pengaturan = [
+            'preview_transaksi' => 1,
+            'format_angka' => '1.000.000,00'
+        ];
+        $_SESSION['warning'] = 'Tabel pengaturan belum tersedia. Silakan jalankan file SQL untuk membuat tabel pengaturan.';
     }
+} catch (PDOException $e) {
+    $_SESSION['error'] = 'Gagal mengakses pengaturan: ' . $e->getMessage();
+    // Gunakan pengaturan default
+    $pengaturan = [
+        'preview_transaksi' => 1,
+        'format_angka' => '1.000.000,00'
+    ];
 }
 
 // Proses update pengaturan
@@ -52,10 +75,36 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_pengaturan'])) 
     $format_angka = validateInput($_POST['format_angka']);
     
     try {
-        $stmt = $db->prepare("UPDATE pengaturan SET preview_transaksi = ?, format_angka = ? WHERE user_id = ?");
-        $stmt->execute([$preview_transaksi, $format_angka, $user_id]);
+        // Cek apakah tabel pengaturan sudah ada
+        $checkTable = $db->query("SHOW TABLES LIKE 'pengaturan'");
+        $tableExists = ($checkTable->rowCount() > 0);
         
-        $_SESSION['success'] = 'Pengaturan berhasil diperbarui';
+        if ($tableExists) {
+            // Cek apakah data pengaturan untuk user ini sudah ada
+            $checkData = $db->prepare("SELECT id FROM pengaturan WHERE user_id = ?");
+            $checkData->execute([$user_id]);
+            
+            if ($checkData->rowCount() > 0) {
+                // Update data yang sudah ada
+                $stmt = $db->prepare("UPDATE pengaturan SET preview_transaksi = ?, format_angka = ? WHERE user_id = ?");
+                $stmt->execute([$preview_transaksi, $format_angka, $user_id]);
+            } else {
+                // Insert data baru jika belum ada
+                $stmt = $db->prepare("INSERT INTO pengaturan (user_id, preview_transaksi, format_angka, created_at) 
+                                     VALUES (?, ?, ?, NOW())");
+                $stmt->execute([$user_id, $preview_transaksi, $format_angka]);
+            }
+            
+            $_SESSION['success'] = 'Pengaturan berhasil diperbarui';
+        } else {
+            // Tabel belum ada, simpan pengaturan ke session sementara
+            $_SESSION['temp_pengaturan'] = [
+                'preview_transaksi' => $preview_transaksi,
+                'format_angka' => $format_angka
+            ];
+            $_SESSION['warning'] = 'Tabel pengaturan belum tersedia. Pengaturan disimpan sementara di session.';
+        }
+        
         header('Location: pengaturan_utama.php');
         exit();
     } catch (PDOException $e) {

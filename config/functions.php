@@ -37,27 +37,43 @@ function checkUserRole($db, $user_id, $perusahaan_id, $required_role = 'admin')
 }
 
 // Mendapatkan total pemasukan
-function getTotalPemasukan($db)
+function getTotalPemasukan($db, $id_perusahaan = null)
 {
-    $stmt = $db->prepare("SELECT SUM(jumlah) as total FROM transaksi WHERE jenis = 'pemasukan'");
-    $stmt->execute();
+    $sql = "SELECT SUM(jumlah) as total FROM transaksi WHERE jenis = 'pemasukan'";
+    $params = [];
+    
+    if ($id_perusahaan) {
+        $sql .= " AND id_perusahaan = ?";
+        $params[] = $id_perusahaan;
+    }
+    
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
     $result = $stmt->fetch();
     return $result['total'] ?? 0;
 }
 
 // Mendapatkan total pengeluaran
-function getTotalPengeluaran($db)
+function getTotalPengeluaran($db, $id_perusahaan = null)
 {
-    $stmt = $db->prepare("SELECT SUM(jumlah) as total FROM transaksi WHERE jenis = 'pengeluaran'");
-    $stmt->execute();
+    $sql = "SELECT SUM(jumlah) as total FROM transaksi WHERE jenis = 'pengeluaran'";
+    $params = [];
+    
+    if ($id_perusahaan) {
+        $sql .= " AND id_perusahaan = ?";
+        $params[] = $id_perusahaan;
+    }
+    
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
     $result = $stmt->fetch();
     return $result['total'] ?? 0;
 }
 
 // Mendapatkan saldo
-function getSaldo($db)
+function getSaldo($db, $id_perusahaan = null)
 {
-    return getTotalPemasukan($db) - getTotalPengeluaran($db);
+    return getTotalPemasukan($db, $id_perusahaan) - getTotalPengeluaran($db, $id_perusahaan);
 }
 
 // Mendapatkan kelas badge untuk role
@@ -146,8 +162,9 @@ function getDaftarAkun($db)
 }
 
 // Mendapatkan neraca saldo
-function getNeracaSaldo($db, $tanggal_awal, $tanggal_akhir)
+function getNeracaSaldo($db, $tanggal_awal, $tanggal_akhir, $id_perusahaan = null)
 {
+    $params = [$tanggal_awal, $tanggal_akhir];
     $sql = "SELECT 
                 a.id,
                 a.kode_akun,
@@ -156,11 +173,18 @@ function getNeracaSaldo($db, $tanggal_awal, $tanggal_akhir)
                 COALESCE(SUM(CASE WHEN t.id_akun_kredit = a.id THEN t.jumlah ELSE 0 END), 0) as kredit
             FROM akun a
             LEFT JOIN transaksi t ON (a.id = t.id_akun_debit OR a.id = t.id_akun_kredit)
-                AND t.tanggal BETWEEN ? AND ?
-            GROUP BY a.id, a.kode_akun, a.nama_akun
-            ORDER BY a.kode_akun ASC";
+                AND t.tanggal BETWEEN ? AND ?";
+    
+    // Tambahkan filter id_perusahaan jika ada
+    if ($id_perusahaan) {
+        $sql .= " AND t.id_perusahaan = ?";
+        $params[] = $id_perusahaan;
+    }
+    
+    $sql .= " GROUP BY a.id, a.kode_akun, a.nama_akun
+              ORDER BY a.kode_akun ASC";
 
     $stmt = $db->prepare($sql);
-    $stmt->execute([$tanggal_awal, $tanggal_akhir]);
+    $stmt->execute($params);
     return $stmt->fetchAll();
 }

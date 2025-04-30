@@ -10,8 +10,21 @@ requireLogin();
 $tanggal_awal = isset($_GET['tanggal_awal']) ? $_GET['tanggal_awal'] : date('Y-m-01');
 $tanggal_akhir = isset($_GET['tanggal_akhir']) ? $_GET['tanggal_akhir'] : date('Y-m-t');
 
-// Ambil data neraca saldo
-$neraca_saldo = getNeracaSaldo($db, $tanggal_awal, $tanggal_akhir);
+// Ambil id_perusahaan dari default_company pengguna
+$stmt_company = $db->prepare("SELECT default_company FROM users WHERE id = ?");
+$stmt_company->execute([$_SESSION['user_id']]);
+$user_data = $stmt_company->fetch();
+$id_perusahaan = $user_data['default_company'];
+
+// Pastikan pengguna memiliki perusahaan default
+if (!$id_perusahaan) {
+    $_SESSION['error'] = 'Anda belum memiliki perusahaan default. Silakan tambahkan perusahaan terlebih dahulu.';
+    header('Location: ../pengaturan/perusahaan.php');
+    exit();
+}
+
+// Ambil data neraca saldo dengan filter perusahaan
+$neraca_saldo = getNeracaSaldo($db, $tanggal_awal, $tanggal_akhir, $id_perusahaan);
 
 // Filter hanya akun yang memiliki transaksi
 $neraca_saldo = array_filter($neraca_saldo, function($item) {

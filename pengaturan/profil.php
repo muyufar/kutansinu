@@ -12,13 +12,28 @@ $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
 
+if (!$user) {
+    $_SESSION['error'] = 'Data user tidak ditemukan';
+    header('Location: ../login.php');
+    exit();
+}
+
+// Pastikan field yang diperlukan ada
+$user['nama_lengkap'] = $user['nama_lengkap'] ?? '';
+$user['email'] = $user['email'] ?? '';
+$user['no_hp'] = $user['no_hp'] ?? '';
+$user['alamat'] = $user['alamat'] ?? '';
+$user['foto_profil'] = $user['foto_profil'] ?? '';
+$user['default_company'] = $user['default_company'] ?? null;
+$user['created_at'] = $user['created_at'] ?? '';
+
 // Proses update profil
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_profile'])) {
-    $nama_lengkap = validateInput($_POST['nama_lengkap']);
-    $no_hp = validateInput($_POST['no_hp']);
-    $email = validateInput($_POST['email']);
-    $alamat = validateInput($_POST['alamat']);
-    
+    $nama_lengkap = validateInput($_POST['nama_lengkap'] ?? '');
+    $no_hp = validateInput($_POST['no_hp'] ?? '');
+    $email = validateInput($_POST['email'] ?? '');
+    $alamat = validateInput($_POST['alamat'] ?? '');
+
     // Upload foto profil jika ada
     $foto_profil = $user['foto_profil'];
     if (isset($_FILES['foto_profil']) && $_FILES['foto_profil']['error'] == 0) {
@@ -26,24 +41,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_profile'])) {
         if (!file_exists($upload_dir)) {
             mkdir($upload_dir, 0777, true);
         }
-        
+
         $file_name = time() . '_' . basename($_FILES['foto_profil']['name']);
         $target_file = $upload_dir . $file_name;
-        
+
         if (move_uploaded_file($_FILES['foto_profil']['tmp_name'], $target_file)) {
             $foto_profil = 'uploads/profil/' . $file_name;
-            
+
             // Hapus foto lama jika ada
             if ($user['foto_profil'] && file_exists('../' . $user['foto_profil'])) {
                 unlink('../' . $user['foto_profil']);
             }
         }
     }
-    
+
     try {
         $stmt = $db->prepare("UPDATE users SET nama_lengkap = ?, email = ?, no_hp = ?, alamat = ?, foto_profil = ? WHERE id = ?");
         $stmt->execute([$nama_lengkap, $email, $no_hp, $alamat, $foto_profil, $user_id]);
-        
+
         $_SESSION['success'] = 'Profil berhasil diperbarui';
         header('Location: profil.php');
         exit();
@@ -105,11 +120,11 @@ include '../templates/header.php';
                 <div class="card-body">
                     <form method="POST" enctype="multipart/form-data">
                         <div class="text-center mb-4">
-                            <?php if ($user['foto_profil']): ?>
-                                <img src="../<?= $user['foto_profil'] ?>" alt="Foto Profil" class="rounded-circle" style="width: 100px; height: 100px; object-fit: cover;">
+                            <?php if ($user['foto_profil'] ?? false): ?>
+                                <img src="../<?= $user['foto_profil'] ?? '' ?>" alt="Foto Profil" class="rounded-circle" style="width: 100px; height: 100px; object-fit: cover;">
                             <?php else: ?>
                                 <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center mx-auto" style="width: 100px; height: 100px;">
-                                    <span class="fs-1"><?= substr($user['nama_lengkap'], 0, 1) ?></span>
+                                    <span class="fs-1"><?= substr($user['nama_lengkap'] ?? '', 0, 1) ?></span>
                                 </div>
                             <?php endif; ?>
                             <div class="mt-2">
@@ -120,7 +135,7 @@ include '../templates/header.php';
 
                         <div class="mb-3">
                             <label for="nama_lengkap" class="form-label">Nama</label>
-                            <input type="text" class="form-control" id="nama_lengkap" name="nama_lengkap" value="<?= htmlspecialchars($user['nama_lengkap']) ?>" required>
+                            <input type="text" class="form-control" id="nama_lengkap" name="nama_lengkap" value="<?= htmlspecialchars($user['nama_lengkap'] ?? '') ?>" required>
                         </div>
 
                         <div class="mb-3">
@@ -131,7 +146,7 @@ include '../templates/header.php';
                         <div class="mb-3">
                             <label for="email" class="form-label">Email</label>
                             <input type="email" class="form-control" id="email" name="email" value="<?= htmlspecialchars($user['email'] ?? '') ?>">
-                            <?php if ($user['email']): ?>
+                            <?php if ($user['email'] ?? false): ?>
                                 <div class="form-text text-success"><i class="fas fa-check-circle"></i> Terverifikasi</div>
                             <?php endif; ?>
                         </div>
@@ -154,12 +169,12 @@ include '../templates/header.php';
                 <div class="card-body">
                     <div class="mb-3">
                         <label class="form-label">User ID</label>
-                        <input type="text" class="form-control" value="<?= generateUserID($user['id']) ?>" readonly>
+                        <input type="text" class="form-control" value="<?= $user_id ? htmlspecialchars(generateUserID($user_id)) : 'Tidak tersedia' ?>" readonly>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Tanggal Pendaftaran</label>
-                        <input type="text" class="form-control" value="<?= date('Y-m-d H:i:s', strtotime($user['created_at'])) ?>" readonly>
+                        <input type="text" class="form-control" value="<?= isset($user['created_at']) && $user['created_at'] ? htmlspecialchars(formatDate($user['created_at'])) : 'Tidak tersedia' ?>" readonly>
                     </div>
 
                     <div class="mb-3">
@@ -201,10 +216,18 @@ include '../templates/header.php';
 
 <?php
 // Helper function untuk generate User ID
-function generateUserID($id) {
+function generateUserID($id)
+{
     return 'MTM' . strtoupper(substr(md5($id), 0, 4));
 }
 
+function formatDate($date, $format = 'Y-m-d H:i:s')
+{
+    if (!$date || strtotime($date) === false) {
+        return 'Tidak tersedia';
+    }
+    return date($format, strtotime($date));
+}
 // Footer
 include '../templates/footer.php';
 ?>

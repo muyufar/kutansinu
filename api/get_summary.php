@@ -12,15 +12,24 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 try {
-    // Query untuk mendapatkan total pemasukan
-    $sql_pemasukan = "SELECT COALESCE(SUM(jumlah), 0) as total FROM transaksi WHERE jenis = 'pemasukan'";
-    $stmt_pemasukan = $db->query($sql_pemasukan);
+    // Ambil id_perusahaan dari default_company pengguna
+    $stmt_company = $db->prepare("SELECT default_company FROM users WHERE id = ?");
+    $stmt_company->execute([$_SESSION['user_id']]);
+    $user_data = $stmt_company->fetch();
+    $id_perusahaan = $user_data['default_company'];
+    
+    // Query untuk mendapatkan total pemasukan dengan filter perusahaan
+    $sql_pemasukan = "SELECT COALESCE(SUM(jumlah), 0) as total FROM transaksi WHERE jenis = 'pemasukan' AND id_perusahaan = ?";
+    $stmt_pemasukan = $db->prepare($sql_pemasukan);
+    $stmt_pemasukan->execute([$id_perusahaan]);
     $total_pemasukan = $stmt_pemasukan->fetch()['total'];
 
-    // Query untuk mendapatkan total pengeluaran
-    $sql_pengeluaran = "SELECT COALESCE(SUM(jumlah), 0) as total FROM transaksi WHERE jenis = 'pengeluaran'";
-    $stmt_pengeluaran = $db->query($sql_pengeluaran);
+    // Query untuk mendapatkan total pengeluaran dengan filter perusahaan
+    $sql_pengeluaran = "SELECT COALESCE(SUM(jumlah), 0) as total FROM transaksi WHERE jenis = 'pengeluaran' AND id_perusahaan = ?";
+    $stmt_pengeluaran = $db->prepare($sql_pengeluaran);
+    $stmt_pengeluaran->execute([$id_perusahaan]);
     $total_pengeluaran = $stmt_pengeluaran->fetch()['total'];
+
 
     // Hitung saldo
     $saldo = $total_pemasukan - $total_pengeluaran;

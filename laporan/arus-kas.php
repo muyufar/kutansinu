@@ -13,16 +13,29 @@ if (!isset($_SESSION['user_id'])) {
 $tanggal_awal = isset($_GET['tanggal_awal']) ? $_GET['tanggal_awal'] : date('Y-m-01');
 $tanggal_akhir = isset($_GET['tanggal_akhir']) ? $_GET['tanggal_akhir'] : date('Y-m-t');
 
-// Query untuk mendapatkan saldo awal kas
+// Ambil id_perusahaan dari default_company pengguna
+$stmt_company = $db->prepare("SELECT default_company FROM users WHERE id = ?");
+$stmt_company->execute([$_SESSION['user_id']]);
+$user_data = $stmt_company->fetch();
+$id_perusahaan = $user_data['default_company'];
+
+// Pastikan pengguna memiliki perusahaan default
+if (!$id_perusahaan) {
+    $_SESSION['error'] = 'Anda belum memiliki perusahaan default. Silakan tambahkan perusahaan terlebih dahulu.';
+    header('Location: ../pengaturan/perusahaan.php');
+    exit();
+}
+
+// Query untuk mendapatkan saldo awal kas dengan filter perusahaan
 $sql_saldo_awal = "SELECT COALESCE(SUM(CASE WHEN jenis = 'pemasukan' THEN jumlah ELSE -jumlah END), 0) as saldo
 FROM transaksi
-WHERE tanggal < ?";
+WHERE tanggal < ? AND id_perusahaan = ?";
 
 $stmt_saldo_awal = $db->prepare($sql_saldo_awal);
-$stmt_saldo_awal->execute([$tanggal_awal]);
+$stmt_saldo_awal->execute([$tanggal_awal, $id_perusahaan]);
 $saldo_awal = $stmt_saldo_awal->fetch()['saldo'];
 
-// Query untuk aktivitas operasi
+// Query untuk aktivitas operasi dengan filter perusahaan
 $sql_operasi = "SELECT 
     a.kode_akun,
     a.nama_akun,
@@ -30,16 +43,17 @@ $sql_operasi = "SELECT
 FROM akun a
 LEFT JOIN transaksi t ON a.id = t.id_akun_debit OR a.id = t.id_akun_kredit
     AND t.tanggal BETWEEN ? AND ?
+    AND t.id_perusahaan = ?
 WHERE a.kategori IN ('pendapatan', 'beban')
 GROUP BY a.id, a.kode_akun, a.nama_akun
 HAVING jumlah != 0
 ORDER BY a.kode_akun ASC";
 
 $stmt_operasi = $db->prepare($sql_operasi);
-$stmt_operasi->execute([$tanggal_awal, $tanggal_akhir]);
+$stmt_operasi->execute([$tanggal_awal, $tanggal_akhir, $id_perusahaan]);
 $data_operasi = $stmt_operasi->fetchAll();
 
-// Query untuk aktivitas investasi
+// Query untuk aktivitas investasi dengan filter perusahaan
 $sql_investasi = "SELECT 
     a.kode_akun,
     a.nama_akun,
@@ -47,16 +61,17 @@ $sql_investasi = "SELECT
 FROM akun a
 LEFT JOIN transaksi t ON a.id = t.id_akun_debit OR a.id = t.id_akun_kredit
     AND t.tanggal BETWEEN ? AND ?
+    AND t.id_perusahaan = ?
 WHERE a.kategori = 'investasi'
 GROUP BY a.id, a.kode_akun, a.nama_akun
 HAVING jumlah != 0
 ORDER BY a.kode_akun ASC";
 
 $stmt_investasi = $db->prepare($sql_investasi);
-$stmt_investasi->execute([$tanggal_awal, $tanggal_akhir]);
+$stmt_investasi->execute([$tanggal_awal, $tanggal_akhir, $id_perusahaan]);
 $data_investasi = $stmt_investasi->fetchAll();
 
-// Query untuk aktivitas pendanaan
+// Query untuk aktivitas pendanaan dengan filter perusahaan
 $sql_pendanaan = "SELECT 
     a.kode_akun,
     a.nama_akun,
@@ -64,13 +79,14 @@ $sql_pendanaan = "SELECT
 FROM akun a
 LEFT JOIN transaksi t ON a.id = t.id_akun_debit OR a.id = t.id_akun_kredit
     AND t.tanggal BETWEEN ? AND ?
+    AND t.id_perusahaan = ?
 WHERE a.kategori = 'modal'
 GROUP BY a.id, a.kode_akun, a.nama_akun
 HAVING jumlah != 0
 ORDER BY a.kode_akun ASC";
 
 $stmt_pendanaan = $db->prepare($sql_pendanaan);
-$stmt_pendanaan->execute([$tanggal_awal, $tanggal_akhir]);
+$stmt_pendanaan->execute([$tanggal_awal, $tanggal_akhir, $id_perusahaan]);
 $data_pendanaan = $stmt_pendanaan->fetchAll();
 
 // Hitung total untuk setiap aktivitas

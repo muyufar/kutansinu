@@ -13,7 +13,20 @@ if (!isset($_SESSION['user_id'])) {
 $tanggal_awal = isset($_GET['tanggal_awal']) ? $_GET['tanggal_awal'] : date('Y-m-01');
 $tanggal_akhir = isset($_GET['tanggal_akhir']) ? $_GET['tanggal_akhir'] : date('Y-m-t');
 
-// Query untuk mendapatkan data pendapatan
+// Ambil id_perusahaan dari default_company pengguna
+$stmt_company = $db->prepare("SELECT default_company FROM users WHERE id = ?");
+$stmt_company->execute([$_SESSION['user_id']]);
+$user_data = $stmt_company->fetch();
+$id_perusahaan = $user_data['default_company'];
+
+// Pastikan pengguna memiliki perusahaan default
+if (!$id_perusahaan) {
+    $_SESSION['error'] = 'Anda belum memiliki perusahaan default. Silakan tambahkan perusahaan terlebih dahulu.';
+    header('Location: ../pengaturan/perusahaan.php');
+    exit();
+}
+
+// Query untuk mendapatkan data pendapatan dengan filter perusahaan
 $sql_pendapatan = "SELECT 
     a.kode_akun,
     a.nama_akun,
@@ -21,12 +34,13 @@ $sql_pendapatan = "SELECT
 FROM akun a
 LEFT JOIN transaksi t ON a.id = t.id_akun_debit OR a.id = t.id_akun_kredit
     AND t.tanggal BETWEEN ? AND ?
+    AND t.id_perusahaan = ?
 WHERE a.kategori = 'pendapatan'
 GROUP BY a.id, a.kode_akun, a.nama_akun
 ORDER BY a.kode_akun ASC";
 
 $stmt_pendapatan = $db->prepare($sql_pendapatan);
-$stmt_pendapatan->execute([$tanggal_awal, $tanggal_akhir]);
+$stmt_pendapatan->execute([$tanggal_awal, $tanggal_akhir, $id_perusahaan]);
 $data_pendapatan = $stmt_pendapatan->fetchAll();
 
 // Filter hanya akun yang memiliki transaksi
@@ -34,7 +48,7 @@ $data_pendapatan = array_filter($data_pendapatan, function ($item) {
     return $item['jumlah'] != 0;
 });
 
-// Query untuk mendapatkan data beban
+// Query untuk mendapatkan data beban dengan filter perusahaan
 $sql_beban = "SELECT 
     a.kode_akun,
     a.nama_akun,
@@ -42,12 +56,13 @@ $sql_beban = "SELECT
 FROM akun a
 LEFT JOIN transaksi t ON a.id = t.id_akun_debit OR a.id = t.id_akun_kredit
     AND t.tanggal BETWEEN ? AND ?
+    AND t.id_perusahaan = ?
 WHERE a.kategori = 'beban'
 GROUP BY a.id, a.kode_akun, a.nama_akun
 ORDER BY a.kode_akun ASC";
 
 $stmt_beban = $db->prepare($sql_beban);
-$stmt_beban->execute([$tanggal_awal, $tanggal_akhir]);
+$stmt_beban->execute([$tanggal_awal, $tanggal_akhir, $id_perusahaan]);
 $data_beban = $stmt_beban->fetchAll();
 
 // Filter hanya akun yang memiliki transaksi
