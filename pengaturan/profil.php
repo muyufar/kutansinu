@@ -152,10 +152,10 @@ include '../templates/header.php';
                     <h5 class="card-title mb-0">Detail User</h5>
                 </div>
                 <div class="card-body">
-                    <div class="mb-3">
+                    <!-- <div class="mb-3">
                         <label class="form-label">User ID</label>
                         <input type="text" class="form-control" value="<?= generateUserID($user['id']) ?>" readonly>
-                    </div>
+                    </div> -->
 
                     <div class="mb-3">
                         <label class="form-label">Tanggal Pendaftaran</label>
@@ -163,7 +163,7 @@ include '../templates/header.php';
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Default Company</label>
+                        <label class="form-label">Perusahaan</label>
                         <input type="text" class="form-control" value="<?= $default_company ? htmlspecialchars($default_company['nama']) : 'Belum diatur' ?>" readonly>
                     </div>
                 </div>

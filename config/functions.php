@@ -100,11 +100,30 @@ function validateInput($data)
     return $data;
 }
 
-function validateSaldo($id_akun, $jumlah, $jenis) {
+function validateSaldo($id_akun, $jumlah, $jenis, $id_perusahaan = null) {
     global $db;
-    $stmt = $db->prepare("SELECT saldo FROM akun WHERE id = ?");
-    $stmt->execute([$id_akun]);
+    
+    // Jika id_perusahaan tidak diberikan, coba ambil dari session
+    if ($id_perusahaan === null && isset($_SESSION['default_company'])) {
+        $id_perusahaan = $_SESSION['default_company'];
+    }
+    
+    // Jika id_perusahaan tersedia, filter berdasarkan perusahaan
+    if ($id_perusahaan) {
+        $stmt = $db->prepare("SELECT saldo FROM akun WHERE id = ? AND id_perusahaan = ?");
+        $stmt->execute([$id_akun, $id_perusahaan]);
+    } else {
+        // Jika tidak ada id_perusahaan, cari berdasarkan ID saja
+        $stmt = $db->prepare("SELECT saldo FROM akun WHERE id = ?");
+        $stmt->execute([$id_akun]);
+    }
+    
     $akun = $stmt->fetch();
+    
+    // Jika akun tidak ditemukan, return false
+    if (!$akun) {
+        return false;
+    }
     
     if ($jenis == 'pengeluaran' || $jenis == 'tarik_modal' || $jenis == 'transfer_uang' || $jenis == 'transfer_hutang') {
         if ($akun['saldo'] < $jumlah) {
@@ -130,18 +149,44 @@ function requireLogin()
 }
 
 // Mendapatkan nama akun berdasarkan ID
-function getNamaAkun($db, $id_akun)
+function getNamaAkun($db, $id_akun, $id_perusahaan = null)
 {
-    $stmt = $db->prepare("SELECT nama_akun FROM akun WHERE id = ?");
-    $stmt->execute([$id_akun]);
+    // Jika id_perusahaan tidak diberikan, coba ambil dari session
+    if ($id_perusahaan === null && isset($_SESSION['default_company'])) {
+        $id_perusahaan = $_SESSION['default_company'];
+    }
+    
+    // Jika id_perusahaan tersedia, filter berdasarkan perusahaan
+    if ($id_perusahaan) {
+        $stmt = $db->prepare("SELECT nama_akun FROM akun WHERE id = ? AND id_perusahaan = ?");
+        $stmt->execute([$id_akun, $id_perusahaan]);
+    } else {
+        // Jika tidak ada id_perusahaan, cari berdasarkan ID saja
+        $stmt = $db->prepare("SELECT nama_akun FROM akun WHERE id = ?");
+        $stmt->execute([$id_akun]);
+    }
+    
     $result = $stmt->fetch();
     return $result['nama_akun'] ?? '-';
 }
 
-// Mendapatkan daftar akun
-function getDaftarAkun($db)
+// Mendapatkan daftar akun berdasarkan perusahaan
+function getDaftarAkun($db, $id_perusahaan = null)
 {
-    $stmt = $db->query("SELECT * FROM akun ORDER BY kode_akun ASC");
+    // Jika id_perusahaan tidak diberikan, coba ambil dari session
+    if ($id_perusahaan === null && isset($_SESSION['default_company'])) {
+        $id_perusahaan = $_SESSION['default_company'];
+    }
+    
+    // Jika id_perusahaan tersedia, filter berdasarkan perusahaan
+    if ($id_perusahaan) {
+        $stmt = $db->prepare("SELECT * FROM akun WHERE id_perusahaan = ? ORDER BY kode_akun ASC");
+        $stmt->execute([$id_perusahaan]);
+    } else {
+        // Jika tidak ada id_perusahaan, tampilkan semua akun (untuk admin)
+        $stmt = $db->query("SELECT * FROM akun ORDER BY kode_akun ASC");
+    }
+    
     return $stmt->fetchAll();
 }
 

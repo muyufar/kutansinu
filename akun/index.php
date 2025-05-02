@@ -12,10 +12,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $nama_akun = validateInput($_POST['nama_akun']);
     $kategori = validateInput($_POST['kategori']);
     $deskripsi = validateInput($_POST['deskripsi']);
+    
+    // Mendapatkan id_perusahaan dari user yang sedang login
+    $id_perusahaan = $_SESSION['default_company'] ?? null;
+    if (!$id_perusahaan) {
+        $_SESSION['error'] = 'Anda harus memiliki perusahaan aktif untuk menambahkan akun';
+        header('Location: index.php');
+        exit();
+    }
 
     try {
-        $stmt = $db->prepare("INSERT INTO akun (kode_akun, nama_akun, kategori, deskripsi) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$kode_akun, $nama_akun, $kategori, $deskripsi]);
+        $stmt = $db->prepare("INSERT INTO akun (kode_akun, nama_akun, kategori, deskripsi, id_perusahaan, created_by) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$kode_akun, $nama_akun, $kategori, $deskripsi, $id_perusahaan, $_SESSION['user_id']]);
         $_SESSION['success'] = 'Akun berhasil ditambahkan';
         header('Location: index.php');
         exit();
@@ -31,10 +39,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $nama_akun = validateInput($_POST['nama_akun']);
     $kategori = validateInput($_POST['kategori']);
     $deskripsi = validateInput($_POST['deskripsi']);
+    
+    // Mendapatkan id_perusahaan dari user yang sedang login
+    $id_perusahaan = $_SESSION['default_company'] ?? null;
+    if (!$id_perusahaan) {
+        $_SESSION['error'] = 'Anda harus memiliki perusahaan aktif untuk mengedit akun';
+        header('Location: index.php');
+        exit();
+    }
 
     try {
-        $stmt = $db->prepare("UPDATE akun SET kode_akun = ?, nama_akun = ?, kategori = ?, deskripsi = ? WHERE id = ?");
-        $stmt->execute([$kode_akun, $nama_akun, $kategori, $deskripsi, $id]);
+        // Pastikan akun yang diedit adalah milik perusahaan yang aktif
+        $check = $db->prepare("SELECT id FROM akun WHERE id = ? AND id_perusahaan = ?");
+        $check->execute([$id, $id_perusahaan]);
+        if ($check->rowCount() == 0) {
+            $_SESSION['error'] = 'Akun tidak ditemukan atau bukan milik perusahaan Anda';
+            header('Location: index.php');
+            exit();
+        }
+        
+        $stmt = $db->prepare("UPDATE akun SET kode_akun = ?, nama_akun = ?, kategori = ?, deskripsi = ? WHERE id = ? AND id_perusahaan = ?");
+        $stmt->execute([$kode_akun, $nama_akun, $kategori, $deskripsi, $id, $id_perusahaan]);
         $_SESSION['success'] = 'Akun berhasil diperbarui';
         header('Location: index.php');
         exit();
@@ -45,9 +70,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 
 // Proses hapus akun
 if (isset($_GET['action']) && $_GET['action'] == 'hapus' && isset($_GET['id'])) {
+    // Mendapatkan id_perusahaan dari user yang sedang login
+    $id_perusahaan = $_SESSION['default_company'] ?? null;
+    if (!$id_perusahaan) {
+        $_SESSION['error'] = 'Anda harus memiliki perusahaan aktif untuk menghapus akun';
+        header('Location: index.php');
+        exit();
+    }
+    
     try {
-        $stmt = $db->prepare("DELETE FROM akun WHERE id = ?");
-        $stmt->execute([$_GET['id']]);
+        // Pastikan akun yang dihapus adalah milik perusahaan yang aktif
+        $check = $db->prepare("SELECT id FROM akun WHERE id = ? AND id_perusahaan = ?");
+        $check->execute([$_GET['id'], $id_perusahaan]);
+        if ($check->rowCount() == 0) {
+            $_SESSION['error'] = 'Akun tidak ditemukan atau bukan milik perusahaan Anda';
+            header('Location: index.php');
+            exit();
+        }
+        
+        $stmt = $db->prepare("DELETE FROM akun WHERE id = ? AND id_perusahaan = ?");
+        $stmt->execute([$_GET['id'], $id_perusahaan]);
         $_SESSION['success'] = 'Akun berhasil dihapus';
     } catch (PDOException $e) {
         $_SESSION['error'] = 'Gagal menghapus akun: ' . $e->getMessage();
@@ -56,9 +98,17 @@ if (isset($_GET['action']) && $_GET['action'] == 'hapus' && isset($_GET['id'])) 
     exit();
 }
 
-// Ambil daftar akun
-$stmt = $db->query("SELECT * FROM akun ORDER BY kode_akun ASC");
-$akun_list = $stmt->fetchAll();
+// Ambil daftar akun berdasarkan perusahaan yang aktif
+$id_perusahaan = $_SESSION['default_company'] ?? null;
+if ($id_perusahaan) {
+    $stmt = $db->prepare("SELECT * FROM akun WHERE id_perusahaan = ? ORDER BY kode_akun ASC");
+    $stmt->execute([$id_perusahaan]);
+    $akun_list = $stmt->fetchAll();
+} else {
+    // Jika tidak ada perusahaan aktif, tampilkan pesan peringatan
+    $_SESSION['warning'] = 'Anda belum memilih perusahaan aktif. Silakan pilih perusahaan terlebih dahulu untuk melihat daftar akun.';
+    $akun_list = [];
+}
 
 // Header
 include '../templates/header.php';
