@@ -33,6 +33,9 @@ include '../templates/header.php';
             <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#tambahBusModal">
                 <i class="fas fa-plus"></i> Tambah Bus
             </button>
+            <button type="button" class="btn btn-info me-2" data-bs-toggle="modal" data-bs-target="#jadwalBusModal">
+                <i class="fas fa-calendar-alt"></i> Tambah Jadwal Bus
+            </button>
             <a href="verifikasi_pesanan.php" class="btn btn-warning me-2">
                 <i class="fas fa-check-circle"></i> Verifikasi Pesanan
             </a>
@@ -244,7 +247,7 @@ include '../templates/header.php';
     document.addEventListener('DOMContentLoaded', function() {
         const tanggalBerangkat = document.getElementById('tanggal_berangkat');
         const tanggalKembali = document.getElementById('tanggal_kembali');
-        
+
         tanggalBerangkat.addEventListener('change', function() {
             tanggalKembali.min = this.value;
             if (tanggalKembali.value && tanggalKembali.value < this.value) {
@@ -315,6 +318,151 @@ include '../templates/header.php';
                         <button type="submit" class="btn btn-success">Simpan</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Jadwal Bus -->
+<div class="modal fade" id="jadwalBusModal" tabindex="-1" aria-labelledby="jadwalBusModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="jadwalBusModalLabel">Tambah Jadwal Bus Baru</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form action="tambah_jadwal.php" method="post">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="id_bus" class="form-label">Pilih Bus</label>
+                            <select class="form-select" id="id_bus" name="id_bus" required>
+                                <option value="">Pilih Bus</option>
+                                <?php foreach ($bus_list as $bus): ?>
+                                    <option value="<?php echo $bus['id']; ?>"><?php echo htmlspecialchars($bus['nama_bus']); ?> - <?php echo htmlspecialchars($bus['nomor_polisi']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="tanggal_berangkat" class="form-label">Tanggal Berangkat</label>
+                            <input type="date" class="form-control" id="tanggal_berangkat" name="tanggal_berangkat" min="<?php echo date('Y-m-d'); ?>" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="waktu_berangkat" class="form-label">Waktu Berangkat</label>
+                            <input type="time" class="form-control" id="waktu_berangkat" name="waktu_berangkat" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="estimasi_durasi" class="form-label">Estimasi Durasi (Jam)</label>
+                            <input type="number" class="form-control" id="estimasi_durasi" name="estimasi_durasi" min="1" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="kota_asal" class="form-label">Kota Asal</label>
+                            <input type="text" class="form-control" id="kota_asal" name="kota_asal" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="kota_tujuan" class="form-label">Kota Tujuan</label>
+                            <input type="text" class="form-control" id="kota_tujuan" name="kota_tujuan" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="harga" class="form-label">Harga Tiket (Rp)</label>
+                            <input type="number" class="form-control" id="harga" name="harga" min="1000" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status" required>
+                                <option value="tersedia">Tersedia</option>
+                                <option value="penuh">Penuh</option>
+                                <option value="dibatalkan">Dibatalkan</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-info">Simpan Jadwal</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="jadwalBusModal" tabindex="-1" aria-labelledby="jadwalBusModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="jadwalBusModalLabel">Tambah Jadwal Bus</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Nama Bus</th>
+                                <th>Tanggal Berangkat</th>
+                                <th>Waktu Berangkat</th>
+                                <th>Kota Asal</th>
+                                <th>Kota Tujuan</th>
+                                <th>Estimasi Durasi</th>
+                                <th>Harga</th>
+                                <th>Status</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
+                            // Ambil data jadwal bus
+                            $stmt = $db->query("SELECT j.*, b.nama_bus 
+                                              FROM jadwal_bus j 
+                                              JOIN bus b ON j.id_bus = b.id 
+                                              ORDER BY j.tanggal_berangkat ASC, j.waktu_berangkat ASC");
+                            $jadwal_list = $stmt->fetchAll();
+                            $no = 1;
+
+                            foreach ($jadwal_list as $jadwal):
+                            ?>
+                                <tr>
+                                    <td><?php echo $no++; ?></td>
+                                    <td><?php echo htmlspecialchars($jadwal['nama_bus']); ?></td>
+                                    <td><?php echo date('d/m/Y', strtotime($jadwal['tanggal_berangkat'])); ?></td>
+                                    <td><?php echo date('H:i', strtotime($jadwal['waktu_berangkat'])); ?></td>
+                                    <td><?php echo htmlspecialchars($jadwal['kota_asal']); ?></td>
+                                    <td><?php echo htmlspecialchars($jadwal['kota_tujuan']); ?></td>
+                                    <td><?php echo $jadwal['estimasi_durasi']; ?> jam</td>
+                                    <td><?php echo formatRupiah($jadwal['harga']); ?></td>
+                                    <td>
+                                        <span class="badge bg-<?php echo $jadwal['status'] == 'tersedia' ? 'success' : ($jadwal['status'] == 'penuh' ? 'danger' : 'warning'); ?>">
+                                            <?php echo ucfirst($jadwal['status']); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <?php if ($jadwal['status'] == 'tersedia'): ?>
+                                            <a href="pesan.php?jadwal_id=<?php echo $jadwal['id']; ?>" class="btn btn-primary btn-sm">
+                                                <i class="fas fa-ticket-alt"></i> Pesan
+                                            </a>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+
+                            <?php if (empty($jadwal_list)): ?>
+                                <tr>
+                                    <td colspan="10" class="text-center">Tidak ada jadwal bus yang tersedia</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
             </div>
         </div>
     </div>

@@ -6,15 +6,10 @@ require_once '../config/functions.php';
 // Cek login
 requireLogin();
 
-$user_id = $_SESSION['user_id'];
-$stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
-$stmt->execute([$user_id]);
-$user = $stmt->fetch();
-
 // Cek parameter ID pemesanan
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     $_SESSION['error'] = 'ID pemesanan tidak valid';
-    header('Location: riwayat.php');
+    header('Location: index.php');
     exit();
 }
 
@@ -22,29 +17,24 @@ $pemesanan_id = (int)$_GET['id'];
 
 // Ambil data pemesanan
 $stmt = $db->prepare("
-    SELECT pb.*, b.nama_bus 
+    SELECT pb.*, jb.*, b.*, u.nama_lengkap, u.email, u.no_hp
     FROM pemesanan_bus pb
+    JOIN jadwal_bus jb ON pb.id_jadwal_bus = jb.id
     JOIN bus b ON pb.id_bus = b.id
-    WHERE pb.id = ? AND pb.id_user = ?
+    JOIN users u ON pb.id_user = u.id
+    WHERE pb.id = ?
 ");
-$stmt->execute([$pemesanan_id, $user_id]);
+$stmt->execute([$pemesanan_id]);
 $pemesanan = $stmt->fetch();
 
 if (!$pemesanan) {
-    $_SESSION['error'] = 'Pemesanan tidak ditemukan atau Anda tidak memiliki akses';
-    header('Location: riwayat.php');
-    exit();
-}
-
-// Cek status pemesanan
-if ($pemesanan['status'] != 'menunggu_pembayaran') {
-    $_SESSION['error'] = 'Pemesanan ini tidak dalam status menunggu pembayaran';
-    header('Location: riwayat.php');
+    $_SESSION['error'] = 'Data pemesanan tidak ditemukan';
+    header('Location: index.php');
     exit();
 }
 
 // Proses upload bukti pembayaran
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Cek apakah ada file yang diupload
     if (!isset($_FILES['bukti_pembayaran']) || $_FILES['bukti_pembayaran']['error'] == UPLOAD_ERR_NO_FILE) {
         $_SESSION['error'] = 'Silakan pilih file bukti pembayaran';
@@ -99,9 +89,14 @@ include '../templates/header.php';
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Upload Bukti Pembayaran</h2>
-        <a href="riwayat.php" class="btn btn-secondary">
-            <i class="fas fa-arrow-left"></i> Kembali ke Riwayat
-        </a>
+        <div>
+            <a href="cetak_invoice.php?id=<?php echo $pemesanan_id; ?>" class="btn btn-primary me-2" target="_blank">
+                <i class="fas fa-print"></i> Cetak Invoice
+            </a>
+            <a href="index.php" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Kembali
+            </a>
+        </div>
     </div>
 
     <?php if (isset($_SESSION['error'])): ?>
@@ -111,33 +106,77 @@ include '../templates/header.php';
         </div>
     <?php endif; ?>
 
+    <?php if (isset($_SESSION['success'])): ?>
+        <div class="alert alert-success">
+            <?php echo $_SESSION['success'];
+            unset($_SESSION['success']); ?>
+        </div>
+    <?php endif; ?>
+
     <div class="row">
         <div class="col-md-6">
             <div class="card mb-4">
                 <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Detail Pemesanan #<?php echo $pemesanan['id']; ?></h5>
+                    <h5 class="mb-0">Detail Pemesanan</h5>
                 </div>
                 <div class="card-body">
-                    <h5><?php echo htmlspecialchars($pemesanan['nama_bus']); ?></h5>
-                    <p class="mb-1">
-                        <strong>Tanggal Pemesanan:</strong> <?php echo date('d/m/Y', strtotime($pemesanan['tanggal_pemesanan'])); ?>
-                    </p>
-                    <p class="mb-1">
-                        <strong>Keberangkatan:</strong> <?php echo date('d/m/Y', strtotime($pemesanan['tanggal_berangkat'])); ?>, <?php echo date('H:i', strtotime($pemesanan['waktu_berangkat'])); ?>
-                    </p>
-                    <p class="mb-1">
-                        <strong>Rute:</strong> <?php echo htmlspecialchars($pemesanan['kota_asal']); ?> - <?php echo htmlspecialchars($pemesanan['kota_tujuan']); ?>
-                    </p>
-                    <p class="mb-1">
-                        <strong>Jumlah Penumpang:</strong> <?php echo $pemesanan['jumlah_penumpang']; ?> orang
-                    </p>
-                    <p class="mb-1">
-                        <strong>Total Harga:</strong> <?php echo formatRupiah($pemesanan['total_harga']); ?>
-                    </p>
+                    <table class="table table-borderless">
+                        <tr>
+                            <td width="200"><strong>Nomor Pemesanan</strong></td>
+                            <td>: #<?php echo str_pad($pemesanan['id'], 5, '0', STR_PAD_LEFT); ?></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tanggal Pemesanan</strong></td>
+                            <td>: <?php echo date('d/m/Y', strtotime($pemesanan['tanggal_pemesanan'])); ?></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Nama Pemesan</strong></td>
+                            <td>: <?php echo htmlspecialchars($pemesanan['nama_lengkap']); ?></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Email</strong></td>
+                            <td>: <?php echo htmlspecialchars($pemesanan['email']); ?></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Telepon</strong></td>
+                            <td>: <?php echo htmlspecialchars($pemesanan['no_hp']); ?></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Bus</strong></td>
+                            <td>: <?php echo htmlspecialchars($pemesanan['nama_bus']); ?></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tanggal Berangkat</strong></td>
+                            <td>: <?php echo date('d/m/Y', strtotime($pemesanan['tanggal_berangkat'])); ?></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Waktu Berangkat</strong></td>
+                            <td>: <?php echo date('H:i', strtotime($pemesanan['waktu_berangkat'])); ?> WIB</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Rute</strong></td>
+                            <td>: <?php echo htmlspecialchars($pemesanan['kota_asal'] . ' - ' . $pemesanan['kota_tujuan']); ?></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Jumlah Penumpang</strong></td>
+                            <td>: <?php echo $pemesanan['jumlah_penumpang']; ?> orang</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Total Harga</strong></td>
+                            <td>: <?php echo formatRupiah($pemesanan['total_harga']); ?></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Status</strong></td>
+                            <td>: <span class="badge bg-<?php echo $pemesanan['status'] == 'menunggu_pembayaran' ? 'warning' : ($pemesanan['status'] == 'dibayar' ? 'success' : 'info'); ?>">
+                                <?php echo ucwords(str_replace('_', ' ', $pemesanan['status'])); ?>
+                            </span></td>
+                        </tr>
+                    </table>
                 </div>
             </div>
         </div>
         <div class="col-md-6">
+            <!-- Form upload bukti pembayaran -->
             <div class="card">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">Form Upload Bukti Pembayaran</h5>

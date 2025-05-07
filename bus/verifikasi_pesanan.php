@@ -25,12 +25,11 @@ if (!$is_nugrosir) {
 if (isset($_POST['verifikasi'])) {
     $pemesanan_id = (int)$_POST['pemesanan_id'];
     $status = validateInput($_POST['status']);
-    $catatan_admin = validateInput($_POST['catatan_admin']);
-    
+
     try {
-        $stmt = $db->prepare("UPDATE pemesanan_bus SET status = ?, catatan_admin = ?, tanggal_verifikasi = NOW() WHERE id = ?");
-        $stmt->execute([$status, $catatan_admin, $pemesanan_id]);
-        
+        $stmt = $db->prepare("UPDATE pemesanan_bus SET status = ?, tanggal_verifikasi = NOW() WHERE id = ?");
+        $stmt->execute([$status, $pemesanan_id]);
+
         $_SESSION['success'] = 'Status pemesanan berhasil diperbarui';
         header('Location: verifikasi_pesanan.php');
         exit();
@@ -152,53 +151,53 @@ include '../templates/header.php';
                                     <td><?php echo date('d/m/Y', strtotime($pemesanan['tanggal_berangkat'])); ?></td>
                                     <td><?php echo formatRupiah($pemesanan['total_harga']); ?></td>
                                     <td>
-                                        <span class="badge <?php 
-                                            switch($pemesanan['status']) {
+                                        <span class="badge <?php
+                                                            switch ($pemesanan['status']) {
+                                                                case 'menunggu_pembayaran':
+                                                                    echo 'bg-warning';
+                                                                    break;
+                                                                case 'menunggu_verifikasi':
+                                                                    echo 'bg-info';
+                                                                    break;
+                                                                case 'dikonfirmasi':
+                                                                    echo 'bg-success';
+                                                                    break;
+                                                                case 'ditolak':
+                                                                    echo 'bg-danger';
+                                                                    break;
+                                                                case 'selesai':
+                                                                    echo 'bg-primary';
+                                                                    break;
+                                                                case 'dibatalkan':
+                                                                    echo 'bg-secondary';
+                                                                    break;
+                                                                default:
+                                                                    echo 'bg-light text-dark';
+                                                            }
+                                                            ?>">
+                                            <?php
+                                            switch ($pemesanan['status']) {
                                                 case 'menunggu_pembayaran':
-                                                    echo 'bg-warning';
+                                                    echo 'Menunggu Pembayaran';
                                                     break;
                                                 case 'menunggu_verifikasi':
-                                                    echo 'bg-info';
+                                                    echo 'Menunggu Verifikasi';
                                                     break;
                                                 case 'dikonfirmasi':
-                                                    echo 'bg-success';
+                                                    echo 'Dikonfirmasi';
                                                     break;
                                                 case 'ditolak':
-                                                    echo 'bg-danger';
+                                                    echo 'Ditolak';
                                                     break;
                                                 case 'selesai':
-                                                    echo 'bg-primary';
+                                                    echo 'Selesai';
                                                     break;
                                                 case 'dibatalkan':
-                                                    echo 'bg-secondary';
+                                                    echo 'Dibatalkan';
                                                     break;
                                                 default:
-                                                    echo 'bg-light text-dark';
+                                                    echo $pemesanan['status'];
                                             }
-                                        ?>">
-                                            <?php 
-                                                switch($pemesanan['status']) {
-                                                    case 'menunggu_pembayaran':
-                                                        echo 'Menunggu Pembayaran';
-                                                        break;
-                                                    case 'menunggu_verifikasi':
-                                                        echo 'Menunggu Verifikasi';
-                                                        break;
-                                                    case 'dikonfirmasi':
-                                                        echo 'Dikonfirmasi';
-                                                        break;
-                                                    case 'ditolak':
-                                                        echo 'Ditolak';
-                                                        break;
-                                                    case 'selesai':
-                                                        echo 'Selesai';
-                                                        break;
-                                                    case 'dibatalkan':
-                                                        echo 'Dibatalkan';
-                                                        break;
-                                                    default:
-                                                        echo $pemesanan['status'];
-                                                }
                                             ?>
                                         </span>
                                     </td>
@@ -212,7 +211,7 @@ include '../templates/header.php';
                         </tbody>
                     </table>
                 </div>
-                
+
                 <!-- Modal Detail dan Verifikasi -->
                 <?php foreach ($pemesanan_list as $pemesanan): ?>
                     <div class="modal fade" id="detailModal<?php echo $pemesanan['id']; ?>" tabindex="-1" aria-labelledby="detailModalLabel<?php echo $pemesanan['id']; ?>" aria-hidden="true">
@@ -238,29 +237,29 @@ include '../templates/header.php';
                                                 <tr>
                                                     <th>Status</th>
                                                     <td>
-                                                        <?php 
-                                                            switch($pemesanan['status']) {
-                                                                case 'menunggu_pembayaran':
-                                                                    echo 'Menunggu Pembayaran';
-                                                                    break;
-                                                                case 'menunggu_verifikasi':
-                                                                    echo 'Menunggu Verifikasi';
-                                                                    break;
-                                                                case 'dikonfirmasi':
-                                                                    echo 'Dikonfirmasi';
-                                                                    break;
-                                                                case 'ditolak':
-                                                                    echo 'Ditolak';
-                                                                    break;
-                                                                case 'selesai':
-                                                                    echo 'Selesai';
-                                                                    break;
-                                                                case 'dibatalkan':
-                                                                    echo 'Dibatalkan';
-                                                                    break;
-                                                                default:
-                                                                    echo $pemesanan['status'];
-                                                            }
+                                                        <?php
+                                                        switch ($pemesanan['status']) {
+                                                            case 'menunggu_pembayaran':
+                                                                echo 'Menunggu Pembayaran';
+                                                                break;
+                                                            case 'menunggu_verifikasi':
+                                                                echo 'Menunggu Verifikasi';
+                                                                break;
+                                                            case 'dikonfirmasi':
+                                                                echo 'Dikonfirmasi';
+                                                                break;
+                                                            case 'ditolak':
+                                                                echo 'Ditolak';
+                                                                break;
+                                                            case 'selesai':
+                                                                echo 'Selesai';
+                                                                break;
+                                                            case 'dibatalkan':
+                                                                echo 'Dibatalkan';
+                                                                break;
+                                                            default:
+                                                                echo $pemesanan['status'];
+                                                        }
                                                         ?>
                                                     </td>
                                                 </tr>
@@ -269,26 +268,26 @@ include '../templates/header.php';
                                                     <td><?php echo formatRupiah($pemesanan['total_harga']); ?></td>
                                                 </tr>
                                                 <?php if (!empty($pemesanan['bukti_pembayaran'])): ?>
-                                                <tr>
-                                                    <th>Bukti Pembayaran</th>
-                                                    <td>
-                                                        <a href="../uploads/bukti_pembayaran/<?php echo htmlspecialchars($pemesanan['bukti_pembayaran']); ?>" target="_blank" class="btn btn-sm btn-info">
-                                                            <i class="fas fa-image"></i> Lihat Bukti
-                                                        </a>
-                                                    </td>
-                                                </tr>
+                                                    <tr>
+                                                        <th>Bukti Pembayaran</th>
+                                                        <td>
+                                                            <a href="../uploads/bukti_pembayaran/<?php echo htmlspecialchars($pemesanan['bukti_pembayaran']); ?>" target="_blank" class="btn btn-sm btn-info">
+                                                                <i class="fas fa-image"></i> Lihat Bukti
+                                                            </a>
+                                                        </td>
+                                                    </tr>
                                                 <?php endif; ?>
                                                 <?php if (!empty($pemesanan['catatan'])): ?>
-                                                <tr>
-                                                    <th>Catatan Pemesan</th>
-                                                    <td><?php echo nl2br(htmlspecialchars($pemesanan['catatan'])); ?></td>
-                                                </tr>
+                                                    <tr>
+                                                        <th>Catatan Pemesan</th>
+                                                        <td><?php echo nl2br(htmlspecialchars($pemesanan['catatan'])); ?></td>
+                                                    </tr>
                                                 <?php endif; ?>
                                                 <?php if (!empty($pemesanan['catatan_admin'])): ?>
-                                                <tr>
-                                                    <th>Catatan Admin</th>
-                                                    <td><?php echo nl2br(htmlspecialchars($pemesanan['catatan_admin'])); ?></td>
-                                                </tr>
+                                                    <tr>
+                                                        <th>Catatan Admin</th>
+                                                        <td><?php echo nl2br(htmlspecialchars($pemesanan['catatan_admin'])); ?></td>
+                                                    </tr>
                                                 <?php endif; ?>
                                             </table>
                                         </div>
@@ -318,49 +317,61 @@ include '../templates/header.php';
                                             </table>
                                         </div>
                                     </div>
-                                    
+
+                                    <?php if ($pemesanan['status'] == 'menunggu_pembayaran'): ?>
+                                        <form action="" method="post">
+                                            <input type="hidden" name="pemesanan_id" value="<?php echo $pemesanan['id']; ?>">
+                                            <input type="hidden" name="status" value="dibayar">
+                                            <div class="text-end">
+                                                <button type="submit" name="verifikasi" class="btn btn-success">
+                                                    <i class="fas fa-check"></i> Terima Pemesanan
+                                                </button>
+                                            </div>
+                                        </form>
+                                    <?php endif; ?>
+
                                     <?php if ($pemesanan['status'] == 'menunggu_verifikasi'): ?>
-                                    <form action="" method="post">
-                                        <input type="hidden" name="pemesanan_id" value="<?php echo $pemesanan['id']; ?>">
-                                        <div class="mb-3">
-                                            <label for="status" class="form-label">Ubah Status</label>
-                                            <select class="form-select" id="status" name="status" required>
-                                                <option value="dikonfirmasi">Konfirmasi Pemesanan</option>
-                                                <option value="ditolak">Tolak Pemesanan</option>
-                                            </select>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="catatan_admin" class="form-label">Catatan Admin</label>
-                                            <textarea class="form-control" id="catatan_admin" name="catatan_admin" rows="3"></textarea>
-                                        </div>
-                                        <div class="text-end">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-                                            <button type="submit" name="verifikasi" class="btn btn-primary">Simpan Perubahan</button>
-                                        </div>
-                                    </form>
+                                        <form action="" method="post">
+                                            <input type="hidden" name="pemesanan_id" value="<?php echo $pemesanan['id']; ?>">
+                                            <div class="mb-3">
+                                                <label for="status" class="form-label">Ubah Status</label>
+                                                <select class="form-select" id="status" name="status" required>
+                                                    <option value="dikonfirmasi">Konfirmasi Pemesanan</option>
+                                                    <option value="ditolak">Tolak Pemesanan</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="catatan_admin" class="form-label">Catatan Admin</label>
+                                                <textarea class="form-control" id="catatan_admin" name="catatan_admin" rows="3"></textarea>
+                                            </div>
+                                            <div class="text-end">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                                                <button type="submit" name="verifikasi" class="btn btn-primary">Simpan Perubahan</button>
+                                            </div>
+                                        </form>
                                     <?php elseif ($pemesanan['status'] == 'dikonfirmasi'): ?>
-                                    <form action="" method="post">
-                                        <input type="hidden" name="pemesanan_id" value="<?php echo $pemesanan['id']; ?>">
-                                        <div class="mb-3">
-                                            <label for="status" class="form-label">Ubah Status</label>
-                                            <select class="form-select" id="status" name="status" required>
-                                                <option value="selesai">Tandai Selesai</option>
-                                                <option value="dibatalkan">Batalkan Pemesanan</option>
-                                            </select>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="catatan_admin" class="form-label">Catatan Admin</label>
-                                            <textarea class="form-control" id="catatan_admin" name="catatan_admin" rows="3"><?php echo htmlspecialchars($pemesanan['catatan_admin']); ?></textarea>
-                                        </div>
+                                        <form action="" method="post">
+                                            <input type="hidden" name="pemesanan_id" value="<?php echo $pemesanan['id']; ?>">
+                                            <div class="mb-3">
+                                                <label for="status" class="form-label">Ubah Status</label>
+                                                <select class="form-select" id="status" name="status" required>
+                                                    <option value="selesai">Tandai Selesai</option>
+                                                    <option value="dibatalkan">Batalkan Pemesanan</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="catatan_admin" class="form-label">Catatan Admin</label>
+                                                <textarea class="form-control" id="catatan_admin" name="catatan_admin" rows="3"><?php echo htmlspecialchars($pemesanan['catatan_admin']); ?></textarea>
+                                            </div>
+                                            <div class="text-end">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                                                <button type="submit" name="verifikasi" class="btn btn-primary">Simpan Perubahan</button>
+                                            </div>
+                                        </form>
+                                    <?php else: ?>
                                         <div class="text-end">
                                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-                                            <button type="submit" name="verifikasi" class="btn btn-primary">Simpan Perubahan</button>
                                         </div>
-                                    </form>
-                                    <?php else: ?>
-                                    <div class="text-end">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-                                    </div>
                                     <?php endif; ?>
                                 </div>
                             </div>
