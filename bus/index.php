@@ -39,9 +39,9 @@ include '../templates/header.php';
             <a href="verifikasi_pesanan.php" class="btn btn-warning me-2">
                 <i class="fas fa-check-circle"></i> Verifikasi Pesanan
             </a>
-            <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#pesanManualModal">
+            <!-- <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#pesanManualModal">
                 <i class="fas fa-plus"></i> Pesan Manual
-            </button>
+            </button> -->
             <a href="riwayat.php" class="btn btn-info">
                 <i class="fas fa-history"></i> Riwayat Pemesanan
             </a>
@@ -150,10 +150,30 @@ include '../templates/header.php';
                             <div class="col-md-4 mb-4">
                                 <div class="card h-100">
                                     <?php if (!empty($bus['foto'])): ?>
-                                        <img src="../uploads/bus/<?php echo htmlspecialchars($bus['foto']); ?>" class="card-img-top" alt="<?php echo htmlspecialchars($bus['nama_bus']); ?>" style="height: 200px; object-fit: cover;">
+                                        <div class="position-relative">
+                                            <img src="../uploads/bus/<?php echo htmlspecialchars($bus['foto']); ?>" class="img-fluid mb-3 rounded" alt="<?php echo htmlspecialchars($bus['nama_bus']); ?>">
+                                            <div class="position-absolute top-0 end-0 p-2">
+                                                <a href="edit_bus.php?id=<?php echo $bus['id']; ?>" class="btn btn-sm btn-light bg-opacity-75 me-1 hover-full-opacity">
+                                                    <i class="fas fa-edit text-primary"></i>
+                                                </a>
+                                                <button type="button" class="btn btn-sm btn-light bg-opacity-75 hover-full-opacity" onclick="hapusBus(<?php echo $bus['id']; ?>)">
+                                                    <i class="fas fa-trash text-danger"></i>
+                                                </button>
+                                            </div>
+                                        </div>
                                     <?php else: ?>
-                                        <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
-                                            <i class="fas fa-bus fa-5x text-muted"></i>
+                                        <div class="position-relative">
+                                            <div class="bg-light d-flex align-items-center justify-content-center mb-3 rounded" style="height: 200px;">
+                                                <i class="fas fa-bus fa-5x text-muted"></i>
+                                            </div>
+                                            <div class="position-absolute top-0 end-0 p-2">
+                                                <a href="edit_bus.php?id=<?php echo $bus['id']; ?>" class="btn btn-sm btn-light bg-opacity-75 me-1 hover-full-opacity">
+                                                    <i class="fas fa-edit text-primary"></i>
+                                                </a>
+                                                <button type="button" class="btn btn-sm btn-light bg-opacity-75 hover-full-opacity" onclick="hapusBus(<?php echo $bus['id']; ?>)">
+                                                    <i class="fas fa-trash text-danger"></i>
+                                                </button>
+                                            </div>
                                         </div>
                                     <?php endif; ?>
                                     <div class="card-body">
@@ -161,8 +181,7 @@ include '../templates/header.php';
                                         <p class="card-text">
                                             <strong>Nomor Polisi:</strong> <?php echo htmlspecialchars($bus['nomor_polisi']); ?><br>
                                             <strong>Kapasitas:</strong> <?php echo $bus['kapasitas']; ?> Penumpang<br>
-                                            <strong>Fasilitas:</strong> <?php echo htmlspecialchars($bus['fasilitas']); ?><br>
-                                            <strong>Harga per KM:</strong> <?php echo formatRupiah($bus['harga_per_km']); ?>
+                                            <strong>Fasilitas:</strong> <?php echo htmlspecialchars($bus['fasilitas']); ?>
                                         </p>
                                     </div>
                                     <div class="card-footer">
@@ -261,10 +280,10 @@ include '../templates/header.php';
 
 
 <!-- Modal Tambah Bus -->
-<div class="modal fade" id="tambahBusModal" tabindex="-1" aria-labelledby="tambahBusModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+<div class="modal fade" id="tambahBusModal">
+    <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-success text-white">
+            <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="tambahBusModalLabel">Tambah Bus Baru</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -276,8 +295,27 @@ include '../templates/header.php';
                             <input type="text" class="form-control" id="nama_bus" name="nama_bus" required>
                         </div>
                         <div class="col-md-6">
-                            <label for="tipe" class="form-label">Tipe Bus</label>
-                            <input type="text" class="form-control" id="tipe" name="tipe" required>
+                            <label class="form-label">Tipe Bus</label>
+                            <div class="d-flex flex-column gap-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="tipe" id="tipe_ekonomi" value="Ekonomi" required>
+                                    <label class="form-check-label" for="tipe_ekonomi">
+                                        Bus Ekonomi
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="tipe" id="tipe_vip" value="VIP" required>
+                                    <label class="form-check-label" for="tipe_vip">
+                                        Bus VIP
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="tipe" id="tipe_executive" value="Executive" required>
+                                    <label class="form-check-label" for="tipe_executive">
+                                        Bus Executive
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="row mb-3">
@@ -290,23 +328,46 @@ include '../templates/header.php';
                             <input type="number" class="form-control" id="kapasitas" name="kapasitas" min="1" required>
                         </div>
                     </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="harga_per_km" class="form-label">Harga per KM (Rp)</label>
-                            <input type="number" class="form-control" id="harga_per_km" name="harga_per_km" min="1000" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="status" class="form-label">Status</label>
-                            <select class="form-select" id="status" name="status" required>
-                                <option value="tersedia">Tersedia</option>
-                                <option value="tidak tersedia">Tidak Tersedia</option>
-                                <option value="dalam perbaikan">Dalam Perbaikan</option>
-                            </select>
-                        </div>
+                    <div class="mb-3">
+                        <label for="status" class="form-label">Status</label>
+                        <select class="form-select" id="status" name="status" required>
+                            <option value="tersedia">Tersedia</option>
+                            <option value="tidak tersedia">Tidak Tersedia</option>
+                            <option value="dalam perbaikan">Dalam Perbaikan</option>
+                        </select>
                     </div>
                     <div class="mb-3">
-                        <label for="fasilitas" class="form-label">Fasilitas</label>
-                        <input type="text" class="form-control" id="fasilitas" name="fasilitas" placeholder="Contoh: AC, WiFi, Toilet, TV, Karaoke" required>
+                        <label class="form-label">Fasilitas Bus</label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="fasilitas[]" value="AC" id="fasilitas_ac">
+                                    <label class="form-check-label" for="fasilitas_ac">AC</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="fasilitas[]" value="WiFi" id="fasilitas_wifi">
+                                    <label class="form-check-label" for="fasilitas_wifi">WiFi</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="fasilitas[]" value="Toilet" id="fasilitas_toilet">
+                                    <label class="form-check-label" for="fasilitas_toilet">Toilet</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="fasilitas[]" value="Reclining Seat" id="fasilitas_seat">
+                                    <label class="form-check-label" for="fasilitas_seat">Reclining Seat</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="fasilitas[]" value="TV/Video" id="fasilitas_tv">
+                                    <label class="form-check-label" for="fasilitas_tv">TV/Video</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="fasilitas[]" value="Bagasi" id="fasilitas_bagasi">
+                                    <label class="form-check-label" for="fasilitas_bagasi">Bagasi</label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label for="foto" class="form-label">Foto Bus</label>

@@ -33,7 +33,7 @@ if (!$bus) {
 }
 
 // Ambil jadwal bus
-$stmt = $db->prepare("SELECT * FROM jadwal_bus WHERE id_bus = ? AND tanggal_berangkat >= CURDATE() AND status = 'tersedia' ORDER BY tanggal_berangkat ASC, waktu_berangkat ASC");
+$stmt = $db->prepare("SELECT * FROM jadwal_bus WHERE id_bus = ? AND tanggal_berangkat >= CURDATE() ORDER BY tanggal_berangkat ASC, waktu_berangkat ASC");
 $stmt->execute([$bus_id]);
 $jadwal_list = $stmt->fetchAll();
 
@@ -87,7 +87,7 @@ include '../templates/header.php';
                         <strong>Nomor Polisi:</strong> <?php echo htmlspecialchars($bus['nomor_polisi']); ?><br>
                         <strong>Kapasitas:</strong> <?php echo $bus['kapasitas']; ?> Penumpang<br>
                         <strong>Fasilitas:</strong> <?php echo htmlspecialchars($bus['fasilitas']); ?><br>
-                        <strong>Harga per KM:</strong> <?php echo formatRupiah($bus['harga_per_km']); ?>
+                        <!-- <strong>Harga per KM:</strong> <?php echo formatRupiah($bus['harga_per_km']); ?> -->
                     </p>
                 </div>
             </div>
@@ -114,15 +114,19 @@ include '../templates/header.php';
                                 <tbody>
                                     <?php foreach ($jadwal_list as $jadwal): ?>
                                         <tr>
-                                            <td><?php echo date('d/m/Y', strtotime($jadwal['tanggal_berangkat'])); ?></td>
+                                            <td><?php echo date('d M Y', strtotime($jadwal['tanggal_berangkat'])); ?></td>
                                             <td><?php echo date('H:i', strtotime($jadwal['waktu_berangkat'])); ?></td>
                                             <td><?php echo htmlspecialchars($jadwal['kota_asal'] . ' - ' . $jadwal['kota_tujuan']); ?></td>
                                             <td><?php echo formatDurasi($jadwal['estimasi_durasi']); ?></td>
                                             <td><?php echo formatRupiah($jadwal['harga']); ?></td>
                                             <td>
-                                                <a href="pesan_jadwal.php?id=<?php echo $jadwal['id']; ?>" class="btn btn-sm btn-success">
-                                                    <i class="fas fa-ticket-alt"></i> Pesan
-                                                </a>
+                                                <?php if ($jadwal['status'] == 'penuh'): ?>
+                                                    <span class="badge bg-danger">Tidak Tersedia</span>
+                                                <?php else: ?>
+                                                    <a href="pesan_jadwal.php?id=<?php echo $jadwal['id']; ?>" class="btn btn-sm btn-success">
+                                                        <i class="fas fa-ticket-alt"></i> Pesan
+                                                    </a>
+                                                <?php endif; ?>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -140,12 +144,13 @@ include '../templates/header.php';
     </div>
 </div>
 
-<?php 
+<?php
 // Fungsi untuk memformat durasi
-function formatDurasi($menit) {
+function formatDurasi($menit)
+{
     $jam = floor($menit / 60);
     $sisa_menit = $menit % 60;
-    
+
     if ($jam > 0) {
         return $jam . ' jam ' . ($sisa_menit > 0 ? $sisa_menit . ' menit' : '');
     } else {
@@ -153,5 +158,5 @@ function formatDurasi($menit) {
     }
 }
 
-include '../templates/footer.php'; 
+include '../templates/footer.php';
 ?>

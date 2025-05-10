@@ -35,7 +35,7 @@ $nomor_polisi = validateInput($_POST['nomor_polisi']);
 $kapasitas = (int)$_POST['kapasitas'];
 $harga_per_km = (int)$_POST['harga_per_km'];
 $status = validateInput($_POST['status']);
-$fasilitas = validateInput($_POST['fasilitas']);
+$fasilitas = isset($_POST['fasilitas']) ? implode(', ', $_POST['fasilitas']) : '';
 
 // Cek apakah nomor polisi sudah ada
 $stmt = $db->prepare("SELECT 1 FROM bus WHERE nomor_polisi = ?");
@@ -52,31 +52,31 @@ if (isset($_FILES['foto']) && $_FILES['foto']['error'] == 0) {
     $allowed = ['jpg', 'jpeg', 'png'];
     $filename = $_FILES['foto']['name'];
     $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-    
+
     // Validasi ekstensi file
     if (!in_array($ext, $allowed)) {
         $_SESSION['error'] = 'Format file tidak didukung. Gunakan JPG, JPEG, atau PNG';
         header('Location: index.php');
         exit();
     }
-    
+
     // Validasi ukuran file (max 2MB)
     if ($_FILES['foto']['size'] > 2 * 1024 * 1024) {
         $_SESSION['error'] = 'Ukuran file terlalu besar. Maksimal 2MB';
         header('Location: index.php');
         exit();
     }
-    
+
     // Buat direktori jika belum ada
     $upload_dir = '../uploads/bus/';
     if (!is_dir($upload_dir)) {
         mkdir($upload_dir, 0777, true);
     }
-    
+
     // Generate nama file unik
     $foto = uniqid() . '_' . $filename;
     $destination = $upload_dir . $foto;
-    
+
     // Upload file
     if (!move_uploaded_file($_FILES['foto']['tmp_name'], $destination)) {
         $_SESSION['error'] = 'Gagal mengupload foto';
@@ -89,7 +89,7 @@ if (isset($_FILES['foto']) && $_FILES['foto']['error'] == 0) {
 try {
     $stmt = $db->prepare("INSERT INTO bus (nama_bus, tipe, nomor_polisi, kapasitas, harga_per_km, status, fasilitas, foto) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([$nama_bus, $tipe, $nomor_polisi, $kapasitas, $harga_per_km, $status, $fasilitas, $foto]);
-    
+
     $_SESSION['success'] = 'Bus baru berhasil ditambahkan';
     header('Location: index.php');
     exit();
@@ -98,3 +98,6 @@ try {
     header('Location: index.php');
     exit();
 }
+
+// Proses fasilitas yang dipilih
+$fasilitas = isset($_POST['fasilitas']) ? implode(', ', $_POST['fasilitas']) : '';

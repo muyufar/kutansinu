@@ -38,6 +38,7 @@
             color: rgba(255, 255, 255, 1);
         }
     </style>
+    <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 
 <body>
