@@ -155,6 +155,79 @@ include '../templates/header.php';
                     </p>
                 </div>
             </div>
+
+            <!-- Daftar Pemesanan Bus -->
+            <div class="card mt-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Daftar Pemesanan Bus Ini</h5>
+                </div>
+                <div class="card-body">
+                    <?php
+                    // Ambil data pemesanan untuk bus ini
+                    $stmt = $db->prepare("SELECT pb.*, u.username as nama_pemesan 
+                                        FROM pemesanan_bus pb 
+                                        JOIN users u ON pb.id_user = u.id 
+                                        WHERE pb.id_bus = ? 
+                                        ORDER BY pb.tanggal_berangkat DESC");
+                    $stmt->execute([$bus_id]);
+                    $pemesanan_list = $stmt->fetchAll();
+                    
+                    if (count($pemesanan_list) > 0): ?>
+                        <div class="list-group">
+                            <?php foreach ($pemesanan_list as $pemesanan): 
+                                // Tentukan warna status
+                                $status_class = '';
+                                $status_text = '';
+                                switch($pemesanan['status']) {
+                                    case 'menunggu_pembayaran':
+                                        $status_class = 'warning';
+                                        $status_text = 'Menunggu Pembayaran';
+                                        break;
+                                    case 'dibayar':
+                                        $status_class = 'info';
+                                        $status_text = 'Menunggu Verifikasi';
+                                        break;
+                                    case 'dikonfirmasi':
+                                        $status_class = 'success';
+                                        $status_text = 'Dikonfirmasi';
+                                        break;
+                                    case 'ditolak':
+                                        $status_class = 'danger';
+                                        $status_text = 'Ditolak';
+                                        break;
+                                    case 'selesai':
+                                        $status_class = 'secondary';
+                                        $status_text = 'Selesai';
+                                        break;
+                                }
+                            ?>
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">
+                                                <?php echo date('d/m/Y', strtotime($pemesanan['tanggal_berangkat'])); ?>
+                                                <small class="text-muted">(<?php echo $pemesanan['waktu_berangkat']; ?>)</small>
+                                            </h6>
+                                            <p class="mb-1">
+                                                <i class="fas fa-user"></i> <?php echo htmlspecialchars($pemesanan['nama_pemesan']); ?> •
+                                                <i class="fas fa-users"></i> <?php echo $pemesanan['jumlah_penumpang']; ?> orang
+                                            </p>
+                                            <small class="text-muted">
+                                                <i class="fas fa-map-marker-alt"></i> 
+                                                <?php echo htmlspecialchars($pemesanan['kota_asal']); ?> → 
+                                                <?php echo htmlspecialchars($pemesanan['kota_tujuan']); ?>
+                                            </small>
+                                        </div>
+                                        <span class="badge bg-<?php echo $status_class; ?>"><?php echo $status_text; ?></span>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <p class="text-muted mb-0">Belum ada pemesanan untuk bus ini.</p>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
         <div class="col-md-8">
             <div class="card">
