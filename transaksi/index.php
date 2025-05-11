@@ -107,7 +107,7 @@ include '../templates/header.php';
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Daftar Transaksi</h2>
+        <h2>Daftar Transaksi Terbaru</h2>
         <a href="tambah.php" class="btn btn-primary">
             <i class="fas fa-plus"></i> Tambah Transaksi
         </a>

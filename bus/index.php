@@ -22,10 +22,63 @@ $stmt = $db->prepare("SELECT DISTINCT tipe FROM bus WHERE status = 'tersedia' OR
 $stmt->execute();
 $tipe_bus_list = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
+// Ambil data jadwal bus untuk kalender (termasuk yang sudah lewat)
+$stmt = $db->prepare("SELECT jb.id, jb.id_bus, jb.tanggal_berangkat, jb.waktu_berangkat, jb.kota_asal, jb.kota_tujuan, jb.status, b.nama_bus, b.tipe 
+                    FROM pemesanan_bus jb 
+                    JOIN bus b ON jb.id_bus = b.id 
+                    ORDER BY jb.tanggal_berangkat, jb.waktu_berangkat");
+$stmt->execute();
+$jadwal_bus_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Format data jadwal untuk kalender
+$events = [];
+foreach ($jadwal_bus_list as $jadwal) {
+    $datetime = $jadwal['tanggal_berangkat'] . 'T' . $jadwal['waktu_berangkat'];
+    $color = '';
+    $status_text = '';
+
+    // Set warna berdasarkan status
+    if ($jadwal['status'] == 'tersedia') {
+        $color = '#28a745'; // hijau
+        $status_text = 'Tersedia';
+    } elseif ($jadwal['status'] == 'penuh') {
+        $color = '#dc3545'; // merah
+        $status_text = 'Penuh';
+    } elseif ($jadwal['status'] == 'dibatalkan') {
+        $color = '#ffc107'; // kuning
+        $status_text = 'Dibatalkan';
+    } else {
+        $color = '#ffc107'; // kuning untuk status lainnya
+        $status_text = ucfirst($jadwal['status']);
+    }
+
+    // Cek apakah jadwal sudah lewat
+    $isPast = strtotime($datetime) < time();
+    if ($isPast) {
+        $color = '#6c757d'; // abu-abu untuk jadwal yang sudah lewat
+    }
+
+    $events[] = [
+        'id' => $jadwal['id'],
+        'title' => $jadwal['nama_bus'] . ' (' . $jadwal['tipe'] . '): ' . $jadwal['kota_asal'] . ' - ' . $jadwal['kota_tujuan'],
+        'start' => $datetime,
+        'color' => $color,
+        'url' => 'jadwal.php?id=' . $jadwal['id_bus'],
+        'extendedProps' => [
+            'status' => $jadwal['status'],
+            'statusText' => $status_text,
+            'isPast' => $isPast,
+            'bus' => $jadwal['nama_bus'],
+            'tipe' => $jadwal['tipe'],
+            'rute' => $jadwal['kota_asal'] . ' - ' . $jadwal['kota_tujuan'],
+            'waktu' => $jadwal['waktu_berangkat']
+        ]
+    ];
+}
+
 // Header
 include '../templates/header.php';
 ?>
-
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Pemesanan Bus</h2>
@@ -204,6 +257,20 @@ include '../templates/header.php';
         </div>
     </div>
 
+    <!-- Kalender Jadwal Bus -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Kalender Jadwal Bus</h5>
+                </div>
+                <div class="card-body">
+                    <div id="calendar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-md-12">
             <div class="card">
@@ -261,18 +328,121 @@ include '../templates/header.php';
     </div>
 </div>
 
-<!-- Script untuk validasi tanggal -->
+<!-- jQuery untuk tooltip -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- FullCalendar CSS -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.0/main.min.css" rel="stylesheet">
+
+<!-- CSS untuk tooltip kalender -->
+<style>
+    .tooltip-jadwal {
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    .fc-event {
+        cursor: pointer;
+    }
+
+    .tooltip {
+        z-index: 10000;
+    }
+</style>
+
+<!-- FullCalendar JS -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.0/main.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.0/locales/id.js"></script>
+
+<!-- Bootstrap Tooltip -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Script untuk validasi tanggal dan kalender -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Validasi tanggal
         const tanggalBerangkat = document.getElementById('tanggal_berangkat');
         const tanggalKembali = document.getElementById('tanggal_kembali');
 
-        tanggalBerangkat.addEventListener('change', function() {
-            tanggalKembali.min = this.value;
-            if (tanggalKembali.value && tanggalKembali.value < this.value) {
-                tanggalKembali.value = this.value;
-            }
-        });
+        if (tanggalBerangkat && tanggalKembali) {
+            tanggalBerangkat.addEventListener('change', function() {
+                tanggalKembali.min = this.value;
+                if (tanggalKembali.value && tanggalKembali.value < this.value) {
+                    tanggalKembali.value = this.value;
+                }
+            });
+        }
+
+        function ucfirst(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+        // Inisialisasi kalender
+        const calendarEl = document.getElementById('calendar');
+        if (calendarEl) {
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,listWeek'
+                },
+                locale: 'id',
+                events: <?php echo json_encode($events); ?>,
+                eventTimeFormat: {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                },
+                eventClick: function(info) {
+                    const props = info.event.extendedProps;
+                    if (props.isPast) {
+                        info.jsEvent.preventDefault();
+                        alert('Jadwal ini sudah lewat.');
+                        return;
+                    }
+                    if (props.status === 'dibatalkan') {
+                        info.jsEvent.preventDefault();
+                        alert('Jadwal ini telah dibatalkan.');
+                        return;
+                    }
+                },
+                eventDidMount: function(info) {
+                    const props = info.event.extendedProps;
+                    let color = '#6c757d'; // abu-abu default
+                    if (props.status === 'tersedia' && !props.isPast) {
+                        color = '#28a745'; // hijau
+                    } else if (props.status === 'penuh') {
+                        color = '#dc3545'; // merah
+                    } else if (props.status === 'dibatalkan') {
+                        color = '#ffc107'; // kuning
+                    }
+
+                    // Atur warna latar belakang event
+                    info.el.style.backgroundColor = color;
+
+                    // Tooltip
+                    const isPast = props.isPast;
+                    let statusText = isPast ? 'Sudah lewat' : props.statusText || ucfirst(props.status);
+                    let tooltipContent = `
+        <div class="tooltip-jadwal">
+            <strong>Bus:</strong> ${props.bus} (${props.tipe})<br>
+            <strong>Rute:</strong> ${props.rute}<br>
+            <strong>Waktu:</strong> ${props.waktu}<br>
+            <strong>Status:</strong> ${statusText}
+        </div>
+    `;
+
+                    $(info.el).tooltip({
+                        title: tooltipContent,
+                        placement: 'top',
+                        trigger: 'hover',
+                        container: 'body',
+                        html: true
+                    });
+                }
+            });
+            calendar.render();
+        }
     });
 </script>
 
@@ -385,11 +555,11 @@ include '../templates/header.php';
 </div>
 
 <!-- Modal Jadwal Bus -->
-<div class="modal fade" id="jadwalBusModal" tabindex="-1" aria-labelledby="jadwalBusModalLabel" aria-hidden="true">
+<div class="modal fade" id="lihatJadwalBusModal" tabindex="-1" aria-labelledby="lihatJadwalBusModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
-                <h5 class="modal-title" id="jadwalBusModalLabel">Tambah Jadwal Bus Baru</h5>
+                <h5 class="modal-title" id="lihatJadwalBusModalLabel">Lihat Jadwal Bus</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -481,7 +651,7 @@ include '../templates/header.php';
                             <?php
                             // Ambil data jadwal bus
                             $stmt = $db->query("SELECT j.*, b.nama_bus 
-                                              FROM jadwal_bus j 
+                                              FROM pemesanan_bus j 
                                               JOIN bus b ON j.id_bus = b.id 
                                               ORDER BY j.tanggal_berangkat ASC, j.waktu_berangkat ASC");
                             $jadwal_list = $stmt->fetchAll();
@@ -526,5 +696,7 @@ include '../templates/header.php';
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
             </div>
         </div>
+
     </div>
+
 </div>

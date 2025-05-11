@@ -33,7 +33,7 @@ if (!$bus) {
 }
 
 // Ambil jadwal bus
-$stmt = $db->prepare("SELECT * FROM jadwal_bus WHERE id_bus = ? AND tanggal_berangkat >= CURDATE() ORDER BY tanggal_berangkat ASC, waktu_berangkat ASC");
+$stmt = $db->prepare("SELECT * FROM pemesanan_bus WHERE id_bus = ? AND tanggal_berangkat >= CURDATE() ORDER BY tanggal_berangkat ASC, waktu_berangkat ASC");
 $stmt->execute([$bus_id]);
 $jadwal_list = $stmt->fetchAll();
 
@@ -95,7 +95,7 @@ include '../templates/header.php';
         <div class="col-md-8">
             <div class="card">
                 <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Jadwal Tersedia</h5>
+                    <h5 class="mb-0">Jadwal Terbooking</h5>
                 </div>
                 <div class="card-body">
                     <?php if (!empty($jadwal_list)): ?>

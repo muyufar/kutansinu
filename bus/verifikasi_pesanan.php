@@ -16,10 +16,49 @@ $user = $stmt->fetch();
 if (isset($_POST['verifikasi'])) {
     $pemesanan_id = (int)$_POST['pemesanan_id'];
     $status = validateInput($_POST['status']);
-
+    $catatan_admin = isset($_POST['catatan_admin']) ? validateInput($_POST['catatan_admin']) : '';
+    $bukti_transfer = '';
+    
+    // Proses upload bukti transfer jika ada
+    if (isset($_FILES['bukti_transfer']) && $_FILES['bukti_transfer']['error'] == 0) {
+        $allowed = ['jpg', 'jpeg', 'png', 'pdf'];
+        $filename = $_FILES['bukti_transfer']['name'];
+        $ext = pathinfo($filename, PATHINFO_EXTENSION);
+        
+        if (in_array(strtolower($ext), $allowed)) {
+            $new_filename = time() . '_' . $filename;
+            $upload_dir = '../uploads/pembayaran_bus/';
+            
+            // Pastikan direktori ada
+            if (!file_exists($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
+            }
+            
+            $destination = $upload_dir . $new_filename;
+            
+            if (move_uploaded_file($_FILES['bukti_transfer']['tmp_name'], $destination)) {
+                $bukti_transfer = $new_filename;
+            } else {
+                $_SESSION['error'] = 'Gagal mengupload bukti transfer';
+                header('Location: verifikasi_pesanan.php');
+                exit();
+            }
+        } else {
+            $_SESSION['error'] = 'Format file tidak diizinkan. Gunakan JPG, JPEG, PNG, atau PDF';
+            header('Location: verifikasi_pesanan.php');
+            exit();
+        }
+    }
+    
     try {
-        $stmt = $db->prepare("UPDATE pemesanan_bus SET status = ?, tanggal_verifikasi = NOW() WHERE id = ?");
-        $stmt->execute([$status, $pemesanan_id]);
+        // Update query berdasarkan ada tidaknya bukti transfer
+        if (!empty($bukti_transfer)) {
+            $stmt = $db->prepare("UPDATE pemesanan_bus SET status = ?, catatan_admin = ?, bukti_transfer_admin = ?, tanggal_verifikasi = NOW() WHERE id = ?");
+            $stmt->execute([$status, $catatan_admin, $bukti_transfer, $pemesanan_id]);
+        } else {
+            $stmt = $db->prepare("UPDATE pemesanan_bus SET status = ?, catatan_admin = ?, tanggal_verifikasi = NOW() WHERE id = ?");
+            $stmt->execute([$status, $catatan_admin, $pemesanan_id]);
+        }
 
         $_SESSION['success'] = 'Status pemesanan berhasil diperbarui';
         header('Location: verifikasi_pesanan.php');
@@ -268,10 +307,26 @@ include '../templates/header.php';
                                                         </td>
                                                     </tr>
                                                 <?php endif; ?>
+                                                <?php if (!empty($pemesanan['bukti_transfer_admin'])): ?>
+                                                    <tr>
+                                                        <th>Bukti Transfer Admin</th>
+                                                        <td>
+                                                            <a href="../uploads/pembayaran_bus/<?php echo htmlspecialchars($pemesanan['bukti_transfer_admin']); ?>" target="_blank" class="btn btn-sm btn-success">
+                                                                <i class="fas fa-file-invoice-dollar"></i> Lihat Bukti Transfer
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                <?php endif; ?>
                                                 <?php if (!empty($pemesanan['catatan'])): ?>
                                                     <tr>
                                                         <th>Catatan Pemesan</th>
                                                         <td><?php echo nl2br(htmlspecialchars($pemesanan['catatan'])); ?></td>
+                                                    </tr>
+                                                <?php endif; ?>
+                                                <?php if (!empty($pemesanan['catatan_admin'])): ?>
+                                                    <tr>
+                                                        <th>Catatan Admin</th>
+                                                        <td><?php echo nl2br(htmlspecialchars($pemesanan['catatan_admin'])); ?></td>
                                                     </tr>
                                                 <?php endif; ?>
                                                 <?php if (!empty($pemesanan['catatan_admin'])): ?>
@@ -321,48 +376,53 @@ include '../templates/header.php';
                                         </form>
                                     <?php endif; ?>
 
-                                    <?php if ($pemesanan['status'] == 'menunggu_verifikasi'): ?>
-                                        <form action="" method="post">
-                                            <input type="hidden" name="pemesanan_id" value="<?php echo $pemesanan['id']; ?>">
-                                            <div class="mb-3">
-                                                <label for="status" class="form-label">Ubah Status</label>
-                                                <select class="form-select" id="status" name="status" required>
-                                                    <option value="dikonfirmasi">Konfirmasi Pemesanan</option>
-                                                    <option value="ditolak">Tolak Pemesanan</option>
-                                                </select>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label for="catatan_admin" class="form-label">Catatan Admin</label>
-                                                <textarea class="form-control" id="catatan_admin" name="catatan_admin" rows="3"></textarea>
-                                            </div>
-                                            <div class="text-end">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-                                                <button type="submit" name="verifikasi" class="btn btn-primary">Simpan Perubahan</button>
-                                            </div>
-                                        </form>
-                                    <?php elseif ($pemesanan['status'] == 'dikonfirmasi'): ?>
-                                        <form action="" method="post">
-                                            <input type="hidden" name="pemesanan_id" value="<?php echo $pemesanan['id']; ?>">
-                                            <div class="mb-3">
-                                                <label for="status" class="form-label">Ubah Status</label>
-                                                <select class="form-select" id="status" name="status" required>
-                                                    <option value="selesai">Tandai Selesai</option>
-                                                    <option value="dibatalkan">Batalkan Pemesanan</option>
-                                                </select>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label for="catatan_admin" class="form-label">Catatan Admin</label>
-                                                <textarea class="form-control" id="catatan_admin" name="catatan_admin" rows="3"><?php echo htmlspecialchars($pemesanan['catatan_admin']); ?></textarea>
-                                            </div>
-                                            <div class="text-end">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-                                                <button type="submit" name="verifikasi" class="btn btn-primary">Simpan Perubahan</button>
-                                            </div>
-                                        </form>
-                                    <?php else: ?>
-                                        <div class="text-end">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                                    <!-- Form Verifikasi Pesanan -->
+                                    <?php if ($pemesanan['status'] != 'selesai'): ?>
+                                    <div class="card mt-3">
+                                        <div class="card-header bg-primary text-white">
+                                            <h5 class="mb-0">Verifikasi Pesanan</h5>
                                         </div>
+                                        <div class="card-body">
+                                            <form action="" method="post" enctype="multipart/form-data">
+                                                <input type="hidden" name="pemesanan_id" value="<?php echo $pemesanan['id']; ?>">
+                                                
+                                                <div class="mb-3">
+                                                    <label for="status<?php echo $pemesanan['id']; ?>" class="form-label">Status Pesanan</label>
+                                                    <select class="form-select" id="status<?php echo $pemesanan['id']; ?>" name="status" required>
+                                                        <option value="">Pilih Status</option>
+                                                        <option value="menunggu_pembayaran" <?php echo $pemesanan['status'] == 'menunggu_pembayaran' ? 'selected' : ''; ?>>Menunggu Pembayaran</option>
+                                                        <option value="menunggu_verifikasi" <?php echo $pemesanan['status'] == 'menunggu_verifikasi' ? 'selected' : ''; ?>>Menunggu Verifikasi</option>
+                                                        <option value="dikonfirmasi" <?php echo $pemesanan['status'] == 'dikonfirmasi' ? 'selected' : ''; ?>>Dikonfirmasi</option>
+                                                        <option value="ditolak" <?php echo $pemesanan['status'] == 'ditolak' ? 'selected' : ''; ?>>Ditolak</option>
+                                                        <option value="selesai" <?php echo $pemesanan['status'] == 'selesai' ? 'selected' : ''; ?>>Selesai</option>
+                                                        <option value="dibatalkan" <?php echo $pemesanan['status'] == 'dibatalkan' ? 'selected' : ''; ?>>Dibatalkan</option>
+                                                    </select>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="catatan_admin<?php echo $pemesanan['id']; ?>" class="form-label">Catatan Admin</label>
+                                                    <textarea class="form-control" id="catatan_admin<?php echo $pemesanan['id']; ?>" name="catatan_admin" rows="3"><?php echo htmlspecialchars($pemesanan['catatan_admin'] ?? ''); ?></textarea>
+                                                    <div class="form-text">Tambahkan catatan atau keterangan untuk pesanan ini.</div>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="bukti_transfer<?php echo $pemesanan['id']; ?>" class="form-label">Upload Bukti Transfer Pelunasan</label>
+                                                    <input type="file" class="form-control" id="bukti_transfer<?php echo $pemesanan['id']; ?>" name="bukti_transfer">
+                                                    <div class="form-text">Format yang diizinkan: JPG, JPEG, PNG, PDF. Maksimal 2MB.</div>
+                                                </div>
+                                                
+                                                <div class="d-grid">
+                                                    <button type="submit" name="verifikasi" class="btn btn-primary">
+                                                        <i class="fas fa-check-circle"></i> Konfirmasi & Simpan
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    <?php else: ?>
+                                    <div class="alert alert-success mt-3">
+                                        <i class="fas fa-check-circle"></i> Pesanan ini telah selesai dan tidak dapat diubah lagi.
+                                    </div>
                                     <?php endif; ?>
                                 </div>
                             </div>
