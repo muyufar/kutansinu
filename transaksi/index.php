@@ -79,9 +79,14 @@ if (isset($_GET['action']) && $_GET['action'] == 'hapus' && isset($_GET['id'])) 
     header('Location: index.php');
     exit();
 }
-
+$stmt_company = $db->prepare("SELECT default_company FROM users WHERE id = ?");
+$stmt_company->execute([$_SESSION['user_id']]);
+$user_data = $stmt_company->fetch();
+$id_perusahaan = $user_data['default_company'];
 // Ambil daftar akun untuk dropdown
-$akun_list = getDaftarAkun($db);
+$stmt = $db->prepare("SELECT * FROM akun WHERE id_perusahaan = ? ORDER BY kode_akun ASC");
+$stmt->execute([$id_perusahaan]);
+$akun_list = $stmt->fetchAll();
 
 // Ambil id_perusahaan dari default_company pengguna
 $stmt_company = $db->prepare("SELECT default_company FROM users WHERE id = ?");

@@ -6,6 +6,8 @@ require_once '../config/functions.php';
 // Cek login
 requireLogin();
 
+
+
 // Proses tambah transaksi
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'tambah') {
     $tanggal = validateInput($_POST['tanggal']);
@@ -58,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $stmt_company->execute([$_SESSION['user_id']]);
     $user_data = $stmt_company->fetch();
     $id_perusahaan = $user_data['default_company'];
-    
+
     try {
         $stmt = $db->prepare("INSERT INTO transaksi (tanggal, id_akun_debit, id_akun_kredit, keterangan, jenis, jumlah, pajak, bunga, total, file_lampiran, penanggung_jawab, tag, created_by, id_perusahaan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([$tanggal, $id_akun_debit, $id_akun_kredit, $keterangan, $jenis, $jumlah, $pajak, $bunga, $total, $file_lampiran, $penanggung_jawab, $tag, $_SESSION['user_id'], $id_perusahaan]);
@@ -83,8 +85,14 @@ if (!$id_perusahaan) {
     exit();
 }
 
+// $user_id = $_SESSION['user_id'];
+// $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
+// $stmt->execute([$user_id]);
+// $user = $stmt->fetch();
+
 // Ambil daftar akun untuk dropdown
-$stmt = $db->query("SELECT * FROM akun ORDER BY kode_akun ASC");
+$stmt = $db->prepare("SELECT * FROM akun WHERE id_perusahaan = ? ORDER BY kode_akun ASC");
+$stmt->execute([$id_perusahaan]);
 $akun_list = $stmt->fetchAll();
 
 // Konversi daftar akun ke format JSON untuk digunakan di JavaScript
@@ -380,7 +388,7 @@ include '../templates/header.php';
         document.getElementById('konfirmasi-nilai-kredit').textContent = formattedTotal;
 
         // Tampilkan tag jika ada
-        
+
         if (tag) {
             const tag = document.getElementById('tag').value;
             document.getElementById('konfirmasi-tag').textContent = tag;
