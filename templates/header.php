@@ -145,12 +145,14 @@
                             <a class="nav-link" href="/kutansinu/pengaturan/index.php"><i class="fas fa-cog me-1"></i> Pengaturan</a>
                         </li>
                     <?php endif; ?>
-                    
-                    <!-- Menu Jadwal Bus Umum (dapat diakses tanpa login) -->
-                    <li class="nav-item">
-                        <a class="nav-link" href="/kutansinu/jadwal_bus_umum.php"><i class="fas fa-calendar-alt me-1"></i> Jadwal Bus</a>
-                    </li>
-                   
+
+                    <?php if (!isset($_SESSION['user_id'])) : ?>
+                        <!-- Menu Jadwal Bus Umum (hanya ditampilkan u  ntuk pengunjung yang belum login) -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="/kutansinu/jadwal_bus_umum.php"><i class="fas fa-calendar-alt me-1"></i> Jadwal Bus</a>
+                        </li>
+                    <?php endif; ?>
+
                 </ul>
                 <ul class="navbar-nav">
                     <?php if (isset($_SESSION['user_id'])) :
@@ -166,6 +168,7 @@
                                 <span><?php echo htmlspecialchars($username); ?></span>
                             </a>
                         </li>
+
 
                         <li class="nav-item">
                             <div class="theme-switch" onclick="toggleTheme()">

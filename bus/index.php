@@ -649,10 +649,11 @@ include '../templates/header.php';
                         </thead>
                         <tbody>
                             <?php
-                            // Ambil data jadwal bus
-                            $stmt = $db->query("SELECT j.*, b.nama_bus 
+                            // Ambil data jadwal bus (semua jadwal, tidak hanya milik user yang login)
+                            $stmt = $db->query("SELECT j.*, b.nama_bus, b.tipe, b.kapasitas 
                                               FROM pemesanan_bus j 
                                               JOIN bus b ON j.id_bus = b.id 
+                                              WHERE j.status != 'dibatalkan' AND j.status != 'ditolak'
                                               ORDER BY j.tanggal_berangkat ASC, j.waktu_berangkat ASC");
                             $jadwal_list = $stmt->fetchAll();
                             $no = 1;

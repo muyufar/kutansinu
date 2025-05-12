@@ -121,7 +121,7 @@ include 'templates/header.php';
                                 </select>
                             </div>
                             <div class="col-md-4">
-                                <label for="jumlah_penumpang" class="form-label">Jumlah Penumpang</label>
+                                <label for="jumlah_penumpang" class="form-label">Jumlah Armada Bus</label>
                                 <input type="number" class="form-control" id="jumlah_penumpang" name="jumlah_penumpang" 
                                        value="<?php echo $jumlah_penumpang; ?>" min="1">
                             </div>
@@ -167,17 +167,126 @@ include 'templates/header.php';
                                                     <strong>Fasilitas:</strong> <?php echo htmlspecialchars($bus['fasilitas']); ?><br>
                                                 </p>
                                             </div>
-                                            <div class="card-footer bg-white text-center">
-                                                <?php if (isset($_SESSION['user_id'])): ?>
-                                                    <a href="bus/pesan.php?id=<?php echo $bus['id']; ?>" class="btn btn-primary">
-                                                        <i class="fas fa-ticket-alt"></i> Pesan Sekarang
-                                                    </a>
-                                                <?php else: ?>
-                                                    <a href="login.php?redirect=bus/pesan.php?id=<?php echo $bus['id']; ?>" class="btn btn-primary">
-                                                        <i class="fas fa-sign-in-alt"></i> Login untuk Memesan
-                                                    </a>
-                                                <?php endif; ?>
+                                            <div class="card-footer bg-white">
+                                                <div class="text-center mb-3">
+                                                    <?php if (isset($_SESSION['user_id'])): ?>
+                                                        <a href="bus/pesan.php?id=<?php echo $bus['id']; ?>" class="btn btn-primary">
+                                                            <i class="fas fa-ticket-alt"></i> Pesan Sekarang
+                                                        </a>
+                                                    <?php endif; ?>
+                                                    <button type="button" class="btn btn-success" onclick="toggleOrderForm(<?php echo $bus['id']; ?>)">
+                                                        <i class="fab fa-whatsapp"></i> Pesan via WhatsApp
+                                                    </button>
+                                                </div>
+                                                
+                                                <div class="card-form" id="orderFormContainer<?php echo $bus['id']; ?>" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); z-index: 1000; overflow: auto; padding-top: 50px;">
+                                                    <div class="container">
+                                                        <div class="row justify-content-center">
+                                                            <div class="col-md-6">
+                                                                <div class="card">
+                                                                    <div class="card-header bg-success text-white">
+                                                                        <div class="d-flex justify-content-between align-items-center">
+                                                                            <h5 class="mb-0">FORM ORDER NUGO INTL</h5>
+                                                                            <button type="button" class="btn-close btn-close-white" onclick="toggleOrderForm(<?php echo $bus['id']; ?>)"></button>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="card-body">
+                                                                        <form id="orderForm<?php echo $bus['id']; ?>" class="mb-2">
+                                                                            <div class="mb-3">
+                                                                                <input type="text" class="form-control" id="nama<?php echo $bus['id']; ?>" placeholder="Nama" required>
+                                                                            </div>
+                                                                            <div class="mb-3">
+                                                                                <input type="number" class="form-control" id="contact<?php echo $bus['id']; ?>" placeholder="Contact" required>
+                                                                            </div>
+                                                                            <div class="mb-3">
+                                                                                <input type="text" class="form-control" id="tujuan<?php echo $bus['id']; ?>" placeholder="Tujuan" required>
+                                                                            </div>
+                                                                            <div class="mb-3">
+                                                                                <input type="date" class="form-control" id="tanggal<?php echo $bus['id']; ?>" value="<?php echo $tanggal_berangkat; ?>" required>
+                                                                                <small class="form-text text-muted">Tanggal Keberangkatan</small>
+                                                                            </div>
+                                                                            <div class="mb-3">
+                                                                                <input type="text" class="form-control" id="titikJemput<?php echo $bus['id']; ?>" placeholder="Titik Jemput" required>
+                                                                            </div>
+                                                                            <div class="mb-3">
+                                                                                <input type="time" class="form-control" id="jam<?php echo $bus['id']; ?>" required>
+                                                                            </div>
+                                                                            <div class="mb-3">
+                                                                                <input type="number" class="form-control" id="unit<?php echo $bus['id']; ?>" placeholder="Jumlah Armada" required>
+                                                                            </div>
+                                                                        
+                                                                            <!-- <input type="hidden" id="unit<?php echo $bus['id']; ?>" value="<?php echo htmlspecialchars($bus['nama_bus']) . ' (' . htmlspecialchars($bus['tipe']) . ')'; ?>"> -->
+                                                                            
+                                                                            <div class="text-center">
+                                                                                <button type="button" class="btn btn-success w-100" onclick="kirimPesanan(<?php echo $bus['id']; ?>)">
+                                                                                    <i class="fab fa-whatsapp"></i> Kirim Pesanan via WhatsApp
+                                                                                </button>
+                                                                            </div>
+                                                                        </form>
+                                                                        <div class="alert alert-warning mt-3">
+                                                                            <p class="mb-1"><strong>NB:</strong></p>
+                                                                            <ul class="ps-3 mb-0">
+                                                                                <li>DIHARAP DP TERLEBIH DAHULU UNTUK MEMASUKKAN BOOKING LIST KE JADWAL</li>
+                                                                                <li>DP BISA DI TF KE REK BSI A/N NUGO INTL 33 2022 1926</li>
+                                                                                <li>SEGERA MENGIRIM BUKTI TF KE ADMIN UNTUK MEMASTIKAN DP SUDAH TERKIRIM</li>
+                                                                            </ul>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
+                                            
+                                            <script>
+                                            function toggleOrderForm(busId) {
+                                                const formContainer = document.getElementById('orderFormContainer' + busId);
+                                                if (formContainer.style.display === 'none') {
+                                                    formContainer.style.display = 'block';
+                                                } else {
+                                                    formContainer.style.display = 'none';
+                                                }
+                                            }
+                                            
+                                            function kirimPesanan(busId) {
+                                                // Ambil nilai dari form
+                                                const nama = document.getElementById('nama' + busId).value;
+                                                const contact = document.getElementById('contact' + busId).value;
+                                                const tujuan = document.getElementById('tujuan' + busId).value;
+                                                const tanggal = document.getElementById('tanggal' + busId).value;
+                                                const titikJemput = document.getElementById('titikJemput' + busId).value;
+                                                const jam = document.getElementById('jam' + busId).value;
+                                                const unit = document.getElementById('unit' + busId).value;
+                                                
+                                                // Validasi form
+                                                if (!nama || !contact || !tujuan || !tanggal || !titikJemput || !jam) {
+                                                    alert('Mohon lengkapi semua field!');
+                                                    return;
+                                                }
+                                                
+                                                // Format pesan WhatsApp
+                                                let pesan = "FORM ORDER NUGO INTL \n";
+                                                pesan += "NAMA : " + nama + "\n";
+                                                pesan += "CONTACT : " + contact + "\n";
+                                                pesan += "TUJUAN : " + tujuan + "\n";
+                                                pesan += "TANGGAL: " + tanggal + "\n";
+                                                pesan += "TITIK JEMPUT: " + titikJemput + "\n";
+                                                pesan += "JAM  : " + jam + "\n";
+                                                pesan += "UNIT : " + unit + "\n\n";
+                                                pesan += "NB : \n";
+                                                pesan += "-DIHARAP DP TERLEBIH DAHULU UNTUK MEMASUKKAN BOOKING LIST KE JADWAL \n";
+                                                pesan += "- DP BISA DI TF KE REK BSI A/N NUGO INTL 33 2022 1926 \n";
+                                                pesan += "-SEGERA MENGIRIM BUKTI TF KE ADMIN UNTUK MEMASTIKAN DP SUDAH TERKIRIM";
+                                                
+                                                // Encode pesan untuk URL
+                                                const encodedPesan = encodeURIComponent(pesan);
+                                                const whatsappUrl = "https://wa.me/6282340715548?text=" + encodedPesan;
+                                                
+                                                // Buka WhatsApp di tab baru
+                                                window.open(whatsappUrl, '_blank');
+                                            }
+                                            </script>
                                         </div>
                                     </div>
                                 <?php endforeach; ?>
