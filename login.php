@@ -3,6 +3,9 @@ session_start();
 require_once 'config/database.php';
 require_once 'config/functions.php';
 
+// Tangkap parameter redirect jika ada
+$redirect = isset($_GET['redirect']) ? $_GET['redirect'] : '';
+
 // Jika sudah login, redirect ke dashboard
 if (isset($_SESSION['user_id'])) {
     header("Location: index.php");
@@ -23,7 +26,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if ($user && password_verify($password, $user['password'])) {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
-        header("Location: index.php");
+        
+        // Redirect ke halaman yang diminta atau halaman utama
+        if (!empty($redirect)) {
+            header("Location: $redirect");
+        } else {
+            header("Location: index.php");
+        }
         exit();
     } else {
         $error = 'Username atau password salah';

@@ -145,7 +145,11 @@
                             <a class="nav-link" href="/kutansinu/pengaturan/index.php"><i class="fas fa-cog me-1"></i> Pengaturan</a>
                         </li>
                     <?php endif; ?>
-
+                    
+                    <!-- Menu Jadwal Bus Umum (dapat diakses tanpa login) -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="/kutansinu/jadwal_bus_umum.php"><i class="fas fa-calendar-alt me-1"></i> Jadwal Bus</a>
+                    </li>
                    
                 </ul>
                 <ul class="navbar-nav">
