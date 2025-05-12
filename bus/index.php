@@ -87,7 +87,7 @@ include '../templates/header.php';
                 <i class="fas fa-plus"></i> Tambah Bus
             </button>
             <button type="button" class="btn btn-info me-2" data-bs-toggle="modal" data-bs-target="#jadwalBusModal">
-                <i class="fas fa-calendar-alt"></i> Tambah Jadwal Bus
+                <i class="fas fa-calendar-alt"></i> Lihat Jadwal Bus
             </button>
             <a href="verifikasi_pesanan.php" class="btn btn-warning me-2">
                 <i class="fas fa-check-circle"></i> Verifikasi Pesanan
@@ -584,10 +584,10 @@ include '../templates/header.php';
                             <label for="waktu_berangkat" class="form-label">Waktu Berangkat</label>
                             <input type="time" class="form-control" id="waktu_berangkat" name="waktu_berangkat" required>
                         </div>
-                        <div class="col-md-6">
+                        <!-- <div class="col-md-6">
                             <label for="estimasi_durasi" class="form-label">Estimasi Durasi (Jam)</label>
                             <input type="number" class="form-control" id="estimasi_durasi" name="estimasi_durasi" min="1" required>
-                        </div>
+                        </div> -->
                     </div>
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -627,7 +627,7 @@ include '../templates/header.php';
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
-                <h5 class="modal-title" id="jadwalBusModalLabel">Tambah Jadwal Bus</h5>
+                <h5 class="modal-title" id="jadwalBusModalLabel">Jadwal Bus</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -641,7 +641,7 @@ include '../templates/header.php';
                                 <th>Waktu Berangkat</th>
                                 <th>Kota Asal</th>
                                 <th>Kota Tujuan</th>
-                                <th>Estimasi Durasi</th>
+                                <!-- <th>Estimasi Durasi</th> -->
                                 <th>Harga</th>
                                 <th>Status</th>
                                 <th>Aksi</th>
@@ -666,8 +666,7 @@ include '../templates/header.php';
                                     <td><?php echo date('H:i', strtotime($jadwal['waktu_berangkat'])); ?></td>
                                     <td><?php echo htmlspecialchars($jadwal['kota_asal']); ?></td>
                                     <td><?php echo htmlspecialchars($jadwal['kota_tujuan']); ?></td>
-                                    <td><?php echo $jadwal['estimasi_durasi']; ?> jam</td>
-                                    <td><?php echo formatRupiah($jadwal['harga']); ?></td>
+                                    <td><?php echo formatRupiah($jadwal['total_harga']); ?></td>
                                     <td>
                                         <span class="badge bg-<?php echo $jadwal['status'] == 'tersedia' ? 'success' : ($jadwal['status'] == 'penuh' ? 'danger' : 'warning'); ?>">
                                             <?php echo ucfirst($jadwal['status']); ?>

@@ -77,6 +77,12 @@ include '../templates/header.php';
                                 <div class="col-md-8">
                                     <h5><?php echo htmlspecialchars($pemesanan['nama_bus']); ?></h5>
                                     <p class="mb-1">
+                                        <strong>Nama Pemesan:</strong> <?php echo htmlspecialchars($pemesanan['nama_pemesan']);?>
+                                    </p>
+                                    <p class="mb-1"></p>
+                                        <strong>Kontak Pemesan:</strong> <?php echo htmlspecialchars($pemesanan['kontak_pemesan']);?>
+                                    </p>
+                                    <p class="mb-1">
                                         <strong>Nomor Polisi:</strong> <?php echo htmlspecialchars($pemesanan['nomor_polisi']); ?>
                                     </p>
                                     <p class="mb-1">

@@ -37,25 +37,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $tanggal_berangkat = validateInput($_POST['tanggal_berangkat']);
     $waktu_berangkat = validateInput($_POST['waktu_berangkat']);
     $kota_asal = validateInput($_POST['kota_asal']);
+    $nama_pemesean = validateInput($_POST['nama_pemesan']);
+    $kontak_pemesan = validateInput($_POST['kontak_pemesan']);
     $kota_tujuan = validateInput($_POST['kota_tujuan']);
     $jumlah_penumpang = (int)validateInput($_POST['jumlah_penumpang']);
     $total_harga = (float)validateInput($_POST['total_harga']);
     $catatan = validateInput($_POST['catatan']);
-    
+
     // Validasi kapasitas
     if ($jumlah_penumpang > $bus['kapasitas']) {
         $_SESSION['error'] = 'Jumlah penumpang melebihi kapasitas bus';
         header('Location: pesan.php?id=' . $bus_id);
         exit();
     }
-    
+
     // Validasi tanggal
     if (strtotime($tanggal_berangkat) < strtotime(date('Y-m-d'))) {
         $_SESSION['error'] = 'Tanggal keberangkatan tidak boleh kurang dari hari ini';
         header('Location: pesan.php?id=' . $bus_id);
         exit();
     }
-    
+
     // Upload bukti pembayaran jika ada
     $bukti_pembayaran = '';
     if (isset($_FILES['bukti_pembayaran']) && $_FILES['bukti_pembayaran']['error'] == UPLOAD_ERR_OK) {
@@ -63,10 +65,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (!file_exists($upload_dir)) {
             mkdir($upload_dir, 0777, true);
         }
-        
+
         $file_name = time() . '_' . basename($_FILES['bukti_pembayaran']['name']);
         $target_file = $upload_dir . $file_name;
-        
+
         if (move_uploaded_file($_FILES['bukti_pembayaran']['tmp_name'], $target_file)) {
             $bukti_pembayaran = 'uploads/pembayaran_bus/' . $file_name;
         } else {
@@ -75,27 +77,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             exit();
         }
     }
-    
+
     try {
         // Simpan data pemesanan
-        $stmt = $db->prepare("INSERT INTO pemesanan_bus (id_user, id_bus, tanggal_pemesanan, tanggal_berangkat, waktu_berangkat, kota_asal, kota_tujuan, jumlah_penumpang, total_harga, status, catatan, bukti_pembayaran) VALUES (?, ?, CURDATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        
+        $stmt = $db->prepare("INSERT INTO pemesanan_bus (id_user, id_bus, tanggal_pemesanan, tanggal_berangkat, waktu_berangkat, kota_asal, nama_pemesan, kontak_pemesan, kota_tujuan, jumlah_penumpang, total_harga, status, catatan, bukti_pembayaran) VALUES (?, ?, CURDATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
         $status = !empty($bukti_pembayaran) ? 'dibayar' : 'menunggu_pembayaran';
-        
+
         $stmt->execute([
-            $user_id, 
-            $bus_id, 
-            $tanggal_berangkat, 
-            $waktu_berangkat, 
-            $kota_asal, 
-            $kota_tujuan, 
-            $jumlah_penumpang, 
-            $total_harga, 
-            $status, 
-            $catatan, 
+            $user_id,
+            $bus_id,
+            $tanggal_berangkat,
+            $waktu_berangkat,
+            $kota_asal,
+            $nama_pemesean,
+            $kontak_pemesan,
+            $kota_tujuan,
+            $jumlah_penumpang,
+            $total_harga,
+            $status,
+            $catatan,
             $bukti_pembayaran
         ]);
-        
+
         $_SESSION['success'] = 'Pemesanan bus berhasil dibuat. ' . ($status == 'dibayar' ? 'Pembayaran Anda sedang diverifikasi.' : 'Silakan lakukan pembayaran.');
         header('Location: riwayat.php');
         exit();
@@ -151,7 +155,7 @@ include '../templates/header.php';
                         <strong>Nomor Polisi:</strong> <?php echo htmlspecialchars($bus['nomor_polisi']); ?><br>
                         <strong>Kapasitas:</strong> <?php echo $bus['kapasitas']; ?> Penumpang<br>
                         <strong>Fasilitas:</strong> <?php echo htmlspecialchars($bus['fasilitas']); ?><br>
-                        <strong>Harga per KM:</strong> <?php echo formatRupiah($bus['harga_per_km']); ?>
+                        <!-- <strong>Harga per KM:</strong> <?php echo formatRupiah($bus['harga_per_km']); ?> -->
                     </p>
                 </div>
             </div>
@@ -171,14 +175,14 @@ include '../templates/header.php';
                                         ORDER BY pb.tanggal_berangkat DESC");
                     $stmt->execute([$bus_id]);
                     $pemesanan_list = $stmt->fetchAll();
-                    
+
                     if (count($pemesanan_list) > 0): ?>
                         <div class="list-group">
-                            <?php foreach ($pemesanan_list as $pemesanan): 
+                            <?php foreach ($pemesanan_list as $pemesanan):
                                 // Tentukan warna status
                                 $status_class = '';
                                 $status_text = '';
-                                switch($pemesanan['status']) {
+                                switch ($pemesanan['status']) {
                                     case 'menunggu_pembayaran':
                                         $status_class = 'warning';
                                         $status_text = 'Menunggu Pembayaran';
@@ -213,8 +217,8 @@ include '../templates/header.php';
                                                 <i class="fas fa-users"></i> <?php echo $pemesanan['jumlah_penumpang']; ?> orang
                                             </p>
                                             <small class="text-muted">
-                                                <i class="fas fa-map-marker-alt"></i> 
-                                                <?php echo htmlspecialchars($pemesanan['kota_asal']); ?> → 
+                                                <i class="fas fa-map-marker-alt"></i>
+                                                <?php echo htmlspecialchars($pemesanan['kota_asal']); ?> →
                                                 <?php echo htmlspecialchars($pemesanan['kota_tujuan']); ?>
                                             </small>
                                         </div>
@@ -236,6 +240,17 @@ include '../templates/header.php';
                 </div>
                 <div class="card-body">
                     <form method="POST" enctype="multipart/form-data">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="nama_pemesan" class="form-label">Nama Pemesan</label>
+                                <input type="text" class="form-control" id="nama_pemesan" name="nama_pemesan"  required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="kontak_pemesan" class="form-label">Kontak Pemesan</label>
+                                <input type="text" class="form-control" id="kontak_pemesan" name="kontak_pemesan" required>
+                            </div>
+                        </div>
+
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="tanggal_berangkat" class="form-label">Tanggal Keberangkatan</label>
@@ -263,17 +278,17 @@ include '../templates/header.php';
                                 <small class="text-muted">Maksimal <?php echo $bus['kapasitas']; ?> penumpang</small>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="jarak" class="form-label">Estimasi Jarak (KM)</label>
-                                <input type="number" class="form-control" id="jarak" name="jarak" required min="1" step="0.1">
-                            </div>
-                        </div>
-                        <div class="mb-3">
                             <label for="total_harga" class="form-label">Total Harga</label>
                             <div class="input-group">
                                 <span class="input-group-text">Rp</span>
-                                <input type="text" class="form-control" id="total_harga" name="total_harga" readonly>
+                                <input type="text" class="form-control" id="total_harga" name="total_harga" required>
                             </div>
-                            <small class="text-muted">Harga dihitung otomatis berdasarkan jarak dan harga per KM</small>
+                            <!-- <small class="text-muted">Harga dihitung otomatis berdasarkan jarak dan harga per KM</small> -->
+                        </div>
+                            <!-- <div class="col-md-6 mb-3">
+                                <label for="jarak" class="form-label">Estimasi Jarak (KM)</label>
+                                <input type="number" class="form-control" id="jarak" name="jarak" required min="1" step="0.1">
+                            </div> -->
                         </div>
                         <div class="mb-3">
                             <label for="bukti_pembayaran" class="form-label">Bukti Pembayaran (Opsional)</label>
@@ -288,8 +303,7 @@ include '../templates/header.php';
                             <h6 class="alert-heading"><i class="fas fa-info-circle"></i> Informasi Pembayaran</h6>
                             <p class="mb-0">Silakan lakukan pembayaran ke rekening berikut:</p>
                             <ul class="mb-0">
-                                <li>Bank BCA: 1234567890 a.n. PT Nugrosir Indonesia</li>
-                                <li>Bank Mandiri: 0987654321 a.n. PT Nugrosir Indonesia</li>
+                                <li>Bank BSI: 3320221926 a.n. PT NUGO INTL</li>
                             </ul>
                         </div>
                         <button type="submit" class="btn btn-primary">
@@ -302,28 +316,5 @@ include '../templates/header.php';
     </div>
 </div>
 
-<!-- Script untuk menghitung total harga -->
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const hargaPerKm = <?php echo $bus['harga_per_km']; ?>;
-        const jarakInput = document.getElementById('jarak');
-        const totalHargaInput = document.getElementById('total_harga');
-        
-        // Fungsi untuk menghitung total harga
-        function hitungTotalHarga() {
-            const jarak = parseFloat(jarakInput.value) || 0;
-            const totalHarga = jarak * hargaPerKm;
-            
-            // Format sebagai mata uang
-            totalHargaInput.value = new Intl.NumberFormat('id-ID').format(totalHarga);
-        }
-        
-        // Hitung total harga saat nilai jarak berubah
-        jarakInput.addEventListener('input', hitungTotalHarga);
-        
-        // Hitung total harga saat halaman dimuat
-        hitungTotalHarga();
-    });
-</script>
 
 <?php include '../templates/footer.php'; ?>

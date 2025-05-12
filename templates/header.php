@@ -135,17 +135,18 @@
                             <li><a class="dropdown-item" href="/kutansinu/laporan/arus-kas.php"><i class="fas fa-money-bill-wave me-1"></i> Arus Kas</a></li>
                         </ul>
                     </li>
+                    <?php if ($is_nugrosir) : ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/kutansinu/bus/index.php"><i class="fas fa-bus me-1"></i> Pemesanan Bus</a>
+                        </li>
+                    <?php endif; ?>
                     <?php if (!$is_viewer) : ?>
                         <li class="nav-item">
                             <a class="nav-link" href="/kutansinu/pengaturan/index.php"><i class="fas fa-cog me-1"></i> Pengaturan</a>
                         </li>
                     <?php endif; ?>
 
-                    <?php if ($is_nugrosir) : ?>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/kutansinu/bus/index.php"><i class="fas fa-bus me-1"></i> Pemesanan Bus</a>
-                        </li>
-                    <?php endif; ?>
+                   
                 </ul>
                 <ul class="navbar-nav">
                     <?php if (isset($_SESSION['user_id'])) :
