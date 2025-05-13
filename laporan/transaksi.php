@@ -223,7 +223,7 @@ include '../templates/header.php';
                                 <tr>
                                     <td><?= $no++ ?></td>
                                     <td><?= date('d M Y', strtotime($transaksi['tanggal'])) ?><br>
-                                        <small class="text-muted"><?= date('H:i:s', strtotime($transaksi['tanggal'])) ?></small>
+                                        <!-- <small class="text-muted"><?= date('H:i:s', strtotime($transaksi['tanggal'])) ?></small> -->
                                     </td>
                                     <td>
                                         <span class="badge <?= getJenisBadgeClass($transaksi['jenis']) ?>">

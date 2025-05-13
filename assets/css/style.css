@@ -1,0 +1,24 @@
+.position-relative {
+    position: relative;
+}
+
+.btn-light.bg-opacity-75 {
+    background-color: rgba(255, 255, 255, 0.75);
+    transition: all 0.3s ease;
+}
+
+.btn-light.bg-opacity-75:hover {
+    background-color: rgba(255, 255, 255, 1);
+}
+
+.btn-light.bg-opacity-75 i {
+    transition: all 0.3s ease;
+}
+
+.btn-light.bg-opacity-75:hover i.text-primary {
+    color: #0d6efd !important;
+}
+
+.btn-light.bg-opacity-75:hover i.text-danger {
+    color: #dc3545 !important;
+}

@@ -98,6 +98,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'hapus' && isset($_GET['id'])) 
     exit();
 }
 
+<<<<<<< HEAD
 // Ambil daftar akun berdasarkan perusahaan yang aktif
 $id_perusahaan = $_SESSION['default_company'] ?? null;
 if ($id_perusahaan) {
@@ -109,6 +110,20 @@ if ($id_perusahaan) {
     $_SESSION['warning'] = 'Anda belum memilih perusahaan aktif. Silakan pilih perusahaan terlebih dahulu untuk melihat daftar akun.';
     $akun_list = [];
 }
+=======
+
+// Ambil id_perusahaan dari default_company pengguna
+$stmt_company = $db->prepare("SELECT default_company FROM users WHERE id = ?");
+$stmt_company->execute([$_SESSION['user_id']]);
+$user_data = $stmt_company->fetch();
+$id_perusahaan = $user_data['default_company'];
+
+
+// Ambil daftar akun
+$stmt = $db->prepare("SELECT * FROM akun WHERE id_perusahaan = ? ORDER BY kode_akun ASC");
+$stmt->execute([$id_perusahaan]);
+$akun_list = $stmt->fetchAll();
+>>>>>>> 4a5be2d3ec4b47094833edeceee046524369ac2e
 
 // Header
 include '../templates/header.php';

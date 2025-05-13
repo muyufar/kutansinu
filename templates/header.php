@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id" data-theme="light">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,46 +16,54 @@
         .navbar-brand {
             font-weight: bold;
         }
+
         .nav-link {
-            color: rgba(255,255,255,.8) !important;
+            color: rgba(255, 255, 255, .8) !important;
         }
+
         .nav-link:hover {
-            color: rgba(255,255,255,1) !important;
+            color: rgba(255, 255, 255, 1) !important;
         }
+
         .theme-switch {
             cursor: pointer;
             padding: 0.5rem;
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            color: rgba(255,255,255,.8);
+            color: rgba(255, 255, 255, .8);
         }
+
         .theme-switch:hover {
-            color: rgba(255,255,255,1);
+            color: rgba(255, 255, 255, 1);
         }
     </style>
+    <link rel="stylesheet" href="../assets/css/style.css">
 </head>
+
 <body>
     <?php
     // Cek role user untuk menampilkan menu yang sesuai
     $is_viewer = false;
     $user_role = '';
+    $is_nugrosir = false; // Inisialisasi variabel untuk pengecekan Nugrosir
+
     if (isset($_SESSION['user_id']) && isset($db)) {
         $user_id = $_SESSION['user_id'];
-        
+
         // Ambil perusahaan default user
         $stmt = $db->prepare("SELECT default_company FROM users WHERE id = ?");
         $stmt->execute([$user_id]);
         $user_data = $stmt->fetch();
         $default_company_id = $user_data['default_company'];
-        
+
         // Cek role user
         if ($default_company_id) {
             $stmt = $db->prepare("SELECT role FROM user_perusahaan WHERE user_id = ? AND perusahaan_id = ?");
             $stmt->execute([$user_id, $default_company_id]);
             $user_role = $stmt->fetchColumn();
             $is_viewer = ($user_role === 'viewer');
-            
+
             // Jika user adalah viewer dan mencoba mengakses halaman selain laporan, redirect ke halaman laporan
             if ($is_viewer) {
                 $current_path = $_SERVER['REQUEST_URI'];
@@ -64,6 +73,13 @@
                 }
             }
         }
+
+        // Cek apakah user terhubung dengan perusahaan Nugrosir
+        $stmt_nugrosir = $db->prepare("SELECT 1 FROM user_perusahaan up
+                            JOIN perusahaan p ON up.perusahaan_id = p.id
+                            WHERE up.user_id = ? AND UPPER(p.nama) = 'NUGO' AND up.status = 'active'");
+        $stmt_nugrosir->execute([$user_id]);
+        $is_nugrosir = $stmt_nugrosir->fetch() ? true : false;
     }
     ?>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
@@ -73,7 +89,7 @@
                 // Ambil nama perusahaan yang sedang aktif untuk user yang login
                 if (isset($_SESSION['user_id'])) {
                     $user_id = $_SESSION['user_id'];
-                    
+
                     // Cek apakah ada perusahaan aktif untuk user ini
                     $stmt = $db->prepare("SELECT p.nama FROM perusahaan p 
                                          JOIN user_perusahaan up ON p.id = up.perusahaan_id 
@@ -81,7 +97,7 @@
                                          LIMIT 1");
                     $stmt->execute([$user_id]);
                     $perusahaan = $stmt->fetch();
-                    
+
                     if ($perusahaan) {
                         echo htmlspecialchars($perusahaan['nama']);
                     } else {
@@ -101,12 +117,12 @@
                     // Tampilkan menu Transaksi dan Daftar Akun hanya jika bukan viewer
                     if (!$is_viewer) :
                     ?>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/kutansinu/transaksi/index.php"><i class="fas fa-exchange-alt me-1"></i> Transaksi</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/kutansinu/akun/index.php"><i class="fas fa-list-alt me-1"></i> Daftar Akun</a>
-                    </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/kutansinu/transaksi/index.php"><i class="fas fa-exchange-alt me-1"></i> Transaksi</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/kutansinu/akun/index.php"><i class="fas fa-list-alt me-1"></i> Daftar Akun</a>
+                        </li>
                     <?php endif; ?>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
@@ -115,40 +131,55 @@
                         <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
                             <li><a class="dropdown-item" href="/kutansinu/laporan/transaksi.php"><i class="fas fa-exchange-alt me-1"></i> Transaksi</a></li>
                             <li><a class="dropdown-item" href="/kutansinu/laporan/neraca.php"><i class="fas fa-balance-scale me-1"></i> Neraca</a></li>
-                            <li><a class="dropdown-item" href="/kutansinu/laporan/laba_rugi.php"><i class="fas fa-chart-line me-1"></i> Laba Rugi</a></li>
-                            <li><a class="dropdown-item" href="/kutansinu/laporan/arus_kas.php"><i class="fas fa-money-bill-wave me-1"></i> Arus Kas</a></li>
+                            <li><a class="dropdown-item" href="/kutansinu/laporan/laba-rugi.php"><i class="fas fa-chart-line me-1"></i> Laba Rugi</a></li>
+                            <li><a class="dropdown-item" href="/kutansinu/laporan/arus-kas.php"><i class="fas fa-money-bill-wave me-1"></i> Arus Kas</a></li>
                         </ul>
                     </li>
-                    <?php if (!$is_viewer) : ?>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/kutansinu/pengaturan/index.php"><i class="fas fa-cog me-1"></i> Pengaturan</a>
-                    </li>
+                    <?php if ($is_nugrosir) : ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/kutansinu/bus/index.php"><i class="fas fa-bus me-1"></i> Pemesanan Bus</a>
+                        </li>
                     <?php endif; ?>
+                    <?php if (!$is_viewer) : ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/kutansinu/pengaturan/index.php"><i class="fas fa-cog me-1"></i> Pengaturan</a>
+                        </li>
+                    <?php endif; ?>
+
+                    <?php if (!isset($_SESSION['user_id'])) : ?>
+                        <!-- Menu Jadwal Bus Umum (hanya ditampilkan u  ntuk pengunjung yang belum login) -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="/kutansinu/jadwal_bus_umum.php"><i class="fas fa-calendar-alt me-1"></i> Jadwal Bus</a>
+                        </li>
+                    <?php endif; ?>
+
                 </ul>
                 <ul class="navbar-nav">
-                    <?php if (isset($_SESSION['user_id'])) : 
+                    <?php if (isset($_SESSION['user_id'])) :
                         // Ambil username pengguna yang login
                         $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
                         $stmt->execute([$_SESSION['user_id']]);
                         $user = $stmt->fetch();
                         $username = $user['username'] ?? 'Pengguna';
                     ?>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/kutansinu/pengaturan/profil.php">
-                            <i class="fas fa-user me-1"></i>
-                            <span><?php echo htmlspecialchars($username); ?></span>
-                        </a>
-                    </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/kutansinu/pengaturan/profil.php">
+                                <i class="fas fa-user me-1"></i>
+                                <span><?php echo htmlspecialchars($username); ?></span>
+                            </a>
+                        </li>
+
+
+                        <li class="nav-item">
+                            <div class="theme-switch" onclick="toggleTheme()">
+                                <i class="fas fa-moon"></i>
+                                <span class="d-none d-lg-inline">Mode Gelap</span>
+                            </div>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/kutansinu/logout.php">Keluar</a>
+                        </li>
                     <?php endif; ?>
-                    <li class="nav-item">
-                        <div class="theme-switch" onclick="toggleTheme()">
-                            <i class="fas fa-moon"></i>
-                            <span class="d-none d-lg-inline">Mode Gelap</span>
-                        </div>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/kutansinu/logout.php">Keluar</a>
-                    </li>
                 </ul>
             </div>
         </div>
@@ -160,14 +191,14 @@
             const html = document.documentElement;
             const currentTheme = html.getAttribute('data-theme');
             const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-            
+
             html.setAttribute('data-theme', newTheme);
             localStorage.setItem('theme', newTheme);
-            
+
             // Update ikon dan teks
             const themeIcon = document.querySelector('.theme-switch i');
             const themeText = document.querySelector('.theme-switch span');
-            
+
             if (newTheme === 'dark') {
                 themeIcon.className = 'fas fa-sun';
                 themeText.textContent = 'Mode Terang';
@@ -181,7 +212,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const savedTheme = localStorage.getItem('theme') || 'light';
             document.documentElement.setAttribute('data-theme', savedTheme);
-            
+
             // Update ikon dan teks sesuai tema yang tersimpan
             if (savedTheme === 'dark') {
                 document.querySelector('.theme-switch i').className = 'fas fa-sun';
