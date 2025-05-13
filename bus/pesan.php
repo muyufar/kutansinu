@@ -17,13 +17,6 @@ if (!$is_nugrosir) {
     header('Location: /kutansinu/index.php');
     exit();
 }
-
-// Hapus duplikasi kode berikut karena sudah ada di atas
-// $user_id = $_SESSION['user_id'];
-// $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
-// $stmt->execute([$user_id]);
-// $user = $stmt->fetch();
-
 // Cek role user (hanya nugrosir yang boleh mengakses halaman pemesanan bus)
 $user_id = $_SESSION['user_id'];
 $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
