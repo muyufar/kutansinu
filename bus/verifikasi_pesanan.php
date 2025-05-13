@@ -51,6 +51,11 @@ if (isset($_POST['verifikasi'])) {
     }
 
     try {
+        // Ambil data pemesanan untuk mendapatkan jumlah_bayar dan bukti_pembayaran
+        $stmt_pemesanan = $db->prepare("SELECT jumlah_bayar, bukti_pembayaran FROM pemesanan_bus WHERE id = ?");
+        $stmt_pemesanan->execute([$pemesanan_id]);
+        $pemesanan_data = $stmt_pemesanan->fetch();
+        
         // Update query berdasarkan ada tidaknya bukti transfer
         if (!empty($bukti_transfer)) {
             $stmt = $db->prepare("UPDATE pemesanan_bus SET status = ?, catatan_admin = ?, bukti_transfer_admin = ?, tanggal_verifikasi = NOW() WHERE id = ?");
@@ -58,6 +63,46 @@ if (isset($_POST['verifikasi'])) {
         } else {
             $stmt = $db->prepare("UPDATE pemesanan_bus SET status = ?, catatan_admin = ?, tanggal_verifikasi = NOW() WHERE id = ?");
             $stmt->execute([$status, $catatan_admin, $pemesanan_id]);
+        }
+        
+        // Jika status diubah menjadi 'selesai', tambahkan transaksi keuangan secara otomatis
+        if ($status === 'selesai') {
+            // Ambil id_perusahaan dari default_company pengguna
+            $stmt_company = $db->prepare("SELECT default_company FROM users WHERE id = ?");
+            $stmt_company->execute([$_SESSION['user_id']]);
+            $user_data = $stmt_company->fetch();
+            $id_perusahaan = $user_data['default_company'];
+            
+            // Cari akun kas (untuk kredit) dan akun pendapatan (untuk debit)
+            $stmt_kas = $db->prepare("SELECT id FROM akun WHERE nama_akun LIKE '%kas%' AND id_perusahaan = ? LIMIT 1");
+            $stmt_kas->execute([$id_perusahaan]);
+            $akun_kas = $stmt_kas->fetch();
+            
+            $stmt_pendapatan = $db->prepare("SELECT id FROM akun WHERE kode_akun LIKE '%4-40000%' AND id_perusahaan = ? LIMIT 1");
+            $stmt_pendapatan->execute([$id_perusahaan]);
+            $akun_pendapatan = $stmt_pendapatan->fetch();
+            
+            // Jika akun kas dan pendapatan ditemukan
+            if ($akun_kas && $akun_pendapatan) {
+                $id_akun_debit = $akun_kas['id']; // Kas bertambah (debit)
+                $id_akun_kredit = $akun_pendapatan['id']; // Pendapatan bertambah (kredit)
+                $jumlah_bayar = $pemesanan_data['jumlah_bayar'];
+                $keterangan = "Transaksi bus - Pemesanan #$pemesanan_id";
+                $jenis = "pemasukan";
+                $tanggal = date('Y-m-d');
+                $penanggung_jawab = "Admin";
+                $tag = "bus,pendapatan";
+                
+                // Path bukti pembayaran
+                $file_lampiran = '';
+                if (!empty($pemesanan_data['bukti_pembayaran'])) {
+                    $file_lampiran = 'uploads/bukti_pembayaran/' . $pemesanan_data['bukti_pembayaran'];
+                }
+                
+                // Tambahkan transaksi ke database
+                $stmt_transaksi = $db->prepare("INSERT INTO transaksi (tanggal, id_akun_debit, id_akun_kredit, keterangan, jenis, jumlah, pajak, bunga, total, file_lampiran, penanggung_jawab, tag, created_by, id_perusahaan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt_transaksi->execute([$tanggal, $id_akun_debit, $id_akun_kredit, $keterangan, $jenis, $jumlah_bayar, 0, 0, $jumlah_bayar, $file_lampiran, $penanggung_jawab, $tag, $_SESSION['user_id'], $id_perusahaan]);
+            }
         }
 
         $_SESSION['success'] = 'Status pemesanan berhasil diperbarui';
