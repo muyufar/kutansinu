@@ -15,6 +15,24 @@
     <style>
         .navbar-brand {
             font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .navbar {
+            background-color: rgb(33, 146, 42) !important;
+        }
+
+        .navbar-brand img {
+            height: 32px;
+            width: 32px;
+            margin-right: 10px;
+            border-radius: 50%;
+            background: #fff;
+            object-fit: cover;
+            border: 2px solid #e0e0e0;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
         }
 
         .nav-link {
@@ -89,23 +107,29 @@
         <div class="container">
             <a class="navbar-brand" href="/kutansinu/index.php">
                 <?php
-                // Ambil nama perusahaan yang sedang aktif untuk user yang login
-                if (isset($_SESSION['user_id'])) {
+                $logo_path = '/kutansinu/assets/img/logo.jpg'; // default
+                if (isset($_SESSION['user_id']) && isset($db)) {
                     $user_id = $_SESSION['user_id'];
-
-                    // Cek apakah ada perusahaan aktif untuk user ini
-                    $stmt = $db->prepare("SELECT p.nama FROM perusahaan p 
-                                         JOIN user_perusahaan up ON p.id = up.perusahaan_id 
-                                         WHERE up.user_id = ? AND up.status = 'active' 
-                                         LIMIT 1");
+                    // Ambil default_company user
+                    $stmt = $db->prepare("SELECT default_company FROM users WHERE id = ?");
                     $stmt->execute([$user_id]);
-                    $perusahaan = $stmt->fetch();
-
-                    if ($perusahaan) {
-                        echo htmlspecialchars($perusahaan['nama']);
-                    } else {
-                        echo "SiKeu";
+                    $user_data = $stmt->fetch();
+                    $default_company_id = $user_data['default_company'] ?? null;
+                    if ($default_company_id) {
+                        $stmt = $db->prepare("SELECT logo, nama FROM perusahaan WHERE id = ?");
+                        $stmt->execute([$default_company_id]);
+                        $perusahaan = $stmt->fetch();
+                        if ($perusahaan && !empty($perusahaan['logo'])) {
+                            $logo_path = '/kutansinu/' . $perusahaan['logo'];
+                        }
                     }
+                }
+                ?>
+                <img src="<?php echo htmlspecialchars($logo_path); ?>" alt="Logo" />
+                <?php
+                // Ambil nama perusahaan yang sedang aktif untuk user yang login
+                if (isset($perusahaan) && !empty($perusahaan['nama'])) {
+                    echo htmlspecialchars($perusahaan['nama']);
                 } else {
                     echo "SiKeu";
                 }
