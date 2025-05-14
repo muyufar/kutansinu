@@ -1,9 +1,11 @@
 {
-    "name": "kutansinu/sistem-keuangan",
-    "description": "Sistem Pelaporan Keuangan",
+    "name": "kutansinu/documentation",
+    "description": "Documentation generator for Kutansinu Financial System",
     "type": "project",
     "require": {
-        "mpdf/mpdf": "^8.2"
+        "php": ">=8.0",
+        "dompdf/dompdf": "^2.0",
+        "erusev/parsedown": "^1.7"
     },
     "autoload": {
         "psr-4": {

@@ -64,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     try {
         $stmt = $db->prepare("INSERT INTO transaksi (tanggal, id_akun_debit, id_akun_kredit, keterangan, jenis, jumlah, pajak, bunga, total, file_lampiran, penanggung_jawab, tag, created_by, id_perusahaan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([$tanggal, $id_akun_debit, $id_akun_kredit, $keterangan, $jenis, $jumlah, $pajak, $bunga, $total, $file_lampiran, $penanggung_jawab, $tag, $_SESSION['user_id'], $id_perusahaan]);
+        logAudit($db, $_SESSION['user_id'], 'add_transaction', 'Tambah transaksi: ' . $keterangan . ', jumlah: ' . $jumlah);
         $_SESSION['success'] = 'Transaksi berhasil ditambahkan';
         header('Location: index.php');
         exit();

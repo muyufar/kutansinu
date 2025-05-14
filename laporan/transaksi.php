@@ -108,13 +108,36 @@ $stmt_total = $db->prepare($sql_total);
 $stmt_total->execute($params_total);
 $total = $stmt_total->fetch();
 
+// Cek role admin
+$is_admin = false;
+if (isset($_SESSION['user_id']) && isset($db)) {
+    $user_id = $_SESSION['user_id'];
+    $stmt = $db->prepare("SELECT default_company FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $user_data = $stmt->fetch();
+    $default_company_id = $user_data['default_company'];
+    if (checkUserRole($db, $user_id, $default_company_id, 'admin')) {
+        $is_admin = true;
+    }
+}
+
 // Header
 include '../templates/header.php';
 ?>
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Laporan Transaksi</h2>
+        <h2>Daftar Transaksi Terbaru</h2>
+        <div>
+            <?php if ($is_admin): ?>
+                <a href="audit_log.php" class="btn btn-dark me-2">
+                    <i class="fas fa-clipboard-list"></i> Log Aktivitas
+                </a>
+            <?php endif; ?>
+            <a href="tambah.php" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Tambah Transaksi
+            </a>
+        </div>
     </div>
 
     <!-- Filter -->
@@ -219,7 +242,8 @@ include '../templates/header.php';
                                 <td colspan="7" class="text-center">Tidak ada data transaksi</td>
                             </tr>
                         <?php else: ?>
-                            <?php $no = 1; foreach ($transaksi_list as $transaksi): ?>
+                            <?php $no = 1;
+                            foreach ($transaksi_list as $transaksi): ?>
                                 <tr>
                                     <td><?= $no++ ?></td>
                                     <td><?= date('d M Y', strtotime($transaksi['tanggal'])) ?><br>
@@ -256,7 +280,8 @@ include '../templates/header.php';
 
 <?php
 // Fungsi untuk mendapatkan kelas badge berdasarkan jenis transaksi
-function getJenisBadgeClass($jenis) {
+function getJenisBadgeClass($jenis)
+{
     switch ($jenis) {
         case 'pemasukan':
             return 'bg-success';

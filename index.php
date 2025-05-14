@@ -194,7 +194,7 @@ include 'templates/header.php';
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h5 class="card-title mb-0">Arus Kas</h5>
-                        <span class="fw-bold text-dark" style="font-size:1.2em">Rp 3,809,900</span>
+                        <span class="fw-bold text-dark" style="font-size:1.2em">Rp <?= number_format(end($kas_bersih), 0, ',', '.') ?></span>
                     </div>
                     <canvas id="financeChart" width="400" height="200"></canvas>
                 </div>

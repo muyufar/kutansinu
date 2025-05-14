@@ -35,6 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } else {
             header("Location: index.php");
         }
+        logAudit($db, $user['id'], 'login', 'User berhasil login');
         exit();
     } else {
         $error = 'Username atau password salah';

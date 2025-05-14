@@ -55,7 +55,7 @@ if (isset($_POST['verifikasi'])) {
         $stmt_pemesanan = $db->prepare("SELECT jumlah_bayar, bukti_pembayaran FROM pemesanan_bus WHERE id = ?");
         $stmt_pemesanan->execute([$pemesanan_id]);
         $pemesanan_data = $stmt_pemesanan->fetch();
-        
+
         // Update query berdasarkan ada tidaknya bukti transfer
         if (!empty($bukti_transfer)) {
             $stmt = $db->prepare("UPDATE pemesanan_bus SET status = ?, catatan_admin = ?, bukti_transfer_admin = ?, tanggal_verifikasi = NOW() WHERE id = ?");
@@ -64,7 +64,7 @@ if (isset($_POST['verifikasi'])) {
             $stmt = $db->prepare("UPDATE pemesanan_bus SET status = ?, catatan_admin = ?, tanggal_verifikasi = NOW() WHERE id = ?");
             $stmt->execute([$status, $catatan_admin, $pemesanan_id]);
         }
-        
+
         // Jika status diubah menjadi 'selesai', tambahkan transaksi keuangan secara otomatis
         if ($status === 'selesai') {
             // Ambil id_perusahaan dari default_company pengguna
@@ -72,16 +72,16 @@ if (isset($_POST['verifikasi'])) {
             $stmt_company->execute([$_SESSION['user_id']]);
             $user_data = $stmt_company->fetch();
             $id_perusahaan = $user_data['default_company'];
-            
+
             // Cari akun kas (untuk kredit) dan akun pendapatan (untuk debit)
             $stmt_kas = $db->prepare("SELECT id FROM akun WHERE nama_akun LIKE '%kas%' AND id_perusahaan = ? LIMIT 1");
             $stmt_kas->execute([$id_perusahaan]);
             $akun_kas = $stmt_kas->fetch();
-            
+
             $stmt_pendapatan = $db->prepare("SELECT id FROM akun WHERE kode_akun LIKE '%4-40000%' AND id_perusahaan = ? LIMIT 1");
             $stmt_pendapatan->execute([$id_perusahaan]);
             $akun_pendapatan = $stmt_pendapatan->fetch();
-            
+
             // Jika akun kas dan pendapatan ditemukan
             if ($akun_kas && $akun_pendapatan) {
                 $id_akun_debit = $akun_kas['id']; // Kas bertambah (debit)
@@ -92,13 +92,13 @@ if (isset($_POST['verifikasi'])) {
                 $tanggal = date('Y-m-d');
                 $penanggung_jawab = "Admin";
                 $tag = "bus,pendapatan";
-                
+
                 // Path bukti pembayaran
                 $file_lampiran = '';
                 if (!empty($pemesanan_data['bukti_pembayaran'])) {
                     $file_lampiran = 'uploads/bukti_pembayaran/' . $pemesanan_data['bukti_pembayaran'];
                 }
-                
+
                 // Tambahkan transaksi ke database
                 $stmt_transaksi = $db->prepare("INSERT INTO transaksi (tanggal, id_akun_debit, id_akun_kredit, keterangan, jenis, jumlah, pajak, bunga, total, file_lampiran, penanggung_jawab, tag, created_by, id_perusahaan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 $stmt_transaksi->execute([$tanggal, $id_akun_debit, $id_akun_kredit, $keterangan, $jenis, $jumlah_bayar, 0, 0, $jumlah_bayar, $file_lampiran, $penanggung_jawab, $tag, $_SESSION['user_id'], $id_perusahaan]);
@@ -441,7 +441,7 @@ include '../templates/header.php';
 
                                                     <div class="mb-3">
                                                         <label for="status<?php echo $pemesanan['id']; ?>" class="form-label">Status Pesanan</label>
-                                                        <select class="form-select" id="status<?php echo $pemesanan['id']; ?>" name="status" required>
+                                                        <select class="form-select status-select" id="status<?php echo $pemesanan['id']; ?>" name="status" data-pemesanan-id="<?php echo $pemesanan['id']; ?>" required>
                                                             <option value="">Pilih Status</option>
                                                             <option value="menunggu_pembayaran" <?php echo $pemesanan['status'] == 'menunggu_pembayaran' ? 'selected' : ''; ?>>Menunggu Pembayaran</option>
                                                             <option value="menunggu_verifikasi" <?php echo $pemesanan['status'] == 'menunggu_verifikasi' ? 'selected' : ''; ?>>Menunggu Verifikasi</option>
@@ -462,6 +462,23 @@ include '../templates/header.php';
                                                         <label for="bukti_transfer<?php echo $pemesanan['id']; ?>" class="form-label">Upload Bukti Transfer Pelunasan</label>
                                                         <input type="file" class="form-control" id="bukti_transfer<?php echo $pemesanan['id']; ?>" name="bukti_transfer">
                                                         <div class="form-text">Format yang diizinkan: JPG, JPEG, PNG, PDF. Maksimal 2MB.</div>
+                                                    </div>
+
+                                                    <!-- Form Pembayaran Sisa DP (hanya jika status selesai) -->
+                                                    <div class="mb-3 remaining-payment-form" id="remainingPaymentForm<?php echo $pemesanan['id']; ?>" style="display: none;">
+                                                        <label class="form-label">Pembayaran Sisa DP</label>
+                                                        <div class="row">
+                                                            <div class="col-md-6 mb-2">
+                                                                <input type="number" class="form-control payment-amount" name="payment_amount" min="0" max="<?php echo max(0, $pemesanan['total_harga'] - $pemesanan['jumlah_bayar']); ?>" placeholder="Jumlah Pembayaran Sisa">
+                                                            </div>
+                                                            <div class="col-md-6 mb-2">
+                                                                <select class="form-select" name="payment_method">
+                                                                    <option value="cash">Tunai</option>
+                                                                    <option value="transfer">Transfer Bank</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <textarea class="form-control mt-2" name="payment_note" rows="2" placeholder="Keterangan pembayaran sisa (opsional)"></textarea>
                                                     </div>
 
                                                     <div class="d-grid">
@@ -486,5 +503,39 @@ include '../templates/header.php';
         </div>
     </div>
 </div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // Tampilkan/hidden form pembayaran sisa DP sesuai status
+        $('.status-select').on('change', function() {
+            var id = $(this).data('pemesanan-id');
+            var val = $(this).val();
+            var form = $('#remainingPaymentForm' + id);
+            if (val === 'selesai') {
+                form.show();
+            } else {
+                form.hide();
+            }
+        });
+
+        // Validasi sebelum submit form verifikasi
+        $('form').on('submit', function(e) {
+            var statusSelect = $(this).find('.status-select');
+            if (statusSelect.length) {
+                var id = statusSelect.data('pemesanan-id');
+                var status = statusSelect.val();
+                var paymentAmount = $(this).find('.payment-amount').val();
+                if (status === 'selesai') {
+                    if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
+                        e.preventDefault();
+                        alert('Mohon isi jumlah pembayaran sisa DP jika status selesai.');
+                        return false;
+                    }
+                }
+            }
+        });
+    });
+</script>
 
 <?php include '../templates/footer.php'; ?>

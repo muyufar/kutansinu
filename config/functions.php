@@ -11,26 +11,26 @@ function checkUserRole($db, $user_id, $perusahaan_id, $required_role = 'admin')
     $stmt = $db->prepare("SELECT role FROM user_perusahaan WHERE user_id = ? AND perusahaan_id = ?");
     $stmt->execute([$user_id, $perusahaan_id]);
     $user_role = $stmt->fetchColumn();
-    
+
     // Jika role tidak ditemukan, user tidak memiliki akses
     if (!$user_role) {
         return false;
     }
-    
+
     // Cek berdasarkan hierarki role
     switch ($required_role) {
         case 'viewer':
             // Viewer hanya bisa melihat, semua role bisa melihat
             return in_array($user_role, ['admin', 'editor', 'viewer']);
-            
+
         case 'editor':
             // Editor bisa edit, admin juga bisa edit
             return in_array($user_role, ['admin', 'editor']);
-            
+
         case 'admin':
             // Hanya admin yang bisa melakukan tindakan admin
             return $user_role === 'admin';
-            
+
         default:
             return false;
     }
@@ -83,11 +83,11 @@ function generateRandomPassword($length = 8)
     $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_-=+;:,.?';
     $password = '';
     $max = strlen($chars) - 1;
-    
+
     for ($i = 0; $i < $length; $i++) {
         $password .= $chars[random_int(0, $max)];
     }
-    
+
     return $password;
 }
 
@@ -100,12 +100,13 @@ function validateInput($data)
     return $data;
 }
 
-function validateSaldo($id_akun, $jumlah, $jenis) {
+function validateSaldo($id_akun, $jumlah, $jenis)
+{
     global $db;
     $stmt = $db->prepare("SELECT saldo FROM akun WHERE id = ?");
     $stmt->execute([$id_akun]);
     $akun = $stmt->fetch();
-    
+
     if ($jenis == 'pengeluaran' || $jenis == 'tarik_modal' || $jenis == 'transfer_uang' || $jenis == 'transfer_hutang') {
         if ($akun['saldo'] < $jumlah) {
             return false;
@@ -163,4 +164,12 @@ function getNeracaSaldo($db, $tanggal_awal, $tanggal_akhir)
     $stmt = $db->prepare($sql);
     $stmt->execute([$tanggal_awal, $tanggal_akhir]);
     return $stmt->fetchAll();
+}
+
+function logAudit($db, $user_id, $action, $description = '')
+{
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    $stmt = $db->prepare("INSERT INTO audit_log (user_id, action, description, ip_address, user_agent) VALUES (?, ?, ?, ?, ?)");
+    $stmt->execute([$user_id, $action, $description, $ip, $ua]);
 }
