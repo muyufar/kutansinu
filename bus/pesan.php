@@ -108,22 +108,62 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         // Proses pembayaran
+        // Validasi jenis pembayaran & pastikan jumlah_bayar sesuai
         $jenis_pembayaran = validateInput($_POST['jenis_pembayaran']);
+        $total_harga = preg_replace('/[^\d]/', '', $_POST['total_harga']);
+        $total_harga = (float)$total_harga;
+
         $jumlah_bayar = preg_replace('/[^\d]/', '', $_POST['jumlah_bayar']);
         $jumlah_bayar = (float)$jumlah_bayar;
 
-        $payment = processPayment($jenis_pembayaran, $jumlah_bayar, $bukti_pembayaran);
+        // Jika pembayaran lunas, paksa jumlah_bayar = total_harga
+        if ($jenis_pembayaran === 'lunas') {
+            $jumlah_bayar = $total_harga;
+        }
+
+        // Validasi jumlah pembayaran
+        if ($jenis_pembayaran === 'dp' && $jumlah_bayar >= $total_harga) {
+            $_SESSION['error'] = 'Untuk pembayaran DP, jumlah yang dibayar harus kurang dari total harga';
+            header('Location: pesan.php?id=' . $bus_id);
+            exit();
+        }
+
+        if ($jenis_pembayaran === 'lunas' && $jumlah_bayar != $total_harga) {
+            $_SESSION['error'] = 'Untuk pembayaran lunas, jumlah yang dibayar harus sama dengan total harga';
+            header('Location: pesan.php?id=' . $bus_id);
+            exit();
+        }
+
+        // Set initial status based on payment type
+        $initial_status = ($jenis_pembayaran == 'dp') ? 'dibayar_dp' : 'dibayar';
+
+        // Hitung sisa pembayaran untuk DP
+        $sisa_pembayaran = ($jenis_pembayaran == 'dp') ? ($total_harga - $jumlah_bayar) : 0;
+
+        // Set jumlah_bayar based on payment type
+        if ($jenis_pembayaran == 'lunas') {
+            $jumlah_bayar = $total_harga; // For full payment, jumlah_bayar equals total_harga
+        }
+
+        // Debug final values
+        error_log("Final Values - Status: " . $initial_status);
+        error_log("Final Values - Jumlah Bayar: " . $jumlah_bayar);
+        error_log("Final Values - Pembayaran DP: " . ($jenis_pembayaran == 'dp' ? $jumlah_bayar : 0));
+        error_log("Final Values - Sisa Pembayaran: " . $sisa_pembayaran);
 
         // Simpan pemesanan
         $stmt = $db->prepare("INSERT INTO pemesanan_bus (
-            id_user, id_bus, tanggal_pemesanan, tanggal_berangkat, waktu_berangkat, 
-            kota_asal, nama_pemesan, kontak_pemesan, kota_tujuan, jumlah_penumpang, 
-            total_harga, status, catatan, bukti_pembayaran, jenis_pembayaran, 
-            jumlah_bayar, created_at, pembayaran_dp, dp_created_at,
-            titik_jemput, latitude, longitude) VALUES 
-            (?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    id_user, id_bus, tanggal_pemesanan, tanggal_berangkat, waktu_berangkat, 
+    kota_asal, nama_pemesan, kontak_pemesan, kota_tujuan, jumlah_penumpang, 
+    total_harga, status, catatan, bukti_pembayaran, jenis_pembayaran, 
+    jumlah_bayar, pembayaran_dp, sisa_pembayaran, dp_created_at, 
+    titik_jemput, latitude, longitude, 
+    id_jadwal_bus, bukti_transfer_admin, catatan_admin, tanggal_verifikasi
+) VALUES (
+    ?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, '', NULL
+)");
 
-        $stmt->execute([
+        $params = [
             $user_id,
             $bus_id,
             $tanggal_berangkat,
@@ -134,20 +174,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $kota_tujuan,
             $jumlah_penumpang,
             $total_harga,
-            $payment['status'],
+            $initial_status,
             $catatan,
             $bukti_pembayaran,
             $jenis_pembayaran,
-            $payment['jumlah_bayar'],
-            $payment['created_at'],
-            $payment['pembayaran_dp'],
-            $payment['dp_created_at'],
+            $jumlah_bayar,
+            ($jenis_pembayaran == 'dp') ? $jumlah_bayar : null,
+            $sisa_pembayaran,
+            ($jenis_pembayaran == 'dp') ? date('Y-m-d H:i:s') : null,
             $titik_jemput,
             $latitude,
             $longitude
-        ]);
+        ];
 
-        $_SESSION['success'] = '<div class="text-success">Bus berhasil dipesan untuk tanggal ' . date('d/m/Y', strtotime($tanggal_berangkat)) . '. ' . ($payment['status'] == 'dibayar' ? 'Pembayaran Anda sedang diverifikasi.' : 'Silakan lakukan pembayaran.') . '</div>';
+        // Debug SQL parameters
+        error_log("SQL Parameters: " . print_r($params, true));
+
+        $stmt->execute($params);
+
+        $_SESSION['success'] = '<div class="text-success">Bus berhasil dipesan untuk tanggal ' . date('d/m/Y', strtotime($tanggal_berangkat)) . '. ' .
+            ($jenis_pembayaran == 'dp' ?
+                'Silakan lakukan pembayaran DP sebesar ' . formatRupiah($jumlah_bayar) . '. Sisa pembayaran sebesar ' . formatRupiah($sisa_pembayaran) . ' dapat dibayar sebelum keberangkatan.' :
+                'Silakan lakukan pembayaran lunas sebesar ' . formatRupiah($jumlah_bayar)) .
+            '</div>';
         header('Location: riwayat.php');
         exit();
     } catch (PDOException $e) {
@@ -370,7 +419,7 @@ include '../templates/header.php';
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="jenis_pembayaran" class="form-label">Jenis Pembayaran</label>
-                                <select class="form-control" id="jenis_pembayaran" name="jenis_pembayaran" required onchange="hitungPembayaran()">
+                                <select class="form-control" id="jenis_pembayaran" name="jenis_pembayaran" required>
                                     <option value="lunas">Pembayaran Lunas</option>
                                     <option value="dp">Uang Muka (DP)</option>
                                 </select>
@@ -379,9 +428,9 @@ include '../templates/header.php';
                                 <label for="jumlah_bayar" class="form-label">Jumlah yang dibayar</label>
                                 <div class="input-group">
                                     <span class="input-group-text">Rp</span>
-                                    <input type="text" class="form-control" id="jumlah_bayar" name="jumlah_bayar">
+                                    <input type="text" class="form-control" id="jumlah_bayar" name="jumlah_bayar" required>
                                 </div>
-                                <small class="text-muted" id="keterangan_pembayaran"></small>
+                                <small class="text-muted">Isi jumlah yang akan dibayar sesuai dengan jenis pembayaran yang dipilih</small>
                             </div>
                         </div>
                         <div class="mb-3">
@@ -492,140 +541,73 @@ include '../templates/header.php';
         }
     });
 
-    // Tambahkan fungsi untuk format rupiah pada total harga
-    // Tambahkan fungsi ini di bagian script
+    // Format rupiah function
     function formatRupiah(angka) {
-        // Hapus semua karakter non-angka
         let value = angka.toString().replace(/[^\d]/g, '');
-
-        // Jika kosong, kembalikan string kosong
         if (value === '') return '';
-
-        // Konversi ke number untuk memastikan format yang benar
         value = parseInt(value);
-
-        // Format angka dengan pemisah ribuan
         return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     }
 
-    // Event listener untuk input total harga
-    document.getElementById('total_harga').addEventListener('input', function(e) {
-        // Simpan posisi kursor
+    // Format input fields
+    const totalHargaInput = document.getElementById('total_harga');
+    const jumlahBayarInput = document.getElementById('jumlah_bayar');
+    const jenisPembayaranSelect = document.getElementById('jenis_pembayaran');
+
+    // Format total harga input
+    totalHargaInput.addEventListener('input', function(e) {
         const cursorPos = this.selectionStart;
-
-        // Ambil nilai tanpa format
         let value = this.value.replace(/[^\d]/g, '');
-
-        // Format nilai
         const formattedValue = formatRupiah(value);
-
-        // Update nilai input
         this.value = formattedValue;
-
-        // Kembalikan posisi kursor
         const newCursorPos = cursorPos + (formattedValue.length - value.length);
         this.setSelectionRange(newCursorPos, newCursorPos);
     });
 
-    // Event listener untuk input jumlah bayar
-    document.getElementById('jumlah_bayar').addEventListener('input', function(e) {
-        // Simpan posisi kursor
+    // Format jumlah bayar input
+    jumlahBayarInput.addEventListener('input', function(e) {
         const cursorPos = this.selectionStart;
-
-        // Ambil nilai tanpa format
         let value = this.value.replace(/[^\d]/g, '');
-
-        // Format nilai
         const formattedValue = formatRupiah(value);
-
-        // Update nilai input
         this.value = formattedValue;
-
-        // Kembalikan posisi kursor
         const newCursorPos = cursorPos + (formattedValue.length - value.length);
         this.setSelectionRange(newCursorPos, newCursorPos);
     });
 
-    function formatRupiah(angka) {
-        var number_string = angka.toString(),
-            split = number_string.split(','),
-            sisa = split[0].length % 3,
-            rupiah = split[0].substr(0, sisa),
-            ribuan = split[0].substr(sisa).match(/\d{3}/gi);
-
-        if (ribuan) {
-            separator = sisa ? '.' : '';
-            rupiah += separator + ribuan.join('.');
+    // Handle jenis pembayaran change
+    jenisPembayaranSelect.addEventListener('change', function() {
+        const totalHarga = parseInt(totalHargaInput.value.replace(/[^\d]/g, ''));
+        if (this.value === 'lunas') {
+            jumlahBayarInput.value = formatRupiah(totalHarga);
+            jumlahBayarInput.readOnly = true;
+        } else {
+            jumlahBayarInput.value = '';
+            jumlahBayarInput.readOnly = false;
         }
+    });
 
-        return rupiah;
+    // Set initial state
+    if (jenisPembayaranSelect.value === 'lunas') {
+        const totalHarga = parseInt(totalHargaInput.value.replace(/[^\d]/g, ''));
+        jumlahBayarInput.value = formatRupiah(totalHarga);
+        jumlahBayarInput.readOnly = true;
     }
-
-    // Panggil fungsi saat halaman dimuat
-    document.addEventListener('DOMContentLoaded', function() {
-        hitungPembayaran();
-    });
-
-    document.querySelector('form').addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        const formData = new FormData(this);
-
-        fetch(window.location.href, {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json().catch(() => null))
-            .then(data => {
-                if (data && data.status === 'error') {
-                    Swal.fire({
-                        title: 'Peringatan!',
-                        text: data.message,
-                        icon: 'warning',
-                        confirmButtonText: 'OK'
-                    });
-                } else {
-                    // Jika response bukan JSON atau sukses, submit form seperti biasa
-                    this.submit();
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                // Jika terjadi error, submit form seperti biasa
-                this.submit();
-            });
-    });
-
-    // Fungsi untuk mengisi kembali form dengan data sebelumnya
-    window.onload = function() {
-        const formData = sessionStorage.getItem('formData');
-        if (formData) {
-            const data = JSON.parse(formData);
-            Object.keys(data).forEach(key => {
-                const input = document.querySelector(`[name="${key}"]`);
-                if (input) {
-                    input.value = data[key];
-                }
-            });
-            // Hapus data setelah digunakan
-            sessionStorage.removeItem('formData');
-        }
-    }
-
-    // Simpan data form sebelum submit
-    document.querySelector('form').addEventListener('submit', function() {
-        const formData = {};
-        const inputs = this.querySelectorAll('input, select, textarea');
-        inputs.forEach(input => {
-            formData[input.name] = input.value;
-        });
-        sessionStorage.setItem('formData', JSON.stringify(formData));
-    });
 
     function formatDate(date) {
         if (!date) return '';
         return date; // Tanggal sudah dalam format Y-m-d dari input type="date"
     }
+
+    document.getElementById('jenis_pembayaran').addEventListener('change', function() {
+        const totalHarga = document.getElementById('total_harga').value.replace(/[^\d]/g, '');
+        if (this.value === 'lunas') {
+            document.getElementById('jumlah_bayar').value = formatRupiah(totalHarga);
+            document.getElementById('jumlah_bayar').readOnly = true;
+        } else {
+            document.getElementById('jumlah_bayar').value = '';
+            document.getElementById('jumlah_bayar').readOnly = false;
+        }
+    });
 </script>
 <script>
     function formatTanggal(input) {
