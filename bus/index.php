@@ -334,19 +334,81 @@ include '../templates/header.php';
 <!-- FullCalendar CSS -->
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.0/main.min.css" rel="stylesheet">
 
-<!-- CSS untuk tooltip kalender -->
+<!-- Custom Modern Calendar CSS -->
 <style>
-    .tooltip-jadwal {
-        font-size: 14px;
-        line-height: 1.5;
+    /* Clean, Simple Calendar Look with Blue Events */
+    .fc .fc-toolbar-title {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #3a4658;
+        letter-spacing: 1px;
     }
 
-    .fc-event {
-        cursor: pointer;
+    .fc .fc-button {
+        background: #3575ec;
+        border: none;
+        color: #fff;
+        font-weight: bold;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(79, 140, 255, 0.08);
+        transition: background 0.2s, color 0.2s;
     }
 
-    .tooltip {
-        z-index: 10000;
+    .fc .fc-button:hover,
+    .fc .fc-button:focus {
+        background: #285bb5;
+        color: #fff;
+    }
+
+    .fc .fc-daygrid-day.fc-day-today {
+        background: #f0f6ff !important;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(79, 140, 255, 0.06);
+    }
+
+    .fc .fc-daygrid-event {
+        background: #3575ec !important;
+        color: #fff !important;
+        border: none !important;
+        border-radius: 8px !important;
+        box-shadow: none;
+        font-weight: 500;
+        padding: 4px 8px;
+        transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .fc .fc-daygrid-event:hover {
+        transform: scale(1.04);
+        box-shadow: 0 4px 16px rgba(53, 117, 236, 0.13);
+        z-index: 10;
+    }
+
+    .fc .fc-col-header-cell-cushion {
+        font-weight: bold;
+        color: #3575ec;
+        font-size: 1.1rem;
+    }
+
+    .fc .fc-scrollgrid {
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 2px 16px rgba(44, 62, 80, 0.04);
+    }
+
+    .fc .fc-daygrid-day-number {
+        color: #3a4658;
+    }
+
+    .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+        color: #3575ec;
+        font-weight: bold;
+    }
+
+    /* Responsive for calendar */
+    @media (max-width: 600px) {
+        .fc .fc-toolbar-title {
+            font-size: 1.2rem;
+        }
     }
 </style>
 
@@ -408,18 +470,15 @@ include '../templates/header.php';
                 },
                 eventDidMount: function(info) {
                     const props = info.event.extendedProps;
-                    let color = '#6c757d'; // abu-abu default
-                    if (props.status === 'tersedia' && !props.isPast) {
-                        color = '#28a745'; // hijau
-                    } else if (props.status === 'penuh') {
-                        color = '#dc3545'; // merah
-                    } else if (props.status === 'dibatalkan') {
-                        color = '#ffc107'; // kuning
-                    }
-
+                    let color = '#3575ec'; // solid blue for all events
                     // Atur warna latar belakang event
                     info.el.style.backgroundColor = color;
-
+                    info.el.style.color = '#fff';
+                    // Tambahkan icon bus di depan judul event
+                    let titleEl = info.el.querySelector('.fc-event-title');
+                    if (titleEl && !titleEl.innerHTML.includes('fa-bus')) {
+                        titleEl.innerHTML = '<i class="fas fa-bus me-1"></i> ' + titleEl.innerHTML;
+                    }
                     // Tooltip
                     const isPast = props.isPast;
                     let statusText = isPast ? 'Sudah lewat' : props.statusText || ucfirst(props.status);
@@ -431,7 +490,6 @@ include '../templates/header.php';
             <strong>Status:</strong> ${statusText}
         </div>
     `;
-
                     $(info.el).tooltip({
                         title: tooltipContent,
                         placement: 'top',

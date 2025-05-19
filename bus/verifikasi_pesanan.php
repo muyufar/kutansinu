@@ -121,8 +121,13 @@ if (isset($_POST['verifikasi'])) {
 
                 // Path bukti pembayaran
                 $file_lampiran = '';
-                if (!empty($pemesanan_data['bukti_pembayaran'])) {
-                    $file_lampiran = 'uploads/bukti_pembayaran/' . $pemesanan_data['bukti_pembayaran'];
+                // Ambil bukti pembayaran terbaru dari tabel bukti_pembayaran_bus
+                $stmt_bukti = $db->prepare("SELECT nama_file FROM bukti_pembayaran_bus WHERE pemesanan_id = ? ORDER BY tanggal_upload DESC LIMIT 1");
+                $stmt_bukti->execute([$pemesanan_id]);
+                $bukti = $stmt_bukti->fetch();
+
+                if ($bukti) {
+                    $file_lampiran = 'uploads/pembayaran_bus/' . $bukti['nama_file'];
                 }
 
                 // Tambahkan transaksi ke database
@@ -492,13 +497,27 @@ include '../templates/header.php';
                                     <th>Jumlah Bayar</th>
                                     <td><?= formatRupiah($pemesanan['jumlah_bayar']) ?></td>
                                 </tr>
-                                <?php if (!empty($pemesanan['bukti_pembayaran'])): ?>
+                                <?php
+                                // Ambil semua bukti pembayaran
+                                $stmt_bukti = $db->prepare("SELECT * FROM bukti_pembayaran_bus WHERE pemesanan_id = ? ORDER BY tanggal_upload ASC");
+                                $stmt_bukti->execute([$pemesanan['id']]);
+                                $bukti_pembayaran_list = $stmt_bukti->fetchAll();
+
+                                if (!empty($bukti_pembayaran_list)): ?>
                                     <tr>
                                         <th>Bukti Pembayaran</th>
                                         <td>
-                                            <a href="../uploads/bukti_pembayaran/<?php echo htmlspecialchars($pemesanan['bukti_pembayaran']); ?>" target="_blank" class="btn btn-sm btn-info">
-                                                <i class="fas fa-image"></i> Lihat Bukti
-                                            </a>
+                                            <div class="d-flex flex-column gap-2">
+                                                <?php foreach ($bukti_pembayaran_list as $bukti): ?>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <a href="../uploads/pembayaran_bus/<?php echo htmlspecialchars($bukti['nama_file']); ?>" target="_blank" class="btn btn-sm btn-info">
+                                                            <i class="fas fa-image"></i>
+                                                            <?php echo $bukti['jenis_pembayaran'] == 'dp' ? 'Bukti DP' : 'Bukti Lunas'; ?>
+                                                            (<?php echo date('d/m/Y H:i', strtotime($bukti['tanggal_upload'])); ?>)
+                                                        </a>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
                                         </td>
                                     </tr>
                                 <?php endif; ?>
