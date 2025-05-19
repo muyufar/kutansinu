@@ -56,6 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         error_log("Update Query: " . $stmt->queryString);
         error_log("Update Params: " . json_encode([$tanggal, $id_akun_debit, $id_akun_kredit, $keterangan, $file_lampiran, $penanggung_jawab, $jenis, $jumlah, $id]));
 
+        logAudit($db, $_SESSION['user_id'], 'edit_transaction', 'Edit transaksi ID: ' . $id);
+
         $_SESSION['success'] = 'Transaksi berhasil diperbarui.';
         header('Location: index.php');
         exit();
@@ -72,6 +74,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'hapus' && isset($_GET['id'])) 
     try {
         $stmt = $db->prepare("DELETE FROM transaksi WHERE id = ?");
         $stmt->execute([$_GET['id']]);
+        logAudit($db, $_SESSION['user_id'], 'delete_transaction', 'Hapus transaksi ID: ' . $_GET['id']);
         $_SESSION['success'] = 'Transaksi berhasil dihapus.';
     } catch (PDOException $e) {
         $_SESSION['error'] = 'Gagal menghapus transaksi: ' . $e->getMessage();
@@ -311,108 +314,108 @@ include '../templates/header.php';
                 <div class="mb-3">
                     <label class="form-label">Akun Kredit</label>
                     <p id="view_akun_kredit" class="form-control-static"></p>
-                <div class="mb-3">
-                    <label class="form-label">Keterangan</label>
-                    <p id="view_keterangan" class="form-control-static"></p>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Tag</label>
-                    <p id="view_tag" class="form-control-static"></p>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Jenis Transaksi</label>
-                    <p id="view_jenis" class="form-control-static"></p>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Jumlah</label>
-                    <p id="view_jumlah" class="form-control-static"></p>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Penanggung Jawab</label>
-                    <p id="view_pj" class="form-control-static"></p>
-                </div>
+                    <div class="mb-3">
+                        <label class="form-label">Keterangan</label>
+                        <p id="view_keterangan" class="form-control-static"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tag</label>
+                        <p id="view_tag" class="form-control-static"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Jenis Transaksi</label>
+                        <p id="view_jenis" class="form-control-static"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Jumlah</label>
+                        <p id="view_jumlah" class="form-control-static"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Penanggung Jawab</label>
+                        <p id="view_pj" class="form-control-static"></p>
+                    </div>
 
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<script>
-    // Script untuk mengisi modal view
-    document.getElementById('modalViewTransaksi').addEventListener('show.bs.modal', function(event) {
-        var button = event.relatedTarget;
-        var tanggal = button.getAttribute('data-tanggal');
-        var akun_debit = button.getAttribute('data-akun-debit');
-        var akun_kredit = button.getAttribute('data-akun-kredit');
-        var keterangan = button.getAttribute('data-keterangan');
-        var tag = button.getAttribute('data-tag');
-        var jenis = button.getAttribute('data-jenis');
-        var jumlah = button.getAttribute('data-jumlah');
-        var penanggung_jawab = button.getAttribute('data-pj');
-        var file_lampiran = button.getAttribute('data-file');
+    <script>
+        // Script untuk mengisi modal view
+        document.getElementById('modalViewTransaksi').addEventListener('show.bs.modal', function(event) {
+            var button = event.relatedTarget;
+            var tanggal = button.getAttribute('data-tanggal');
+            var akun_debit = button.getAttribute('data-akun-debit');
+            var akun_kredit = button.getAttribute('data-akun-kredit');
+            var keterangan = button.getAttribute('data-keterangan');
+            var tag = button.getAttribute('data-tag');
+            var jenis = button.getAttribute('data-jenis');
+            var jumlah = button.getAttribute('data-jumlah');
+            var penanggung_jawab = button.getAttribute('data-pj');
+            var file_lampiran = button.getAttribute('data-file');
 
-        var modal = this;
-        modal.querySelector('#view_tanggal').textContent = new Date(tanggal).toLocaleDateString('id-ID');
-        modal.querySelector('#view_akun_debit').textContent = akun_debit;
-        modal.querySelector('#view_akun_kredit').textContent = akun_kredit;
-        modal.querySelector('#view_keterangan').textContent = keterangan;
-        modal.querySelector('#view_tag').textContent = tag || '-';
-        modal.querySelector('#view_jenis').textContent = jenis.charAt(0).toUpperCase() + jenis.slice(1);
-        modal.querySelector('#view_jumlah').textContent = jumlah;
-        modal.querySelector('#view_pj').textContent = penanggung_jawab || '-';
+            var modal = this;
+            modal.querySelector('#view_tanggal').textContent = new Date(tanggal).toLocaleDateString('id-ID');
+            modal.querySelector('#view_akun_debit').textContent = akun_debit;
+            modal.querySelector('#view_akun_kredit').textContent = akun_kredit;
+            modal.querySelector('#view_keterangan').textContent = keterangan;
+            modal.querySelector('#view_tag').textContent = tag || '-';
+            modal.querySelector('#view_jenis').textContent = jenis.charAt(0).toUpperCase() + jenis.slice(1);
+            modal.querySelector('#view_jumlah').textContent = jumlah;
+            modal.querySelector('#view_pj').textContent = penanggung_jawab || '-';
 
-        var fileNone = modal.querySelector('#view_file_none');
-        var fileLink = modal.querySelector('#view_file_link');
+            var fileNone = modal.querySelector('#view_file_none');
+            var fileLink = modal.querySelector('#view_file_link');
 
-        if (file_lampiran) {
-            fileNone.classList.add('d-none');
-            fileLink.classList.remove('d-none');
-            fileLink.href = '../' + file_lampiran;
-        } else {
-            fileNone.classList.remove('d-none');
-            fileLink.classList.add('d-none');
-        }
-    });
-    document.getElementById('modalEditTransaksi').addEventListener('show.bs.modal', function(event) {
-        var button = event.relatedTarget;
-        var id = button.getAttribute('data-id');
-        var tanggal = button.getAttribute('data-tanggal');
-        var id_akun_debit = button.getAttribute('data-akun-debit');
-        var id_akun_kredit = button.getAttribute('data-akun-kredit');
-        var keterangan = button.getAttribute('data-keterangan');
-        var tag = button.getAttribute('data-tag');
-        var jenis = button.getAttribute('data-jenis');
-        var jumlah = button.getAttribute('data-jumlah');
-        var penanggung_jawab = button.getAttribute('data-pj');
-        var file_lampiran = button.getAttribute('data-file');
+            if (file_lampiran) {
+                fileNone.classList.add('d-none');
+                fileLink.classList.remove('d-none');
+                fileLink.href = '../' + file_lampiran;
+            } else {
+                fileNone.classList.remove('d-none');
+                fileLink.classList.add('d-none');
+            }
+        });
+        document.getElementById('modalEditTransaksi').addEventListener('show.bs.modal', function(event) {
+            var button = event.relatedTarget;
+            var id = button.getAttribute('data-id');
+            var tanggal = button.getAttribute('data-tanggal');
+            var id_akun_debit = button.getAttribute('data-akun-debit');
+            var id_akun_kredit = button.getAttribute('data-akun-kredit');
+            var keterangan = button.getAttribute('data-keterangan');
+            var tag = button.getAttribute('data-tag');
+            var jenis = button.getAttribute('data-jenis');
+            var jumlah = button.getAttribute('data-jumlah');
+            var penanggung_jawab = button.getAttribute('data-pj');
+            var file_lampiran = button.getAttribute('data-file');
 
-        var modal = this;
-        modal.querySelector('#edit_id').value = id;
-        modal.querySelector('#edit_tanggal').value = tanggal;
-        modal.querySelector('#edit_id_akun_debit').value = id_akun_debit;
-        modal.querySelector('#edit_id_akun_kredit').value = id_akun_kredit;
-        modal.querySelector('#edit_keterangan').value = keterangan;
-        modal.querySelector('#edit_tag').value = tag;
-        modal.querySelector('#edit_jenis').value = jenis;
-        modal.querySelector('#edit_jumlah').value = jumlah;
-        modal.querySelector('#edit_pj').value = penanggung_jawab;
+            var modal = this;
+            modal.querySelector('#edit_id').value = id;
+            modal.querySelector('#edit_tanggal').value = tanggal;
+            modal.querySelector('#edit_id_akun_debit').value = id_akun_debit;
+            modal.querySelector('#edit_id_akun_kredit').value = id_akun_kredit;
+            modal.querySelector('#edit_keterangan').value = keterangan;
+            modal.querySelector('#edit_tag').value = tag;
+            modal.querySelector('#edit_jenis').value = jenis;
+            modal.querySelector('#edit_jumlah').value = jumlah;
+            modal.querySelector('#edit_pj').value = penanggung_jawab;
 
-        // Tampilkan nama file lampiran lama
-        var fileInput = modal.querySelector('#edit_file_lampiran');
-        if (file_lampiran) {
-            fileInput.setAttribute('data-existing-file', file_lampiran); // Simpan file lama sebagai atribut
-            fileInput.placeholder = 'File lama: ' + file_lampiran;
-        } else {
-            fileInput.removeAttribute('data-existing-file');
-            fileInput.placeholder = 'Tidak ada file lama';
-        }
-    });
-</script>
+            // Tampilkan nama file lampiran lama
+            var fileInput = modal.querySelector('#edit_file_lampiran');
+            if (file_lampiran) {
+                fileInput.setAttribute('data-existing-file', file_lampiran); // Simpan file lama sebagai atribut
+                fileInput.placeholder = 'File lama: ' + file_lampiran;
+            } else {
+                fileInput.removeAttribute('data-existing-file');
+                fileInput.placeholder = 'Tidak ada file lama';
+            }
+        });
+    </script>
 
-<?php
-// Footer
-include '../templates/footer.php';
-?>
+    <?php
+    // Footer
+    include '../templates/footer.php';
+    ?>
