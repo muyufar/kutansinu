@@ -77,10 +77,10 @@ include '../templates/header.php';
                                 <div class="col-md-8">
                                     <h5><?php echo htmlspecialchars($pemesanan['nama_bus']); ?></h5>
                                     <p class="mb-1">
-                                        <strong>Nama Pemesan:</strong> <?php echo htmlspecialchars($pemesanan['nama_pemesan']);?>
+                                        <strong>Nama Pemesan:</strong> <?php echo htmlspecialchars($pemesanan['nama_pemesan']); ?>
                                     </p>
                                     <p class="mb-1"></p>
-                                        <strong>Kontak Pemesan:</strong> <?php echo htmlspecialchars($pemesanan['kontak_pemesan']);?>
+                                    <strong>Kontak Pemesan:</strong> <?php echo htmlspecialchars($pemesanan['kontak_pemesan']); ?>
                                     </p>
                                     <p class="mb-1">
                                         <strong>Nomor Polisi:</strong> <?php echo htmlspecialchars($pemesanan['nomor_polisi']); ?>
@@ -100,16 +100,43 @@ include '../templates/header.php';
                                     <p class="mb-1">
                                         <strong>Total Harga:</strong> <?php echo formatRupiah($pemesanan['total_harga']); ?>
                                     </p>
+                                    <div class="mt-3">
+                                        <strong>Status:</strong>
+                                        <span class="badge bg-<?php echo getStatusBadgeClass($pemesanan['status']); ?>"><?php echo formatStatus($pemesanan['status']); ?></span>
+                                    </div>
+
+                                    <?php
+                                    // Ambil semua bukti pembayaran
+                                    $stmt_bukti = $db->prepare("SELECT * FROM bukti_pembayaran_bus WHERE pemesanan_id = ? ORDER BY tanggal_upload ASC");
+                                    $stmt_bukti->execute([$pemesanan['id']]);
+                                    $bukti_pembayaran_list = $stmt_bukti->fetchAll();
+
+                                    if (!empty($bukti_pembayaran_list)): ?>
+                                        <div class="mt-3">
+                                            <strong>Bukti Pembayaran:</strong>
+                                            <div class="d-flex flex-column gap-2 mt-2">
+                                                <?php foreach ($bukti_pembayaran_list as $bukti): ?>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <a href="../uploads/pembayaran_bus/<?php echo htmlspecialchars($bukti['nama_file']); ?>" target="_blank" class="btn btn-sm btn-info">
+                                                            <i class="fas fa-image"></i>
+                                                            <?php echo $bukti['jenis_pembayaran'] == 'dp' ? 'Bukti DP' : 'Bukti Lunas'; ?>
+                                                            (<?php echo date('d/m/Y H:i', strtotime($bukti['tanggal_upload'])); ?>)
+                                                        </a>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
-                            
+
                             <?php if (!empty($pemesanan['catatan'])): ?>
                                 <div class="mt-3">
                                     <strong>Catatan:</strong>
                                     <p class="mb-0"><?php echo nl2br(htmlspecialchars($pemesanan['catatan'])); ?></p>
                                 </div>
                             <?php endif; ?>
-                            
+
                             <?php if ($pemesanan['status'] == 'menunggu_pembayaran'): ?>
                                 <div class="mt-3">
                                     <a href="upload_bukti.php?id=<?php echo $pemesanan['id']; ?>" class="btn btn-warning">
@@ -142,7 +169,8 @@ include '../templates/header.php';
 
 <?php
 // Fungsi untuk menentukan class badge berdasarkan status
-function getStatusBadgeClass($status) {
+function getStatusBadgeClass($status)
+{
     switch ($status) {
         case 'menunggu_pembayaran':
             return 'bg-warning';
@@ -160,7 +188,8 @@ function getStatusBadgeClass($status) {
 }
 
 // Fungsi untuk memformat status
-function formatStatus($status) {
+function formatStatus($status)
+{
     switch ($status) {
         case 'menunggu_pembayaran':
             return 'Menunggu Pembayaran';

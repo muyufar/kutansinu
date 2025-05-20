@@ -167,7 +167,12 @@ include '../templates/header.php';
                                 <td><?php echo formatRupiah($transaksi['jumlah']); ?></td>
                                 <td>
                                     <?php if (!empty($transaksi['file_lampiran'])): ?>
-                                        <a href="../<?php echo htmlspecialchars($transaksi['file_lampiran']); ?>" target="_blank" class="badge bg-success">Lihat Bukti</a>
+                                        <a href="../<?php echo htmlspecialchars($transaksi['file_lampiran']); ?>" target="_blank" class="btn btn-sm btn-info">
+                                            <i class="fas fa-image"></i> Lihat Bukti
+                                            <?php if (strpos($transaksi['file_lampiran'], 'pembayaran_bus') !== false): ?>
+                                                <span class="badge bg-primary">Bus</span>
+                                            <?php endif; ?>
+                                        </a>
                                     <?php else: ?>
                                         <span class="badge bg-secondary">Tidak Ada</span>
                                     <?php endif; ?>

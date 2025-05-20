@@ -77,8 +77,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     try {
         // Upload bukti pembayaran
-        $bukti_pembayaran = '';
-        if (isset($_FILES['bukti_pembayaran']) && $_FILES['bukti_pembayaran']['error'] != UPLOAD_ERR_NO_FILE) {
+        $bukti_pembayaran = [];
+        if (isset($_FILES['bukti_pembayaran']) && !empty($_FILES['bukti_pembayaran']['name'][0])) {
             $bukti_pembayaran = uploadBuktiPembayaran($_FILES['bukti_pembayaran']);
             if ($bukti_pembayaran === false) {
                 $_SESSION['error'] = 'Gagal mengunggah bukti pembayaran';
@@ -98,9 +98,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         // Cek ketersediaan bus
         $existing_booking = checkBusAvailability($db, $bus_id, $tanggal_berangkat);
-        // echo '<pre>';
-        // echo $bus_id . $tanggal_berangkat;
-        // die;
         if ($existing_booking) {
             $_SESSION['error'] = 'Bus sudah dipesan pada tanggal ' . date('d/m/Y', strtotime($tanggal_berangkat));
             header('Location: pesan.php?id=' . $bus_id);
@@ -153,15 +150,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         // Simpan pemesanan
         $stmt = $db->prepare("INSERT INTO pemesanan_bus (
-    id_user, id_bus, tanggal_pemesanan, tanggal_berangkat, waktu_berangkat, 
-    kota_asal, nama_pemesan, kontak_pemesan, kota_tujuan, jumlah_penumpang, 
-    total_harga, status, catatan, bukti_pembayaran, jenis_pembayaran, 
-    jumlah_bayar, pembayaran_dp, sisa_pembayaran, dp_created_at, 
-    titik_jemput, latitude, longitude, 
-    id_jadwal_bus, bukti_transfer_admin, catatan_admin, tanggal_verifikasi
-) VALUES (
-    ?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, '', NULL
-)");
+            id_user, id_bus, tanggal_pemesanan, tanggal_berangkat, waktu_berangkat, 
+            kota_asal, nama_pemesan, kontak_pemesan, kota_tujuan, jumlah_penumpang, 
+            total_harga, status, catatan, jenis_pembayaran, 
+            jumlah_bayar, pembayaran_dp, sisa_pembayaran, dp_created_at, 
+            titik_jemput, latitude, longitude, 
+            id_jadwal_bus, bukti_transfer_admin, catatan_admin, tanggal_verifikasi
+        ) VALUES (
+            ?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, '', NULL
+        )");
 
         $params = [
             $user_id,
@@ -176,7 +173,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $total_harga,
             $initial_status,
             $catatan,
-            $bukti_pembayaran,
             $jenis_pembayaran,
             $jumlah_bayar,
             ($jenis_pembayaran == 'dp') ? $jumlah_bayar : null,
@@ -187,10 +183,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $longitude
         ];
 
-        // Debug SQL parameters
-        error_log("SQL Parameters: " . print_r($params, true));
-
         $stmt->execute($params);
+        $pemesanan_id = $db->lastInsertId();
+
+        // Simpan bukti pembayaran
+        if (!empty($bukti_pembayaran)) {
+            $stmt_bukti = $db->prepare("INSERT INTO bukti_pembayaran_bus (pemesanan_id, nama_file, jenis_pembayaran) VALUES (?, ?, ?)");
+            foreach ($bukti_pembayaran as $file) {
+                $stmt_bukti->execute([$pemesanan_id, $file, $jenis_pembayaran]);
+            }
+        }
 
         $_SESSION['success'] = '<div class="text-success">Bus berhasil dipesan untuk tanggal ' . date('d/m/Y', strtotime($tanggal_berangkat)) . '. ' .
             ($jenis_pembayaran == 'dp' ?
@@ -435,8 +437,8 @@ include '../templates/header.php';
                         </div>
                         <div class="mb-3">
                             <label for="bukti_pembayaran" class="form-label">Bukti Pembayaran (Opsional)</label>
-                            <input type="file" class="form-control" id="bukti_pembayaran" name="bukti_pembayaran" accept="image/*,.pdf">
-                            <small class="text-muted">Upload bukti pembayaran untuk mempercepat proses verifikasi</small>
+                            <input type="file" class="form-control" id="bukti_pembayaran" name="bukti_pembayaran[]" accept="image/*,.pdf" multiple>
+                            <small class="text-muted">Upload bukti pembayaran untuk mempercepat proses verifikasi. Untuk pembayaran DP, Anda dapat mengupload bukti DP dan bukti pelunasan.</small>
                         </div>
                         <div class="mb-3">
                             <label for="catatan" class="form-label">Catatan Tambahan</label>

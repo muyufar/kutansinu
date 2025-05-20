@@ -59,22 +59,47 @@ function checkBusAvailability($db, $bus_id, $tanggal_berangkat)
     }
 }
 
-function uploadBuktiPembayaran($file)
+function uploadBuktiPembayaran($files)
 {
-    if ($file['error'] == UPLOAD_ERR_OK) {
-        $upload_dir = '../uploads/pembayaran_bus/';
-        if (!file_exists($upload_dir)) {
-            mkdir($upload_dir, 0777, true);
+    $uploaded_files = [];
+
+    // Handle single file upload (backward compatibility)
+    if (!isset($files['name']) || !is_array($files['name'])) {
+        if ($files['error'] == UPLOAD_ERR_OK) {
+            $upload_dir = '../uploads/pembayaran_bus/';
+            if (!file_exists($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
+            }
+
+            $file_name = time() . '_' . basename($files['name']);
+            $target_file = $upload_dir . $file_name;
+
+            if (move_uploaded_file($files['tmp_name'], $target_file)) {
+                $uploaded_files[] = $file_name;
+            }
         }
+        return $uploaded_files;
+    }
 
-        $file_name = time() . '_' . basename($file['name']);
-        $target_file = $upload_dir . $file_name;
+    // Handle multiple file upload
+    $upload_dir = '../uploads/pembayaran_bus/';
+    if (!file_exists($upload_dir)) {
+        mkdir($upload_dir, 0777, true);
+    }
 
-        if (move_uploaded_file($file['tmp_name'], $target_file)) {
-            return 'uploads/pembayaran_bus/' . $file_name;
+    $file_count = count($files['name']);
+    for ($i = 0; $i < $file_count; $i++) {
+        if ($files['error'][$i] == UPLOAD_ERR_OK) {
+            $file_name = time() . '_' . $i . '_' . basename($files['name'][$i]);
+            $target_file = $upload_dir . $file_name;
+
+            if (move_uploaded_file($files['tmp_name'][$i], $target_file)) {
+                $uploaded_files[] = $file_name;
+            }
         }
     }
-    return '';
+
+    return $uploaded_files;
 }
 
 function processPayment($jenis_pembayaran, $jumlah_bayar, $bukti_pembayaran)
