@@ -9,6 +9,46 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Cek role admin
+$is_admin = false;
+if (isset($_SESSION['user_id']) && isset($db)) {
+    $user_id = $_SESSION['user_id'];
+    $stmt = $db->prepare("SELECT default_company FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $user_data = $stmt->fetch();
+    $default_company_id = $user_data['default_company'];
+    if (checkUserRole($db, $user_id, $default_company_id, 'admin')) {
+        $is_admin = true;
+    }
+}
+
+// Ringkasan keuangan semua perusahaan untuk admin
+$ringkasan_perusahaan = [];
+if ($is_admin) {
+    $stmt = $db->prepare("SELECT p.id, p.nama FROM perusahaan p JOIN user_perusahaan up ON p.id = up.perusahaan_id WHERE up.user_id = ? AND up.role = 'admin'");
+    $stmt->execute([$_SESSION['user_id']]);
+    $perusahaan_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($perusahaan_list as $perusahaan) {
+        $pid = $perusahaan['id'];
+        // Total pemasukan
+        $stmt_in = $db->prepare("SELECT SUM(jumlah) as total FROM transaksi WHERE jenis = 'pemasukan' AND id_perusahaan = ?");
+        $stmt_in->execute([$pid]);
+        $pemasukan = $stmt_in->fetch()['total'] ?? 0;
+        // Total pengeluaran
+        $stmt_out = $db->prepare("SELECT SUM(jumlah) as total FROM transaksi WHERE jenis = 'pengeluaran' AND id_perusahaan = ?");
+        $stmt_out->execute([$pid]);
+        $pengeluaran = $stmt_out->fetch()['total'] ?? 0;
+        // Saldo akhir
+        $saldo = $pemasukan - $pengeluaran;
+        $ringkasan_perusahaan[] = [
+            'nama' => $perusahaan['nama'],
+            'pemasukan' => $pemasukan,
+            'pengeluaran' => $pengeluaran,
+            'saldo' => $saldo
+        ];
+    }
+}
+
 // Ambil tanggal 4 hari ke belakang dan 3 hari ke depan
 $labels = [];
 $pemasukan = [];
@@ -143,8 +183,22 @@ include 'templates/header.php';
     .summary-card.balance .value {
         color: #2563eb;
     }
+
+    .summary-company-card {
+        transition: transform 0.18s cubic-bezier(.4, 2, .6, 1), box-shadow 0.18s;
+        border-radius: 18px;
+        min-height: 210px;
+        box-shadow: 0 2px 12px rgba(99, 102, 241, 0.08), 0 1.5px 6px rgba(34, 60, 80, 0.10);
+    }
+
+    .summary-company-card:hover {
+        transform: translateY(-6px) scale(1.04);
+        box-shadow: 0 8px 32px rgba(99, 102, 241, 0.18), 0 2px 8px rgba(34, 60, 80, 0.13);
+        background: linear-gradient(135deg, #e0e7ff 60%, #f8fafc 100%);
+    }
 </style>
 <div class="container mt-4">
+
     <div class="row g-3 mb-3">
         <div class="col-md-4">
             <div class="summary-card income">
@@ -209,7 +263,38 @@ include 'templates/header.php';
             </div>
         </div>
     </div>
-
+    <?php if ($is_admin && !empty($ringkasan_perusahaan)): ?>
+        <div class="row g-3 mb-4 justify-content-center">
+            <?php foreach ($ringkasan_perusahaan as $r): ?>
+                <div class="col-12 col-sm-6 col-md-4 col-lg-3 d-flex align-items-stretch">
+                    <div class="card shadow-sm border-0 h-100 summary-company-card w-100" style="background: linear-gradient(135deg, #f8fafc 70%, #e0e7ff 100%);">
+                        <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                            <div class="rounded-circle mb-2" style="background: #6366f1; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-building text-white" style="font-size: 1.5rem;"></i>
+                            </div>
+                            <h6 class="fw-bold text-center mb-1" style="color:#3730a3"><?= htmlspecialchars($r['nama']) ?></h6>
+                            <div class="w-100 mt-2">
+                                <div class="d-flex justify-content-between small">
+                                    <span class="text-muted">Pemasukan</span>
+                                    <span class="fw-bold" style="color:#2563eb">Rp <?= number_format($r['pemasukan'], 0, ',', '.') ?></span>
+                                </div>
+                                <div class="d-flex justify-content-between small">
+                                    <span class="text-muted">Pengeluaran</span>
+                                    <span class="fw-bold" style="color:#f59e42">Rp <?= number_format($r['pengeluaran'], 0, ',', '.') ?></span>
+                                </div>
+                                <div class="d-flex justify-content-between small">
+                                    <span class="text-muted">Saldo</span>
+                                    <span class="fw-bold" style="color:<?= $r['saldo'] < 0 ? '#ef4444' : '#22c55e' ?>">
+                                        Rp <?= number_format($r['saldo'], 0, ',', '.') ?>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
     <!-- <div class="row mt-4">
         <div class="col-md-12">
             <div class="card shadow-sm">

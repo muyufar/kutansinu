@@ -29,18 +29,44 @@ $kontak = isset($_GET['kontak']) ? $_GET['kontak'] : '';
 // Filter tag
 $tag = isset($_GET['tag']) ? $_GET['tag'] : '';
 
+// Cek role admin
+$is_admin = false;
+if (isset($_SESSION['user_id']) && isset($db)) {
+    $user_id = $_SESSION['user_id'];
+    $stmt = $db->prepare("SELECT default_company FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $user_data = $stmt->fetch();
+    $default_company_id = $user_data['default_company'];
+    if (checkUserRole($db, $user_id, $default_company_id, 'admin')) {
+        $is_admin = true;
+    }
+}
+
+// Ambil daftar perusahaan jika admin
+$daftar_perusahaan = [];
+if ($is_admin) {
+    $stmt = $db->prepare("SELECT p.id, p.nama FROM perusahaan p JOIN user_perusahaan up ON p.id = up.perusahaan_id WHERE up.user_id = ? AND up.role = 'admin'");
+    $stmt->execute([$_SESSION['user_id']]);
+    $daftar_perusahaan = $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Ambil filter perusahaan dari GET jika admin, jika tidak pakai default
+$filter_perusahaan = $id_perusahaan;
+if ($is_admin && isset($_GET['perusahaan']) && $_GET['perusahaan']) {
+    $filter_perusahaan = $_GET['perusahaan'];
+}
+
 // Ambil daftar kontak unik untuk dropdown filter dengan filter perusahaan
 $stmt_kontak = $db->prepare("SELECT DISTINCT penanggung_jawab FROM transaksi WHERE penanggung_jawab IS NOT NULL AND penanggung_jawab != '' AND id_perusahaan = ? ORDER BY penanggung_jawab ASC");
-$stmt_kontak->execute([$id_perusahaan]);
+$stmt_kontak->execute([$filter_perusahaan]);
 $daftar_kontak = $stmt_kontak->fetchAll(PDO::FETCH_COLUMN);
 
 // Ambil daftar tag unik untuk dropdown filter dengan filter perusahaan
 try {
     $stmt_tag = $db->prepare("SELECT DISTINCT tag FROM transaksi WHERE tag IS NOT NULL AND tag != '' AND id_perusahaan = ? ORDER BY tag ASC");
-    $stmt_tag->execute([$id_perusahaan]);
+    $stmt_tag->execute([$filter_perusahaan]);
     $daftar_tag = $stmt_tag->fetchAll(PDO::FETCH_COLUMN);
 } catch (PDOException $e) {
-    // Jika terjadi error, set array kosong
     $daftar_tag = [];
 }
 
@@ -57,7 +83,7 @@ $sql = "SELECT t.*,
 $params = [
     ':tanggal_awal' => $tanggal_awal,
     ':tanggal_akhir' => $tanggal_akhir,
-    ':id_perusahaan' => $id_perusahaan
+    ':id_perusahaan' => $filter_perusahaan
 ];
 
 // Tambahkan filter kontak jika ada
@@ -108,19 +134,6 @@ $stmt_total = $db->prepare($sql_total);
 $stmt_total->execute($params_total);
 $total = $stmt_total->fetch();
 
-// Cek role admin
-$is_admin = false;
-if (isset($_SESSION['user_id']) && isset($db)) {
-    $user_id = $_SESSION['user_id'];
-    $stmt = $db->prepare("SELECT default_company FROM users WHERE id = ?");
-    $stmt->execute([$user_id]);
-    $user_data = $stmt->fetch();
-    $default_company_id = $user_data['default_company'];
-    if (checkUserRole($db, $user_id, $default_company_id, 'admin')) {
-        $is_admin = true;
-    }
-}
-
 // Header
 include '../templates/header.php';
 ?>
@@ -152,6 +165,19 @@ include '../templates/header.php';
                     <label for="tanggal_akhir" class="form-label">Tanggal Akhir</label>
                     <input type="date" class="form-control" id="tanggal_akhir" name="tanggal_akhir" value="<?= $tanggal_akhir ?>">
                 </div>
+                <?php if ($is_admin): ?>
+                    <div class="col-md-2">
+                        <label for="perusahaan" class="form-label">Perusahaan</label>
+                        <select class="form-select" id="perusahaan" name="perusahaan">
+                            <option value="">Semua Perusahaan</option>
+                            <?php foreach ($daftar_perusahaan as $p): ?>
+                                <option value="<?= $p['id'] ?>" <?= (isset($_GET['perusahaan']) && $_GET['perusahaan'] == $p['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($p['nama']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                <?php endif; ?>
                 <div class="col-md-2">
                     <label for="kontak" class="form-label">Pilih Kontak</label>
                     <select class="form-select" id="kontak" name="kontak">
