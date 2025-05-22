@@ -23,11 +23,38 @@ if (!$id_perusahaan) {
     exit();
 }
 
+// Cek role admin
+$is_admin = false;
+if (isset($_SESSION['user_id']) && isset($db)) {
+    $user_id = $_SESSION['user_id'];
+    $stmt = $db->prepare("SELECT default_company FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $user_data = $stmt->fetch();
+    $default_company_id = $user_data['default_company'];
+    if (checkUserRole($db, $user_id, $default_company_id, 'admin')) {
+        $is_admin = true;
+    }
+}
+
+// Ambil daftar perusahaan jika admin
+$daftar_perusahaan = [];
+if ($is_admin) {
+    $stmt = $db->prepare("SELECT p.id, p.nama FROM perusahaan p JOIN user_perusahaan up ON p.id = up.perusahaan_id WHERE up.user_id = ? AND up.role = 'admin'");
+    $stmt->execute([$_SESSION['user_id']]);
+    $daftar_perusahaan = $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Ambil filter perusahaan dari GET jika admin, jika tidak pakai default
+$filter_perusahaan = $id_perusahaan;
+if ($is_admin && isset($_GET['perusahaan']) && $_GET['perusahaan']) {
+    $filter_perusahaan = $_GET['perusahaan'];
+}
+
 // Ambil data neraca saldo dengan filter perusahaan
-$neraca_saldo = getNeracaSaldo($db, $tanggal_awal, $tanggal_akhir, $id_perusahaan);
+$neraca_saldo = getNeracaSaldo($db, $tanggal_awal, $tanggal_akhir, $filter_perusahaan);
 
 // Filter hanya akun yang memiliki transaksi
-$neraca_saldo = array_filter($neraca_saldo, function($item) {
+$neraca_saldo = array_filter($neraca_saldo, function ($item) {
     return $item['debit'] != 0 || $item['kredit'] != 0;
 });
 
@@ -56,14 +83,27 @@ include '../templates/header.php';
             <form method="GET" class="row g-3">
                 <div class="col-md-4">
                     <label for="tanggal_awal" class="form-label">Tanggal Awal</label>
-                    <input type="date" class="form-control" id="tanggal_awal" name="tanggal_awal" 
-                           value="<?php echo $tanggal_awal; ?>" required>
+                    <input type="date" class="form-control" id="tanggal_awal" name="tanggal_awal"
+                        value="<?php echo $tanggal_awal; ?>" required>
                 </div>
                 <div class="col-md-4">
                     <label for="tanggal_akhir" class="form-label">Tanggal Akhir</label>
-                    <input type="date" class="form-control" id="tanggal_akhir" name="tanggal_akhir" 
-                           value="<?php echo $tanggal_akhir; ?>" required>
+                    <input type="date" class="form-control" id="tanggal_akhir" name="tanggal_akhir"
+                        value="<?php echo $tanggal_akhir; ?>" required>
                 </div>
+                <?php if ($is_admin): ?>
+                    <div class="col-md-4">
+                        <label for="perusahaan" class="form-label">Perusahaan</label>
+                        <select class="form-select" id="perusahaan" name="perusahaan">
+                            <option value="">Semua Perusahaan</option>
+                            <?php foreach ($daftar_perusahaan as $p): ?>
+                                <option value="<?= $p['id'] ?>" <?= (isset($_GET['perusahaan']) && $_GET['perusahaan'] == $p['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($p['nama']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                <?php endif; ?>
                 <div class="col-md-4 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-filter"></i> Filter
@@ -109,20 +149,26 @@ include '../templates/header.php';
 </div>
 
 <style>
-@media print {
-    .navbar, .btn, form {
-        display: none !important;
+    @media print {
+
+        .navbar,
+        .btn,
+        form {
+            display: none !important;
+        }
+
+        .card {
+            border: none !important;
+        }
+
+        .card-body {
+            padding: 0 !important;
+        }
+
+        @page {
+            size: landscape;
+        }
     }
-    .card {
-        border: none !important;
-    }
-    .card-body {
-        padding: 0 !important;
-    }
-    @page {
-        size: landscape;
-    }
-}
 </style>
 
 <?php

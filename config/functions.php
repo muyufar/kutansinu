@@ -200,7 +200,7 @@ function getDaftarAkun($db, $id_perusahaan = null)
 }
 
 // Mendapatkan neraca saldo
-function getNeracaSaldo($db, $tanggal_awal, $tanggal_akhir)
+function getNeracaSaldo($db, $tanggal_awal, $tanggal_akhir, $id_perusahaan)
 {
     $sql = "SELECT 
                 a.id,
@@ -211,11 +211,12 @@ function getNeracaSaldo($db, $tanggal_awal, $tanggal_akhir)
             FROM akun a
             LEFT JOIN transaksi t ON (a.id = t.id_akun_debit OR a.id = t.id_akun_kredit)
                 AND t.tanggal BETWEEN ? AND ?
+                AND t.id_perusahaan = ?
             GROUP BY a.id, a.kode_akun, a.nama_akun
             ORDER BY a.kode_akun ASC";
 
     $stmt = $db->prepare($sql);
-    $stmt->execute([$tanggal_awal, $tanggal_akhir]);
+    $stmt->execute([$tanggal_awal, $tanggal_akhir, $id_perusahaan]);
     return $stmt->fetchAll();
 }
 

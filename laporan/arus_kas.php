@@ -26,13 +26,40 @@ if (!$id_perusahaan) {
     exit();
 }
 
+// Cek role admin
+$is_admin = false;
+if (isset($_SESSION['user_id']) && isset($db)) {
+    $user_id = $_SESSION['user_id'];
+    $stmt = $db->prepare("SELECT default_company FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $user_data = $stmt->fetch();
+    $default_company_id = $user_data['default_company'];
+    if (checkUserRole($db, $user_id, $default_company_id, 'admin')) {
+        $is_admin = true;
+    }
+}
+
+// Ambil daftar perusahaan jika admin
+$daftar_perusahaan = [];
+if ($is_admin) {
+    $stmt = $db->prepare("SELECT p.id, p.nama FROM perusahaan p JOIN user_perusahaan up ON p.id = up.perusahaan_id WHERE up.user_id = ? AND up.role = 'admin'");
+    $stmt->execute([$_SESSION['user_id']]);
+    $daftar_perusahaan = $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Ambil filter perusahaan dari GET jika admin, jika tidak pakai default
+$filter_perusahaan = $id_perusahaan;
+if ($is_admin && isset($_GET['perusahaan']) && $_GET['perusahaan']) {
+    $filter_perusahaan = $_GET['perusahaan'];
+}
+
 // Query untuk mendapatkan saldo awal kas dengan filter perusahaan
 $sql_saldo_awal = "SELECT COALESCE(SUM(CASE WHEN jenis = 'pemasukan' THEN jumlah ELSE -jumlah END), 0) as saldo
 FROM transaksi
 WHERE tanggal < ? AND id_perusahaan = ?";
 
 $stmt_saldo_awal = $db->prepare($sql_saldo_awal);
-$stmt_saldo_awal->execute([$tanggal_awal, $id_perusahaan]);
+$stmt_saldo_awal->execute([$tanggal_awal, $filter_perusahaan]);
 $saldo_awal = $stmt_saldo_awal->fetch()['saldo'];
 
 // Query untuk aktivitas operasi dengan filter perusahaan
@@ -45,12 +72,13 @@ LEFT JOIN transaksi t ON a.id = t.id_akun_debit OR a.id = t.id_akun_kredit
     AND t.tanggal BETWEEN ? AND ?
     AND t.id_perusahaan = ?
 WHERE a.kategori IN ('pendapatan', 'beban')
+  AND a.id_perusahaan = ?
 GROUP BY a.id, a.kode_akun, a.nama_akun
 HAVING jumlah != 0
 ORDER BY a.kode_akun ASC";
 
 $stmt_operasi = $db->prepare($sql_operasi);
-$stmt_operasi->execute([$tanggal_awal, $tanggal_akhir, $id_perusahaan]);
+$stmt_operasi->execute([$tanggal_awal, $tanggal_akhir, $filter_perusahaan, $filter_perusahaan]);
 $data_operasi = $stmt_operasi->fetchAll();
 
 // Query untuk aktivitas investasi dengan filter perusahaan
@@ -63,12 +91,13 @@ LEFT JOIN transaksi t ON a.id = t.id_akun_debit OR a.id = t.id_akun_kredit
     AND t.tanggal BETWEEN ? AND ?
     AND t.id_perusahaan = ?
 WHERE a.kategori = 'investasi'
+  AND a.id_perusahaan = ?
 GROUP BY a.id, a.kode_akun, a.nama_akun
 HAVING jumlah != 0
 ORDER BY a.kode_akun ASC";
 
 $stmt_investasi = $db->prepare($sql_investasi);
-$stmt_investasi->execute([$tanggal_awal, $tanggal_akhir, $id_perusahaan]);
+$stmt_investasi->execute([$tanggal_awal, $tanggal_akhir, $filter_perusahaan, $filter_perusahaan]);
 $data_investasi = $stmt_investasi->fetchAll();
 
 // Query untuk aktivitas pendanaan dengan filter perusahaan
@@ -81,12 +110,13 @@ LEFT JOIN transaksi t ON a.id = t.id_akun_debit OR a.id = t.id_akun_kredit
     AND t.tanggal BETWEEN ? AND ?
     AND t.id_perusahaan = ?
 WHERE a.kategori = 'modal'
+  AND a.id_perusahaan = ?
 GROUP BY a.id, a.kode_akun, a.nama_akun
 HAVING jumlah != 0
 ORDER BY a.kode_akun ASC";
 
 $stmt_pendanaan = $db->prepare($sql_pendanaan);
-$stmt_pendanaan->execute([$tanggal_awal, $tanggal_akhir, $id_perusahaan]);
+$stmt_pendanaan->execute([$tanggal_awal, $tanggal_akhir, $filter_perusahaan, $filter_perusahaan]);
 $data_pendanaan = $stmt_pendanaan->fetchAll();
 
 // Hitung total untuk setiap aktivitas
@@ -135,6 +165,19 @@ require_once '../templates/header.php';
                     <label for="tanggal_akhir" class="form-label">Tanggal Akhir</label>
                     <input type="date" class="form-control" id="tanggal_akhir" name="tanggal_akhir" value="<?= $tanggal_akhir ?>">
                 </div>
+                <?php if ($is_admin): ?>
+                    <div class="col-md-4">
+                        <label for="perusahaan" class="form-label">Perusahaan</label>
+                        <select class="form-select" id="perusahaan" name="perusahaan">
+                            <option value="">Semua Perusahaan</option>
+                            <?php foreach ($daftar_perusahaan as $p): ?>
+                                <option value="<?= $p['id'] ?>" <?= (isset($_GET['perusahaan']) && $_GET['perusahaan'] == $p['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($p['nama']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                <?php endif; ?>
                 <div class="col-md-4 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary">Tampilkan</button>
                 </div>
