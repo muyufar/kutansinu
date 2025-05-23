@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($tanggal_berangkat)) {
 }
 
 // Header
-// include 'templates/header.php';
+include 'templates/header.php';
 ?>
 
 <div class="container mt-4">

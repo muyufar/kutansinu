@@ -100,12 +100,8 @@ function validateInput($data)
     return $data;
 }
 
-<<<<<<< HEAD
-function validateSaldo($id_akun, $jumlah, $jenis, $id_perusahaan = null) {
-=======
 function validateSaldo($id_akun, $jumlah, $jenis)
 {
->>>>>>> 4704b0c8e0aa96ed443004719da84a9e413cb4d6
     global $db;
     
     // Jika id_perusahaan tidak diberikan, coba ambil dari session
@@ -124,16 +120,6 @@ function validateSaldo($id_akun, $jumlah, $jenis)
     }
     
     $akun = $stmt->fetch();
-<<<<<<< HEAD
-    
-    // Jika akun tidak ditemukan, return false
-    if (!$akun) {
-        return false;
-    }
-    
-=======
-
->>>>>>> 4704b0c8e0aa96ed443004719da84a9e413cb4d6
     if ($jenis == 'pengeluaran' || $jenis == 'tarik_modal' || $jenis == 'transfer_uang' || $jenis == 'transfer_hutang') {
         if ($akun['saldo'] < $jumlah) {
             return false;

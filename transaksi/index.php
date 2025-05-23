@@ -91,21 +91,39 @@ $stmt = $db->prepare("SELECT * FROM akun WHERE id_perusahaan = ? ORDER BY kode_a
 $stmt->execute([$id_perusahaan]);
 $akun_list = $stmt->fetchAll();
 
-// Ambil id_perusahaan dari default_company pengguna
-$stmt_company = $db->prepare("SELECT default_company FROM users WHERE id = ?");
-$stmt_company->execute([$_SESSION['user_id']]);
-$user_data = $stmt_company->fetch();
-$id_perusahaan = $user_data['default_company'];
+// Pagination settings
+$items_per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 10;
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$page = max(1, $page); // Ensure page is at least 1
+$offset = ($page - 1) * $items_per_page;
+
+// Get total records for pagination
+$stmt_count = $db->prepare("SELECT COUNT(*) as total FROM transaksi WHERE id_perusahaan = ?");
+$stmt_count->execute([$id_perusahaan]);
+$total_records = $stmt_count->fetch()['total'];
+$total_pages = $items_per_page > 0 ? ceil($total_records / $items_per_page) : 1;
 
 // Ambil daftar transaksi dengan informasi akun debit dan kredit, hanya untuk perusahaan pengguna yang login
-$stmt = $db->prepare("SELECT t.*, 
-                    ad.kode_akun as kode_akun_debit, ad.nama_akun as nama_akun_debit,
-                    ak.kode_akun as kode_akun_kredit, ak.nama_akun as nama_akun_kredit
-                    FROM transaksi t 
-                    LEFT JOIN akun ad ON t.id_akun_debit = ad.id
-                    LEFT JOIN akun ak ON t.id_akun_kredit = ak.id
-                    WHERE t.id_perusahaan = ?
-                    ORDER BY t.tanggal DESC, t.id DESC");
+if ($items_per_page > 0) {
+    $stmt = $db->prepare("SELECT t.*, 
+                        ad.kode_akun as kode_akun_debit, ad.nama_akun as nama_akun_debit,
+                        ak.kode_akun as kode_akun_kredit, ak.nama_akun as nama_akun_kredit
+                        FROM transaksi t 
+                        LEFT JOIN akun ad ON t.id_akun_debit = ad.id
+                        LEFT JOIN akun ak ON t.id_akun_kredit = ak.id
+                        WHERE t.id_perusahaan = ?
+                        ORDER BY t.tanggal DESC, t.id DESC
+                        LIMIT " . (int)$items_per_page . " OFFSET " . (int)$offset);
+} else {
+    $stmt = $db->prepare("SELECT t.*, 
+                        ad.kode_akun as kode_akun_debit, ad.nama_akun as nama_akun_debit,
+                        ak.kode_akun as kode_akun_kredit, ak.nama_akun as nama_akun_kredit
+                        FROM transaksi t 
+                        LEFT JOIN akun ad ON t.id_akun_debit = ad.id
+                        LEFT JOIN akun ak ON t.id_akun_kredit = ak.id
+                        WHERE t.id_perusahaan = ?
+                        ORDER BY t.tanggal DESC, t.id DESC");
+}
 $stmt->execute([$id_perusahaan]);
 $transaksi_list = $stmt->fetchAll();
 
@@ -113,12 +131,14 @@ $transaksi_list = $stmt->fetchAll();
 include '../templates/header.php';
 ?>
 
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Daftar Transaksi Terbaru</h2>
-        <a href="tambah.php" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Tambah Transaksi
-        </a>
+<div class="container mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5>Daftar Transaksi</h5>
+        <div class="d-flex gap-1">
+            <a href="tambah.php" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Tambah Transaksi
+            </a>
+        </div>
     </div>
 
     <?php if (isset($_SESSION['success'])): ?>
@@ -219,6 +239,43 @@ include '../templates/header.php';
                     </tbody>
                 </table>
             </div>
+
+            <!-- Pagination -->
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center align-items-center">
+                    <!-- Items per page selector -->
+                    <li class="page-item">
+                        <select class="form-select form-select-sm" id="perPageSelect" onchange="changePerPage(this.value)">
+                            <option value="10" <?php echo $items_per_page == 10 ? 'selected' : ''; ?>>10 per halaman</option>
+                            <option value="20" <?php echo $items_per_page == 20 ? 'selected' : ''; ?>>20 per halaman</option>
+                            <option value="50" <?php echo $items_per_page == 50 ? 'selected' : ''; ?>>50 per halaman</option>
+                            <option value="0" <?php echo $items_per_page == 0 ? 'selected' : ''; ?>>Semua</option>
+                        </select>
+                    </li>
+
+                    <?php if ($items_per_page > 0 && $total_pages > 1): ?>
+                        <li class="page-item <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
+                            <a class="page-link" href="?page=<?php echo $page - 1; ?>&per_page=<?php echo $items_per_page; ?>" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+
+                        <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                            <li class="page-item <?php echo ($page == $i) ? 'active' : ''; ?>">
+                                <a class="page-link" href="?page=<?php echo $i; ?>&per_page=<?php echo $items_per_page; ?>">
+                                    <?php echo $i; ?>
+                                </a>
+                            </li>
+                        <?php endfor; ?>
+
+                        <li class="page-item <?php echo ($page >= $total_pages) ? 'disabled' : ''; ?>">
+                            <a class="page-link" href="?page=<?php echo $page + 1; ?>&per_page=<?php echo $items_per_page; ?>" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
+                </ul>
+            </nav>
         </div>
     </div>
 </div>
@@ -418,6 +475,13 @@ include '../templates/header.php';
                 fileInput.placeholder = 'Tidak ada file lama';
             }
         });
+    </script>
+
+    <script>
+        // Function to change items per page
+        function changePerPage(value) {
+            window.location.href = '?page=1&per_page=' + value;
+        }
     </script>
 
     <?php

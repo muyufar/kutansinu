@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $nama_akun = validateInput($_POST['nama_akun']);
     $kategori = validateInput($_POST['kategori']);
     $deskripsi = validateInput($_POST['deskripsi']);
-    
+
     // Mendapatkan id_perusahaan dari user yang sedang login
     $id_perusahaan = $_SESSION['default_company'] ?? null;
     if (!$id_perusahaan) {
@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $nama_akun = validateInput($_POST['nama_akun']);
     $kategori = validateInput($_POST['kategori']);
     $deskripsi = validateInput($_POST['deskripsi']);
-    
+
     // Mendapatkan id_perusahaan dari user yang sedang login
     $id_perusahaan = $_SESSION['default_company'] ?? null;
     if (!$id_perusahaan) {
@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
             header('Location: index.php');
             exit();
         }
-        
+
         $stmt = $db->prepare("UPDATE akun SET kode_akun = ?, nama_akun = ?, kategori = ?, deskripsi = ? WHERE id = ? AND id_perusahaan = ?");
         $stmt->execute([$kode_akun, $nama_akun, $kategori, $deskripsi, $id, $id_perusahaan]);
         $_SESSION['success'] = 'Akun berhasil diperbarui';
@@ -77,7 +77,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'hapus' && isset($_GET['id'])) 
         header('Location: index.php');
         exit();
     }
-    
+
     try {
         // Pastikan akun yang dihapus adalah milik perusahaan yang aktif
         $check = $db->prepare("SELECT id FROM akun WHERE id = ? AND id_perusahaan = ?");
@@ -87,7 +87,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'hapus' && isset($_GET['id'])) 
             header('Location: index.php');
             exit();
         }
-        
+
         $stmt = $db->prepare("DELETE FROM akun WHERE id = ? AND id_perusahaan = ?");
         $stmt->execute([$_GET['id'], $id_perusahaan]);
         $_SESSION['success'] = 'Akun berhasil dihapus';
@@ -98,19 +98,6 @@ if (isset($_GET['action']) && $_GET['action'] == 'hapus' && isset($_GET['id'])) 
     exit();
 }
 
-<<<<<<< HEAD
-// Ambil daftar akun berdasarkan perusahaan yang aktif
-$id_perusahaan = $_SESSION['default_company'] ?? null;
-if ($id_perusahaan) {
-    $stmt = $db->prepare("SELECT * FROM akun WHERE id_perusahaan = ? ORDER BY kode_akun ASC");
-    $stmt->execute([$id_perusahaan]);
-    $akun_list = $stmt->fetchAll();
-} else {
-    // Jika tidak ada perusahaan aktif, tampilkan pesan peringatan
-    $_SESSION['warning'] = 'Anda belum memilih perusahaan aktif. Silakan pilih perusahaan terlebih dahulu untuk melihat daftar akun.';
-    $akun_list = [];
-}
-=======
 
 // Ambil id_perusahaan dari default_company pengguna
 $stmt_company = $db->prepare("SELECT default_company FROM users WHERE id = ?");
@@ -118,29 +105,65 @@ $stmt_company->execute([$_SESSION['user_id']]);
 $user_data = $stmt_company->fetch();
 $id_perusahaan = $user_data['default_company'];
 
+// Pagination settings
+$items_per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 10;
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$page = max(1, $page); // Ensure page is at least 1
+$offset = ($page - 1) * $items_per_page;
 
-// Ambil daftar akun
-$stmt = $db->prepare("SELECT * FROM akun WHERE id_perusahaan = ? ORDER BY kode_akun ASC");
-$stmt->execute([$id_perusahaan]);
+// Search and filter parameters
+$search = isset($_GET['search']) ? validateInput($_GET['search']) : '';
+$kategori = isset($_GET['kategori']) ? validateInput($_GET['kategori']) : '';
+
+// Build WHERE clause for search and filter
+$where_clause = "WHERE id_perusahaan = ?";
+$params = [$id_perusahaan];
+
+if (!empty($search)) {
+    $where_clause .= " AND (kode_akun LIKE ? OR nama_akun LIKE ?)";
+    $params[] = "%$search%";
+    $params[] = "%$search%";
+}
+
+if (!empty($kategori)) {
+    $where_clause .= " AND kategori = ?";
+    $params[] = $kategori;
+}
+
+// Get total records for pagination
+$stmt_count = $db->prepare("SELECT COUNT(*) as total FROM akun " . $where_clause);
+$stmt_count->execute($params);
+$total_records = $stmt_count->fetch()['total'];
+$total_pages = $items_per_page > 0 ? ceil($total_records / $items_per_page) : 1;
+
+// Ambil daftar akun dengan pagination
+if ($items_per_page > 0) {
+    $stmt = $db->prepare("SELECT * FROM akun " . $where_clause . " ORDER BY kode_akun ASC LIMIT " . (int)$items_per_page . " OFFSET " . (int)$offset);
+} else {
+    $stmt = $db->prepare("SELECT * FROM akun " . $where_clause . " ORDER BY kode_akun ASC");
+}
+$stmt->execute($params);
 $akun_list = $stmt->fetchAll();
->>>>>>> 4a5be2d3ec4b47094833edeceee046524369ac2e
 
 // Header
 include '../templates/header.php';
 ?>
 
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Daftar Akun</h2>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalTambahAkun">
-            <i class="fas fa-plus"></i> Tambah Akun
-        </button>
+<div class="container mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5>Daftar Akun</h5>
+        <div class="d-flex gap-1">
+
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalTambahAkun">
+                <i class="fas fa-plus"></i> Tambah Akun
+            </button>
+        </div>
     </div>
 
     <?php if (isset($_SESSION['success'])): ?>
         <div class="alert alert-success">
-            <?php 
-            echo $_SESSION['success']; 
+            <?php
+            echo $_SESSION['success'];
             unset($_SESSION['success']);
             ?>
         </div>
@@ -148,12 +171,41 @@ include '../templates/header.php';
 
     <?php if (isset($_SESSION['error'])): ?>
         <div class="alert alert-danger">
-            <?php 
-            echo $_SESSION['error']; 
+            <?php
+            echo $_SESSION['error'];
             unset($_SESSION['error']);
             ?>
         </div>
     <?php endif; ?>
+
+    <!-- Search and Filter Form -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="search" placeholder="Cari kode atau nama akun..." value="<?php echo htmlspecialchars($search); ?>">
+                        <button class="btn btn-outline-secondary" type="submit">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="kategori" onchange="this.form.submit()">
+                        <option value="">Semua Kategori</option>
+                        <option value="aktiva" <?php echo $kategori == 'aktiva' ? 'selected' : ''; ?>>Aktiva</option>
+                        <option value="pasiva" <?php echo $kategori == 'pasiva' ? 'selected' : ''; ?>>Pasiva</option>
+                        <option value="modal" <?php echo $kategori == 'modal' ? 'selected' : ''; ?>>Modal</option>
+                        <option value="pendapatan" <?php echo $kategori == 'pendapatan' ? 'selected' : ''; ?>>Pendapatan</option>
+                        <option value="beban" <?php echo $kategori == 'beban' ? 'selected' : ''; ?>>Beban</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <a href="index.php" class="btn btn-secondary w-100">Reset</a>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <div class="card">
         <div class="card-body">
@@ -175,22 +227,22 @@ include '../templates/header.php';
                                 <td><?php echo htmlspecialchars($akun['kode_akun']); ?></td>
                                 <td><?php echo htmlspecialchars($akun['nama_akun']); ?></td>
                                 <td><?php echo htmlspecialchars(ucfirst($akun['kategori'])); ?></td>
-                                <td><?php echo htmlspecialchars(ucfirst($akun['sub_kategori']));?></td>
+                                <td><?php echo htmlspecialchars(ucfirst($akun['sub_kategori'])); ?></td>
                                 <td><?php echo htmlspecialchars($akun['deskripsi']); ?></td>
                                 <td>
-                                    <button type="button" class="btn btn-sm btn-info" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#modalEditAkun"
-                                            data-id="<?php echo $akun['id']; ?>"
-                                            data-kode="<?php echo htmlspecialchars($akun['kode_akun']); ?>"
-                                            data-nama="<?php echo htmlspecialchars($akun['nama_akun']); ?>"
-                                            data-kategori="<?php echo htmlspecialchars($akun['kategori']); ?>"
-                                            data-deskripsi="<?php echo htmlspecialchars($akun['deskripsi']); ?>">
+                                    <button type="button" class="btn btn-sm btn-info"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalEditAkun"
+                                        data-id="<?php echo $akun['id']; ?>"
+                                        data-kode="<?php echo htmlspecialchars($akun['kode_akun']); ?>"
+                                        data-nama="<?php echo htmlspecialchars($akun['nama_akun']); ?>"
+                                        data-kategori="<?php echo htmlspecialchars($akun['kategori']); ?>"
+                                        data-deskripsi="<?php echo htmlspecialchars($akun['deskripsi']); ?>">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <a href="?action=hapus&id=<?php echo $akun['id']; ?>" 
-                                       class="btn btn-sm btn-danger"
-                                       onclick="return confirm('Apakah Anda yakin ingin menghapus akun ini?')">
+                                    <a href="?action=hapus&id=<?php echo $akun['id']; ?>"
+                                        class="btn btn-sm btn-danger"
+                                        onclick="return confirm('Apakah Anda yakin ingin menghapus akun ini?')">
                                         <i class="fas fa-trash"></i>
                                     </a>
                                 </td>
@@ -199,6 +251,43 @@ include '../templates/header.php';
                     </tbody>
                 </table>
             </div>
+
+            <!-- Pagination -->
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center align-items-center">
+                    <!-- Items per page selector -->
+                    <li class="page-item">
+                        <select class="form-select form-select-sm" id="perPageSelect" onchange="changePerPage(this.value)">
+                            <option value="10" <?php echo $items_per_page == 10 ? 'selected' : ''; ?>>10 per halaman</option>
+                            <option value="20" <?php echo $items_per_page == 20 ? 'selected' : ''; ?>>20 per halaman</option>
+                            <option value="50" <?php echo $items_per_page == 50 ? 'selected' : ''; ?>>50 per halaman</option>
+                            <option value="0" <?php echo $items_per_page == 0 ? 'selected' : ''; ?>>Semua</option>
+                        </select>
+                    </li>
+
+                    <?php if ($items_per_page > 0 && $total_pages > 1): ?>
+                        <li class="page-item <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
+                            <a class="page-link" href="?page=<?php echo $page - 1; ?>&per_page=<?php echo $items_per_page; ?>&search=<?php echo urlencode($search); ?>&kategori=<?php echo urlencode($kategori); ?>" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+
+                        <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                            <li class="page-item <?php echo ($page == $i) ? 'active' : ''; ?>">
+                                <a class="page-link" href="?page=<?php echo $i; ?>&per_page=<?php echo $items_per_page; ?>&search=<?php echo urlencode($search); ?>&kategori=<?php echo urlencode($kategori); ?>">
+                                    <?php echo $i; ?>
+                                </a>
+                            </li>
+                        <?php endfor; ?>
+
+                        <li class="page-item <?php echo ($page >= $total_pages) ? 'disabled' : ''; ?>">
+                            <a class="page-link" href="?page=<?php echo $page + 1; ?>&per_page=<?php echo $items_per_page; ?>&search=<?php echo urlencode($search); ?>&kategori=<?php echo urlencode($kategori); ?>" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
+                </ul>
+            </nav>
         </div>
     </div>
 </div>
@@ -291,22 +380,30 @@ include '../templates/header.php';
 </div>
 
 <script>
-// Script untuk mengisi modal edit
-document.getElementById('modalEditAkun').addEventListener('show.bs.modal', function (event) {
-    var button = event.relatedTarget;
-    var id = button.getAttribute('data-id');
-    var kode = button.getAttribute('data-kode');
-    var nama = button.getAttribute('data-nama');
-    var kategori = button.getAttribute('data-kategori');
-    var deskripsi = button.getAttribute('data-deskripsi');
+    // Script untuk mengisi modal edit
+    document.getElementById('modalEditAkun').addEventListener('show.bs.modal', function(event) {
+        var button = event.relatedTarget;
+        var id = button.getAttribute('data-id');
+        var kode = button.getAttribute('data-kode');
+        var nama = button.getAttribute('data-nama');
+        var kategori = button.getAttribute('data-kategori');
+        var deskripsi = button.getAttribute('data-deskripsi');
 
-    var modal = this;
-    modal.querySelector('#edit_id').value = id;
-    modal.querySelector('#edit_kode_akun').value = kode;
-    modal.querySelector('#edit_nama_akun').value = nama;
-    modal.querySelector('#edit_kategori').value = kategori;
-    modal.querySelector('#edit_deskripsi').value = deskripsi;
-});
+        var modal = this;
+        modal.querySelector('#edit_id').value = id;
+        modal.querySelector('#edit_kode_akun').value = kode;
+        modal.querySelector('#edit_nama_akun').value = nama;
+        modal.querySelector('#edit_kategori').value = kategori;
+        modal.querySelector('#edit_deskripsi').value = deskripsi;
+    });
+
+    // Function to change items per page
+    function changePerPage(value) {
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set('per_page', value);
+        urlParams.set('page', '1');
+        window.location.href = '?' + urlParams.toString();
+    }
 </script>
 
 <?php
