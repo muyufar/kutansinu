@@ -547,6 +547,102 @@
     color: #cbd5e1;
 }
 
+[data-theme="dark"] .expense-distribution-card .expense-top-badge {
+    background: rgba(248, 113, 113, 0.15);
+    color: #fca5a5;
+}
+
+[data-theme="dark"] .expense-chart-center-label {
+    color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .expense-chart-center-value {
+    color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .expense-breakdown-name {
+    color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .expense-breakdown-pct {
+    color: #6ee7b7 !important;
+}
+
+[data-theme="dark"] .expense-breakdown-amount {
+    color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .expense-breakdown-bar-track {
+    background: rgba(148, 163, 184, 0.15);
+}
+
+[data-theme="dark"] .expense-breakdown-item.is-active,
+[data-theme="dark"] .expense-breakdown-item:hover {
+    background: rgba(16, 185, 129, 0.12);
+}
+
+[data-theme="dark"] .dashboard-hero {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, #0f1623 55%, #0f1623 100%) !important;
+    border-color: #334155 !important;
+}
+
+[data-theme="dark"] .dashboard-hero-title {
+    color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .dashboard-hero-eyebrow {
+    color: #6ee7b7 !important;
+}
+
+[data-theme="dark"] .dashboard-kpi-card,
+[data-theme="dark"] .dashboard-panel,
+[data-theme="dark"] .dashboard-company-card {
+    background: #0f1623 !important;
+    border-color: #334155 !important;
+}
+
+[data-theme="dark"] .dashboard-kpi-chip {
+    background: #1a2438;
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .dashboard-stat-pill.in {
+    background: rgba(16, 185, 129, 0.15);
+    color: #6ee7b7;
+}
+
+[data-theme="dark"] .dashboard-stat-pill.out {
+    background: rgba(248, 113, 113, 0.12);
+    color: #fca5a5;
+}
+
+[data-theme="dark"] .dashboard-quick-link {
+    border-color: #334155;
+}
+
+[data-theme="dark"] .dashboard-quick-link:hover {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.25);
+}
+
+[data-theme="dark"] .dashboard-quick-link strong {
+    color: #f1f5f9;
+}
+
+[data-theme="dark"] .dashboard-tx-badge.income {
+    background: rgba(16, 185, 129, 0.18);
+    color: #6ee7b7;
+}
+
+[data-theme="dark"] .dashboard-tx-badge.expense {
+    background: rgba(248, 113, 113, 0.15);
+    color: #fca5a5;
+}
+
+[data-theme="dark"] .dashboard-chart-foot {
+    border-color: #334155;
+}
+
 /* Scrollbar dark */
 [data-theme="dark"] ::-webkit-scrollbar {
     width: 10px;
