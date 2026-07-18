@@ -5,7 +5,7 @@ require_once '../config/functions.php';
 
 // Pastikan user sudah login
 if (!isset($_SESSION['user_id'])) {
-    header('Location: /kutansinu/login.php');
+    header('Location: /login.php');
     exit();
 }
 
@@ -32,7 +32,7 @@ $sql_pendapatan = "SELECT
     a.nama_akun,
     COALESCE(SUM(CASE WHEN t.jenis = 'pemasukan' THEN t.jumlah ELSE -t.jumlah END), 0) as jumlah
 FROM akun a
-LEFT JOIN transaksi t ON (a.id = t.id_akun_debit OR a.id = t.id_akun_kredit)
+LEFT JOIN transaksi t ON (a.id = t.id_akun_kredit OR a.id = t.id_akun_debit)
     AND t.tanggal BETWEEN ? AND ?
     AND t.id_perusahaan = ?
 WHERE a.kategori = 'pendapatan'

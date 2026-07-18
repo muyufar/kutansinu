@@ -106,9 +106,9 @@ include '../templates/header.php';
                                         <th>Tanggal</th>
                                         <th>Waktu</th>
                                         <th>Rute</th>
-                                        <th>Durasi</th>
+                                        <!-- <th>Durasi</th> -->
                                         <th>Harga</th>
-                                        <th>Aksi</th>
+                                        <!-- <th>Aksi</th> -->
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -117,9 +117,9 @@ include '../templates/header.php';
                                             <td><?php echo date('d M Y', strtotime($jadwal['tanggal_berangkat'])); ?></td>
                                             <td><?php echo date('H:i', strtotime($jadwal['waktu_berangkat'])); ?></td>
                                             <td><?php echo htmlspecialchars($jadwal['kota_asal'] . ' - ' . $jadwal['kota_tujuan']); ?></td>
-                                            <td><?php echo formatDurasi($jadwal['estimasi_durasi']); ?></td>
-                                            <td><?php echo formatRupiah($jadwal['harga']); ?></td>
-                                            <td>
+                                            <!-- <td><?php echo formatDurasi($jadwal['estimasi_durasi']); ?></td> -->
+                                            <td><?php echo formatRupiah($jadwal['total_harga']); ?></td>
+                                            <!-- <td>
                                                 <?php if ($jadwal['status'] == 'penuh'): ?>
                                                     <span class="badge bg-danger">Tidak Tersedia</span>
                                                 <?php else: ?>
@@ -127,7 +127,7 @@ include '../templates/header.php';
                                                         <i class="fas fa-ticket-alt"></i> Pesan
                                                     </a>
                                                 <?php endif; ?>
-                                            </td>
+                                            </td> -->
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>

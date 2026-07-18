@@ -1,6 +1,6 @@
 <?php
 $host = 'localhost';
-$dbname = 'kutansinu_db';
+$dbname = 'u700125577_keuangan';
 $username = 'root';
 $password = '';
 // Koneksi ke database

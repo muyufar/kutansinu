@@ -16,7 +16,7 @@ $default_company_id = $user_data['default_company'];
 // Verifikasi role user
 if (!checkUserRole($db, $user_id, $default_company_id, 'admin')) {
     $_SESSION['error'] = 'Anda tidak memiliki hak akses untuk halaman ini. Hanya Admin yang dapat mengakses fitur reset data.';
-    header('Location: /kutansinu/index.php');
+    header('Location: /index.php');
     exit();
 }
 

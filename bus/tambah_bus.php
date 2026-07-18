@@ -10,14 +10,14 @@ requireLogin();
 $user_id = $_SESSION['user_id'];
 $stmt_nugrosir = $db->prepare("SELECT 1 FROM user_perusahaan up
                     JOIN perusahaan p ON up.perusahaan_id = p.id
-                    WHERE up.user_id = ? AND UPPER(p.nama) = 'NUGROSIR' AND up.status = 'active'");
+                    WHERE up.user_id = ? AND UPPER(p.nama) = 'NUGO' AND up.status = 'active'");
 $stmt_nugrosir->execute([$user_id]);
 $is_nugrosir = $stmt_nugrosir->fetch() ? true : false;
 
 // Verifikasi role user (hanya untuk nugrosir)
 if (!$is_nugrosir) {
     $_SESSION['error'] = 'Anda tidak memiliki hak akses untuk halaman ini. Hanya perusahaan NUGROSIR yang dapat mengakses fitur pemesanan bus.';
-    header('Location: /kutansinu/index.php');
+    header('Location: /index.php');
     exit();
 }
 

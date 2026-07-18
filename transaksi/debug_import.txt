@@ -1,0 +1,8 @@
+Array
+(
+    [0] => 03/01/2025;516;578;Transfer Dari Rochmad via BRImo;pemasukan;KUSNAN ZAINAL MUSTOFA;nulled;92400000
+)
+Array
+(
+    [0] => 03/01/2025;516;578;Transfer Dari Rochmad via BRImo;pemasukan;KUSNAN ZAINAL MUSTOFA;nulled;92400000
+)

@@ -34,6 +34,15 @@ $stmt = $db->prepare("SELECT * FROM perusahaan WHERE id = ?");
 $stmt->execute([$perusahaan_id]);
 $perusahaan = $stmt->fetch(PDO::FETCH_ASSOC);
 
+// if ($perusahaan) {
+//     echo "<pre>Query OK, data diterima:</pre>";
+// } else {
+//     echo "<pre>Data tidak ditemukan!</pre>";
+//     exit;
+// }
+// echo "<pre>";
+// print_r($perusahaan);
+// echo "</pre>";
 // Debug: Cek apakah data perusahaan berhasil diambil
 if (!$perusahaan) {
     $_SESSION['error'] = 'Perusahaan tidak ditemukan';
@@ -44,12 +53,12 @@ if (!$perusahaan) {
 // Proses update perusahaan
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_perusahaan'])) {
     $nama = validateInput($_POST['nama']);
-    $alamat = validateInput($_POST['alamat'] ?? '');
-    $telepon = validateInput($_POST['telepon'] ?? '');
-    $email = validateInput($_POST['email'] ?? '');
+    $alamat = validateInput($_POST['alamat']);
+    $telepon = validateInput($_POST['telepon']);
+    $email = validateInput($_POST['email']);
     $website = validateInput($_POST['website'] ?? '');
     $jenis = validateInput($_POST['jenis'] ?? 'regular');
-    
+
     // Upload logo jika ada
     $logo = isset($perusahaan['logo']) ? $perusahaan['logo'] : null;
     if (isset($_FILES['logo']) && $_FILES['logo']['error'] == 0) {
@@ -57,26 +66,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_perusahaan'])) 
         if (!file_exists($upload_dir)) {
             mkdir($upload_dir, 0777, true);
         }
-        
+
         $file_name = time() . '_' . basename($_FILES['logo']['name']);
         $target_file = $upload_dir . $file_name;
-        
+
         if (move_uploaded_file($_FILES['logo']['tmp_name'], $target_file)) {
             $logo = 'uploads/perusahaan/' . $file_name;
-            
+
             // Hapus logo lama jika ada
             if (isset($perusahaan['logo']) && $perusahaan['logo'] && file_exists('../' . $perusahaan['logo'])) {
                 unlink('../' . $perusahaan['logo']);
             }
         }
     }
-    
+
     try {
         $stmt = $db->prepare("UPDATE perusahaan SET nama = ?, alamat = ?, telepon = ?, email = ?, website = ?, logo = ?, jenis = ? WHERE id = ?");
         $stmt->execute([$nama, $alamat, $telepon, $email, $website, $logo, $jenis, $perusahaan_id]);
-        
+
         $_SESSION['success'] = 'Perusahaan berhasil diperbarui';
-        header('Location: perusahaan.php');
+        header('Location: perusahaan_edit.php?id=' . $perusahaan_id);
         exit();
     } catch (PDOException $e) {
         $_SESSION['error'] = 'Gagal memperbarui perusahaan: ' . $e->getMessage();
@@ -128,7 +137,7 @@ include '../templates/header.php';
                 </div>
                 <?php unset($_SESSION['success']); ?>
             <?php endif; ?>
-            
+
             <?php if (isset($_SESSION['error'])): ?>
                 <div class="alert alert-danger alert-dismissible fade show" role="alert">
                     <?= $_SESSION['error'] ?>
@@ -136,7 +145,7 @@ include '../templates/header.php';
                 </div>
                 <?php unset($_SESSION['error']); ?>
             <?php endif; ?>
-            
+
             <!-- Edit Perusahaan -->
             <div class="card">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
@@ -161,38 +170,41 @@ include '../templates/header.php';
 
                         <div class="mb-3">
                             <label for="nama" class="form-label">Nama Perusahaan <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="nama" name="nama" value="<?= htmlspecialchars(isset($perusahaan['nama']) ? $perusahaan['nama'] : '') ?>" required>
+                            <input type="text" class="form-control" id="nama" name="nama" value="<?= htmlspecialchars($perusahaan['nama'] ?? '') ?>" required>
                         </div>
-                        
+
                         <div class="mb-3">
                             <label for="alamat" class="form-label">Alamat</label>
                             <textarea class="form-control" id="alamat" name="alamat" rows="2"><?= htmlspecialchars($perusahaan['alamat'] ?? '') ?></textarea>
                         </div>
-                        
+
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="telepon" class="form-label">Telepon</label>
                                 <input type="text" class="form-control" id="telepon" name="telepon" value="<?= htmlspecialchars($perusahaan['telepon'] ?? '') ?>">
+                                <!-- Debug -->
+                                <!-- Nilai telepon: <?= $perusahaan['alamat'] ?? 'kosong' ?> -->
+
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="email" class="form-label">Email</label>
                                 <input type="email" class="form-control" id="email" name="email" value="<?= htmlspecialchars($perusahaan['email'] ?? '') ?>">
                             </div>
                         </div>
-                        
+
                         <div class="mb-3">
                             <label for="website" class="form-label">Website</label>
                             <input type="url" class="form-control" id="website" name="website" placeholder="https://" value="<?= htmlspecialchars($perusahaan['website'] ?? '') ?>">
                         </div>
-                        
+
                         <div class="mb-3">
                             <label for="jenis" class="form-label">Jenis Akun</label>
                             <select class="form-select" id="jenis" name="jenis">
-                                <option value="regular" <?= (isset($perusahaan['jenis']) && $perusahaan['jenis'] == 'regular') ? 'selected' : '' ?>>Regular</option>
-                                <option value="premium" <?= (isset($perusahaan['jenis']) && $perusahaan['jenis'] == 'premium') ? 'selected' : '' ?>>Premium</option>
+                                <option value="regular" <?= ($perusahaan['jenis'] ?? '') == 'regular' ? 'selected' : '' ?>>Regular</option>
+                                <option value="premium" <?= ($perusahaan['jenis'] ?? '') == 'premium' ? 'selected' : '' ?>>Premium</option>
                             </select>
                         </div>
-                        
+
                         <button type="submit" name="update_perusahaan" class="btn btn-primary">Simpan Perubahan</button>
                     </form>
                 </div>

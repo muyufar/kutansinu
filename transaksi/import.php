@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         // Skip baris header
-        array_shift($rows);
+       $header = array_shift($rows);
 
         // Mulai transaksi database
         $db->beginTransaction();
@@ -40,18 +40,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             throw new Exception('Anda belum memiliki perusahaan default. Silakan tambahkan perusahaan terlebih dahulu.');
         }
 
-        $stmt = $db->prepare("INSERT INTO transaksi (tanggal, id_akun_debit, id_akun_kredit, keterangan, jenis, jumlah, created_by, id_perusahaan) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $db->prepare("INSERT INTO transaksi (tanggal, id_akun_debit, id_akun_kredit, keterangan, jenis, penanggung_jawab, tag, jumlah, created_by, id_perusahaan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         foreach ($rows as $row) {
             if (empty($row[0])) continue; // Skip baris kosong
 
             // Validasi dan format data
-            $tanggal = date('Y-m-d', strtotime($row[0]));
+            $tanggal_raw = str_replace('/', '-', $row[0]);
+            $tanggal = date('Y-m-d', strtotime($tanggal_raw));
             $id_akun_debit = validateInput($row[1]);
             $id_akun_kredit = validateInput($row[2]);
             $keterangan = validateInput($row[3]);
-            $jenis = strtolower(validateInput($row[4]));
-            $jumlah = floatval(str_replace([',', '.'], '.', $row[5]));
+            $jenis = strtolower(trim(validateInput($row[4])));
+            $penanggung_jawab = validateInput($row[5]);
+            $tag = validateInput($row[6]);
+            $jumlah = floatval(str_replace([',', '.'], '.', $row[7]));
 
             // Validasi jenis transaksi
             if (!in_array($jenis, ['pemasukan', 'pengeluaran', 'hutang', 'piutang', 'tanam_modal', 'tarik_modal', 'transfer_uang', 'pemasukan_piutang', 'transfer_hutang'])) {
@@ -79,6 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $id_akun_kredit,
                 $keterangan,
                 $jenis,
+                $penanggung_jawab,
+                $tag,
                 $jumlah,
                 $_SESSION['user_id'],
                 $id_perusahaan
@@ -93,7 +98,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $db->rollBack();
         }
         $_SESSION['error'] = 'Gagal import data: ' . $e->getMessage();
+        
     }
+    file_put_contents('debug_import.txt', print_r($row, true), FILE_APPEND);
+
 }
 
 header('Location: tambah.php');

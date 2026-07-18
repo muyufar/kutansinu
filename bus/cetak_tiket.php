@@ -23,7 +23,7 @@ $pemesanan_id = (int)$_GET['id'];
 
 // Ambil data pemesanan
 $stmt = $db->prepare("
-    SELECT pb.*, b.nama_bus, b.nomor_polisi, b.kapasitas, b.fasilitas, u.nama_lengkap as nama_pemesan
+    SELECT pb.*, b.nama_bus, b.nomor_polisi, b.kapasitas, b.fasilitas, u.nama_lengkap as nama_admin
     FROM pemesanan_bus pb
     JOIN bus b ON pb.id_bus = b.id
     JOIN users u ON pb.id_user = u.id
@@ -155,10 +155,11 @@ $kode_tiket = 'BUS' . str_pad($pemesanan['id'], 5, '0', STR_PAD_LEFT);
                 
                 <div class="ticket-info">
                     <h5>Informasi Pemesan</h5>
-                    <p><strong>Nama Pemesan:</strong> <?php echo htmlspecialchars($pemesanan['nama_pemesan']); ?></p>
+                    <p><strong>CS Pemesan:</strong> <?php echo htmlspecialchars($pemesanan['nama_admin']); ?></p>
                     <p><strong>ID Pemesanan:</strong> #<?php echo $pemesanan['id']; ?></p>
                     <p><strong>Tanggal Pemesanan:</strong> <?php echo date('d/m/Y H:i', strtotime($pemesanan['tanggal_pemesanan'])); ?></p>
                     <p><strong>Total Harga:</strong> <?php echo formatRupiah($pemesanan['total_harga']); ?></p>
+                    <p><strong>Nama Pemesan:</strong> <?php echo htmlspecialchars($pemesanan['nama_pemesan']); ?></p>
                 </div>
                 
                 <div class="ticket-qr">
@@ -169,7 +170,7 @@ $kode_tiket = 'BUS' . str_pad($pemesanan['id'], 5, '0', STR_PAD_LEFT);
             
             <div class="ticket-footer">
                 <p class="mb-0">Tiket ini adalah bukti sah perjalanan. Harap tiba 30 menit sebelum keberangkatan.</p>
-                <p class="mb-0">Untuk informasi lebih lanjut, hubungi (021) 1234567</p>
+                <p class="mb-0">Untuk informasi lebih lanjut, hubungi +6281320221926</p>
             </div>
         </div>
     </div>

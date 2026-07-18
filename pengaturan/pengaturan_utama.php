@@ -17,7 +17,7 @@ $default_company_id = $user_data['default_company'];
 if ($default_company_id) {
     if (!checkUserRole($db, $user_id, $default_company_id, 'editor')) {
         $_SESSION['error'] = 'Anda tidak memiliki hak akses untuk mengubah pengaturan utama. Hanya Admin dan Editor yang dapat mengakses fitur ini.';
-        header('Location: /kutansinu/index.php');
+        header('Location: /index.php');
         exit();
     }
 }

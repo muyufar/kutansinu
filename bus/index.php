@@ -87,7 +87,7 @@ include '../templates/header.php';
                 <i class="fas fa-plus"></i> Tambah Bus
             </button>
             <button type="button" class="btn btn-info me-2" data-bs-toggle="modal" data-bs-target="#jadwalBusModal">
-                <i class="fas fa-calendar-alt"></i> Tambah Jadwal Bus
+                <i class="fas fa-calendar-alt"></i> Lihat Jadwal Bus
             </button>
             <a href="verifikasi_pesanan.php" class="btn btn-warning me-2">
                 <i class="fas fa-check-circle"></i> Verifikasi Pesanan
@@ -271,62 +271,62 @@ include '../templates/header.php';
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">Rekomendasi Perjalanan</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <div class="card h-100">
-                                <div class="card-body">
-                                    <h5 class="card-title">Paket Wisata Keluarga</h5>
-                                    <p class="card-text">Nikmati perjalanan wisata bersama keluarga dengan bus nyaman dan fasilitas lengkap.</p>
-                                    <ul class="list-group list-group-flush mb-3">
-                                        <li class="list-group-item">Durasi: 3 hari</li>
-                                        <li class="list-group-item">Kapasitas: 30 orang</li>
-                                        <li class="list-group-item">Termasuk makan 3x sehari</li>
-                                    </ul>
-                                    <a href="pesan_paket.php?tipe=keluarga" class="btn btn-success w-100">Lihat Detail</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <div class="card h-100">
-                                <div class="card-body">
-                                    <h5 class="card-title">Paket Study Tour</h5>
-                                    <p class="card-text">Ideal untuk sekolah atau kampus yang ingin mengadakan study tour dengan harga terjangkau.</p>
-                                    <ul class="list-group list-group-flush mb-3">
-                                        <li class="list-group-item">Durasi: 2-5 hari</li>
-                                        <li class="list-group-item">Kapasitas: 40-100 orang</li>
-                                        <li class="list-group-item">Termasuk tiket masuk objek wisata</li>
-                                    </ul>
-                                    <a href="pesan_paket.php?tipe=study" class="btn btn-success w-100">Lihat Detail</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <div class="card h-100">
-                                <div class="card-body">
-                                    <h5 class="card-title">Paket Ziarah</h5>
-                                    <p class="card-text">Perjalanan ziarah ke tempat-tempat religius dengan bus yang nyaman dan aman.</p>
-                                    <ul class="list-group list-group-flush mb-3">
-                                        <li class="list-group-item">Durasi: 1-7 hari</li>
-                                        <li class="list-group-item">Kapasitas: 30-45 orang</li>
-                                        <li class="list-group-item">Termasuk pemandu ziarah</li>
-                                    </ul>
-                                    <a href="pesan_paket.php?tipe=ziarah" class="btn btn-success w-100">Lihat Detail</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<!--    <div class="row">-->
+<!--        <div class="col-md-12">-->
+<!--            <div class="card">-->
+<!--                <div class="card-header bg-success text-white">-->
+<!--                    <h5 class="mb-0">Rekomendasi Perjalanan</h5>-->
+<!--                </div>-->
+<!--                <div class="card-body">-->
+<!--                    <div class="row">-->
+<!--                        <div class="col-md-4 mb-3">-->
+<!--                            <div class="card h-100">-->
+<!--                                <div class="card-body">-->
+<!--                                    <h5 class="card-title">Paket Wisata Keluarga</h5>-->
+<!--                                    <p class="card-text">Nikmati perjalanan wisata bersama keluarga dengan bus nyaman dan fasilitas lengkap.</p>-->
+<!--                                    <ul class="list-group list-group-flush mb-3">-->
+<!--                                        <li class="list-group-item">Durasi: 3 hari</li>-->
+<!--                                        <li class="list-group-item">Kapasitas: 30 orang</li>-->
+<!--                                        <li class="list-group-item">Termasuk makan 3x sehari</li>-->
+<!--                                    </ul>-->
+<!--                                    <a href="pesan_paket.php?tipe=keluarga" class="btn btn-success w-100">Lihat Detail</a>-->
+<!--                                </div>-->
+<!--                            </div>-->
+<!--                        </div>-->
+<!--                        <div class="col-md-4 mb-3">-->
+<!--                            <div class="card h-100">-->
+<!--                                <div class="card-body">-->
+<!--                                    <h5 class="card-title">Paket Study Tour</h5>-->
+<!--                                    <p class="card-text">Ideal untuk sekolah atau kampus yang ingin mengadakan study tour dengan harga terjangkau.</p>-->
+<!--                                    <ul class="list-group list-group-flush mb-3">-->
+<!--                                        <li class="list-group-item">Durasi: 2-5 hari</li>-->
+<!--                                        <li class="list-group-item">Kapasitas: 40-100 orang</li>-->
+<!--                                        <li class="list-group-item">Termasuk tiket masuk objek wisata</li>-->
+<!--                                    </ul>-->
+<!--                                    <a href="pesan_paket.php?tipe=study" class="btn btn-success w-100">Lihat Detail</a>-->
+<!--                                </div>-->
+<!--                            </div>-->
+<!--                        </div>-->
+<!--                        <div class="col-md-4 mb-3">-->
+<!--                            <div class="card h-100">-->
+<!--                                <div class="card-body">-->
+<!--                                    <h5 class="card-title">Paket Ziarah</h5>-->
+<!--                                    <p class="card-text">Perjalanan ziarah ke tempat-tempat religius dengan bus yang nyaman dan aman.</p>-->
+<!--                                    <ul class="list-group list-group-flush mb-3">-->
+<!--                                        <li class="list-group-item">Durasi: 1-7 hari</li>-->
+<!--                                        <li class="list-group-item">Kapasitas: 30-45 orang</li>-->
+<!--                                        <li class="list-group-item">Termasuk pemandu ziarah</li>-->
+<!--                                    </ul>-->
+<!--                                    <a href="pesan_paket.php?tipe=ziarah" class="btn btn-success w-100">Lihat Detail</a>-->
+<!--                                </div>-->
+<!--                            </div>-->
+<!--                        </div>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--        </div>-->
+<!--    </div>-->
+<!--</div>-->
 
 <!-- jQuery untuk tooltip -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -334,19 +334,81 @@ include '../templates/header.php';
 <!-- FullCalendar CSS -->
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.0/main.min.css" rel="stylesheet">
 
-<!-- CSS untuk tooltip kalender -->
+<!-- Custom Modern Calendar CSS -->
 <style>
-    .tooltip-jadwal {
-        font-size: 14px;
-        line-height: 1.5;
+    /* Clean, Simple Calendar Look with Blue Events */
+    .fc .fc-toolbar-title {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #3a4658;
+        letter-spacing: 1px;
     }
 
-    .fc-event {
-        cursor: pointer;
+    .fc .fc-button {
+        background: #3575ec;
+        border: none;
+        color: #fff;
+        font-weight: bold;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(79, 140, 255, 0.08);
+        transition: background 0.2s, color 0.2s;
     }
 
-    .tooltip {
-        z-index: 10000;
+    .fc .fc-button:hover,
+    .fc .fc-button:focus {
+        background: #285bb5;
+        color: #fff;
+    }
+
+    .fc .fc-daygrid-day.fc-day-today {
+        background: #f0f6ff !important;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(79, 140, 255, 0.06);
+    }
+
+    .fc .fc-daygrid-event {
+        background: #3575ec !important;
+        color: #fff !important;
+        border: none !important;
+        border-radius: 8px !important;
+        box-shadow: none;
+        font-weight: 500;
+        padding: 4px 8px;
+        transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .fc .fc-daygrid-event:hover {
+        transform: scale(1.04);
+        box-shadow: 0 4px 16px rgba(53, 117, 236, 0.13);
+        z-index: 10;
+    }
+
+    .fc .fc-col-header-cell-cushion {
+        font-weight: bold;
+        color: #3575ec;
+        font-size: 1.1rem;
+    }
+
+    .fc .fc-scrollgrid {
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 2px 16px rgba(44, 62, 80, 0.04);
+    }
+
+    .fc .fc-daygrid-day-number {
+        color: #3a4658;
+    }
+
+    .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+        color: #3575ec;
+        font-weight: bold;
+    }
+
+    /* Responsive for calendar */
+    @media (max-width: 600px) {
+        .fc .fc-toolbar-title {
+            font-size: 1.2rem;
+        }
     }
 </style>
 
@@ -408,18 +470,15 @@ include '../templates/header.php';
                 },
                 eventDidMount: function(info) {
                     const props = info.event.extendedProps;
-                    let color = '#6c757d'; // abu-abu default
-                    if (props.status === 'tersedia' && !props.isPast) {
-                        color = '#28a745'; // hijau
-                    } else if (props.status === 'penuh') {
-                        color = '#dc3545'; // merah
-                    } else if (props.status === 'dibatalkan') {
-                        color = '#ffc107'; // kuning
-                    }
-
+                    let color = '#3575ec'; // solid blue for all events
                     // Atur warna latar belakang event
                     info.el.style.backgroundColor = color;
-
+                    info.el.style.color = '#fff';
+                    // Tambahkan icon bus di depan judul event
+                    let titleEl = info.el.querySelector('.fc-event-title');
+                    if (titleEl && !titleEl.innerHTML.includes('fa-bus')) {
+                        titleEl.innerHTML = '<i class="fas fa-bus me-1"></i> ' + titleEl.innerHTML;
+                    }
                     // Tooltip
                     const isPast = props.isPast;
                     let statusText = isPast ? 'Sudah lewat' : props.statusText || ucfirst(props.status);
@@ -431,7 +490,6 @@ include '../templates/header.php';
             <strong>Status:</strong> ${statusText}
         </div>
     `;
-
                     $(info.el).tooltip({
                         title: tooltipContent,
                         placement: 'top',
@@ -584,10 +642,10 @@ include '../templates/header.php';
                             <label for="waktu_berangkat" class="form-label">Waktu Berangkat</label>
                             <input type="time" class="form-control" id="waktu_berangkat" name="waktu_berangkat" required>
                         </div>
-                        <div class="col-md-6">
+                        <!-- <div class="col-md-6">
                             <label for="estimasi_durasi" class="form-label">Estimasi Durasi (Jam)</label>
                             <input type="number" class="form-control" id="estimasi_durasi" name="estimasi_durasi" min="1" required>
-                        </div>
+                        </div> -->
                     </div>
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -627,7 +685,7 @@ include '../templates/header.php';
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
-                <h5 class="modal-title" id="jadwalBusModalLabel">Tambah Jadwal Bus</h5>
+                <h5 class="modal-title" id="jadwalBusModalLabel">Jadwal Bus</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -641,7 +699,7 @@ include '../templates/header.php';
                                 <th>Waktu Berangkat</th>
                                 <th>Kota Asal</th>
                                 <th>Kota Tujuan</th>
-                                <th>Estimasi Durasi</th>
+                                <!-- <th>Estimasi Durasi</th> -->
                                 <th>Harga</th>
                                 <th>Status</th>
                                 <th>Aksi</th>
@@ -649,10 +707,11 @@ include '../templates/header.php';
                         </thead>
                         <tbody>
                             <?php
-                            // Ambil data jadwal bus
-                            $stmt = $db->query("SELECT j.*, b.nama_bus 
+                            // Ambil data jadwal bus (semua jadwal, tidak hanya milik user yang login)
+                            $stmt = $db->query("SELECT j.*, b.nama_bus, b.tipe, b.kapasitas 
                                               FROM pemesanan_bus j 
                                               JOIN bus b ON j.id_bus = b.id 
+                                              WHERE j.status != 'dibatalkan' AND j.status != 'ditolak'
                                               ORDER BY j.tanggal_berangkat ASC, j.waktu_berangkat ASC");
                             $jadwal_list = $stmt->fetchAll();
                             $no = 1;
@@ -666,8 +725,7 @@ include '../templates/header.php';
                                     <td><?php echo date('H:i', strtotime($jadwal['waktu_berangkat'])); ?></td>
                                     <td><?php echo htmlspecialchars($jadwal['kota_asal']); ?></td>
                                     <td><?php echo htmlspecialchars($jadwal['kota_tujuan']); ?></td>
-                                    <td><?php echo $jadwal['estimasi_durasi']; ?> jam</td>
-                                    <td><?php echo formatRupiah($jadwal['harga']); ?></td>
+                                    <td><?php echo formatRupiah($jadwal['total_harga']); ?></td>
                                     <td>
                                         <span class="badge bg-<?php echo $jadwal['status'] == 'tersedia' ? 'success' : ($jadwal['status'] == 'penuh' ? 'danger' : 'warning'); ?>">
                                             <?php echo ucfirst($jadwal['status']); ?>

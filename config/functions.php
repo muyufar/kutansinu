@@ -11,26 +11,26 @@ function checkUserRole($db, $user_id, $perusahaan_id, $required_role = 'admin')
     $stmt = $db->prepare("SELECT role FROM user_perusahaan WHERE user_id = ? AND perusahaan_id = ?");
     $stmt->execute([$user_id, $perusahaan_id]);
     $user_role = $stmt->fetchColumn();
-    
+
     // Jika role tidak ditemukan, user tidak memiliki akses
     if (!$user_role) {
         return false;
     }
-    
+
     // Cek berdasarkan hierarki role
     switch ($required_role) {
         case 'viewer':
             // Viewer hanya bisa melihat, semua role bisa melihat
             return in_array($user_role, ['admin', 'editor', 'viewer']);
-            
+
         case 'editor':
             // Editor bisa edit, admin juga bisa edit
             return in_array($user_role, ['admin', 'editor']);
-            
+
         case 'admin':
             // Hanya admin yang bisa melakukan tindakan admin
             return $user_role === 'admin';
-            
+
         default:
             return false;
     }
@@ -83,11 +83,11 @@ function generateRandomPassword($length = 8)
     $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_-=+;:,.?';
     $password = '';
     $max = strlen($chars) - 1;
-    
+
     for ($i = 0; $i < $length; $i++) {
         $password .= $chars[random_int(0, $max)];
     }
-    
+
     return $password;
 }
 
@@ -100,12 +100,26 @@ function validateInput($data)
     return $data;
 }
 
-function validateSaldo($id_akun, $jumlah, $jenis) {
+function validateSaldo($id_akun, $jumlah, $jenis)
+{
     global $db;
-    $stmt = $db->prepare("SELECT saldo FROM akun WHERE id = ?");
-    $stmt->execute([$id_akun]);
-    $akun = $stmt->fetch();
     
+    // Jika id_perusahaan tidak diberikan, coba ambil dari session
+    if ($id_perusahaan === null && isset($_SESSION['default_company'])) {
+        $id_perusahaan = $_SESSION['default_company'];
+    }
+    
+    // Jika id_perusahaan tersedia, filter berdasarkan perusahaan
+    if ($id_perusahaan) {
+        $stmt = $db->prepare("SELECT saldo FROM akun WHERE id = ? AND id_perusahaan = ?");
+        $stmt->execute([$id_akun, $id_perusahaan]);
+    } else {
+        // Jika tidak ada id_perusahaan, cari berdasarkan ID saja
+        $stmt = $db->prepare("SELECT saldo FROM akun WHERE id = ?");
+        $stmt->execute([$id_akun]);
+    }
+    
+    $akun = $stmt->fetch();
     if ($jenis == 'pengeluaran' || $jenis == 'tarik_modal' || $jenis == 'transfer_uang' || $jenis == 'transfer_hutang') {
         if ($akun['saldo'] < $jumlah) {
             return false;
@@ -124,29 +138,55 @@ function isLoggedIn()
 function requireLogin()
 {
     if (!isLoggedIn()) {
-        header('Location: /kutansinu/login.php');
+        header('Location: /login.php');
         exit();
     }
 }
 
 // Mendapatkan nama akun berdasarkan ID
-function getNamaAkun($db, $id_akun)
+function getNamaAkun($db, $id_akun, $id_perusahaan = null)
 {
-    $stmt = $db->prepare("SELECT nama_akun FROM akun WHERE id = ?");
-    $stmt->execute([$id_akun]);
+    // Jika id_perusahaan tidak diberikan, coba ambil dari session
+    if ($id_perusahaan === null && isset($_SESSION['default_company'])) {
+        $id_perusahaan = $_SESSION['default_company'];
+    }
+    
+    // Jika id_perusahaan tersedia, filter berdasarkan perusahaan
+    if ($id_perusahaan) {
+        $stmt = $db->prepare("SELECT nama_akun FROM akun WHERE id = ? AND id_perusahaan = ?");
+        $stmt->execute([$id_akun, $id_perusahaan]);
+    } else {
+        // Jika tidak ada id_perusahaan, cari berdasarkan ID saja
+        $stmt = $db->prepare("SELECT nama_akun FROM akun WHERE id = ?");
+        $stmt->execute([$id_akun]);
+    }
+    
     $result = $stmt->fetch();
     return $result['nama_akun'] ?? '-';
 }
 
-// Mendapatkan daftar akun
-function getDaftarAkun($db)
+// Mendapatkan daftar akun berdasarkan perusahaan
+function getDaftarAkun($db, $id_perusahaan = null)
 {
-    $stmt = $db->query("SELECT * FROM akun ORDER BY kode_akun ASC");
+    // Jika id_perusahaan tidak diberikan, coba ambil dari session
+    if ($id_perusahaan === null && isset($_SESSION['default_company'])) {
+        $id_perusahaan = $_SESSION['default_company'];
+    }
+    
+    // Jika id_perusahaan tersedia, filter berdasarkan perusahaan
+    if ($id_perusahaan) {
+        $stmt = $db->prepare("SELECT * FROM akun WHERE id_perusahaan = ? ORDER BY kode_akun ASC");
+        $stmt->execute([$id_perusahaan]);
+    } else {
+        // Jika tidak ada id_perusahaan, tampilkan semua akun (untuk admin)
+        $stmt = $db->query("SELECT * FROM akun ORDER BY kode_akun ASC");
+    }
+    
     return $stmt->fetchAll();
 }
 
 // Mendapatkan neraca saldo
-function getNeracaSaldo($db, $tanggal_awal, $tanggal_akhir)
+function getNeracaSaldo($db, $tanggal_awal, $tanggal_akhir, $id_perusahaan)
 {
     $sql = "SELECT 
                 a.id,
@@ -157,10 +197,64 @@ function getNeracaSaldo($db, $tanggal_awal, $tanggal_akhir)
             FROM akun a
             LEFT JOIN transaksi t ON (a.id = t.id_akun_debit OR a.id = t.id_akun_kredit)
                 AND t.tanggal BETWEEN ? AND ?
+                AND t.id_perusahaan = ?
             GROUP BY a.id, a.kode_akun, a.nama_akun
             ORDER BY a.kode_akun ASC";
 
     $stmt = $db->prepare($sql);
-    $stmt->execute([$tanggal_awal, $tanggal_akhir]);
+    $stmt->execute([$tanggal_awal, $tanggal_akhir, $id_perusahaan]);
     return $stmt->fetchAll();
+}
+
+function logAudit($db, $user_id, $action, $description = '')
+{
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    $stmt = $db->prepare("INSERT INTO audit_log (user_id, action, description, ip_address, user_agent) VALUES (?, ?, ?, ?, ?)");
+    $stmt->execute([$user_id, $action, $description, $ip, $ua]);
+}
+
+function getReportFilterPerusahaan($db, $user_id, $requested_perusahaan = null)
+{
+    $stmt = $db->prepare("SELECT default_company FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $id_perusahaan = $stmt->fetchColumn();
+
+    if (!$id_perusahaan) {
+        $_SESSION['error'] = 'Anda belum memiliki perusahaan default. Silakan tambahkan perusahaan terlebih dahulu.';
+        header('Location: /pengaturan/perusahaan.php');
+        exit();
+    }
+
+    $filter_perusahaan = $id_perusahaan;
+
+    if ($requested_perusahaan && checkUserRole($db, $user_id, $id_perusahaan, 'admin')) {
+        if (checkUserRole($db, $user_id, $requested_perusahaan, 'viewer')) {
+            $filter_perusahaan = $requested_perusahaan;
+        }
+    }
+
+    return $filter_perusahaan;
+}
+
+function appendTransaksiTagFilter(&$sql, &$params, $tags, $prefix = 't.', $param_prefix = 'tag')
+{
+    if (empty($tags)) {
+        return;
+    }
+
+    $tag_conditions = [];
+    foreach ($tags as $index => $tag_value) {
+        $tag_conditions[] = "({$prefix}tag = :{$param_prefix}{$index}
+                            OR {$prefix}tag LIKE :{$param_prefix}{$index}_start
+                            OR {$prefix}tag LIKE :{$param_prefix}{$index}_end
+                            OR {$prefix}tag LIKE :{$param_prefix}{$index}_middle)";
+
+        $params[":{$param_prefix}{$index}"] = $tag_value;
+        $params[":{$param_prefix}{$index}_start"] = $tag_value . ',%';
+        $params[":{$param_prefix}{$index}_end"] = '%,' . $tag_value;
+        $params[":{$param_prefix}{$index}_middle"] = '%,' . $tag_value . ',%';
+    }
+
+    $sql .= ' AND (' . implode(' OR ', $tag_conditions) . ')';
 }

@@ -17,7 +17,7 @@ $is_nugrosir = $stmt_nugrosir->fetch() ? true : false;
 // Verifikasi role user (hanya untuk nugrosir)
 if (!$is_nugrosir) {
     $_SESSION['error'] = 'Anda tidak memiliki hak akses untuk halaman ini. Hanya perusahaan NUGROSIR yang dapat mengakses fitur pemesanan bus.';
-    header('Location: /kutansinu/index.php');
+    header('Location: /index.php');
     exit();
 }
 

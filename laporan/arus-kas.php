@@ -4,27 +4,13 @@ require_once '../config/database.php';
 require_once '../config/functions.php';
 
 // Pastikan user sudah login
-if (!isset($_SESSION['user_id'])) {
-    header('Location: /kutansinu/login.php');
-    exit();
-}
+requireLogin();
 
 // Set default tanggal jika tidak ada filter
 $tanggal_awal = isset($_GET['tanggal_awal']) ? $_GET['tanggal_awal'] : date('Y-m-01');
 $tanggal_akhir = isset($_GET['tanggal_akhir']) ? $_GET['tanggal_akhir'] : date('Y-m-t');
 
-// Ambil id_perusahaan dari default_company pengguna
-$stmt_company = $db->prepare("SELECT default_company FROM users WHERE id = ?");
-$stmt_company->execute([$_SESSION['user_id']]);
-$user_data = $stmt_company->fetch();
-$id_perusahaan = $user_data['default_company'];
-
-// Pastikan pengguna memiliki perusahaan default
-if (!$id_perusahaan) {
-    $_SESSION['error'] = 'Anda belum memiliki perusahaan default. Silakan tambahkan perusahaan terlebih dahulu.';
-    header('Location: ../pengaturan/perusahaan.php');
-    exit();
-}
+$filter_perusahaan = getReportFilterPerusahaan($db, $_SESSION['user_id'], $_GET['perusahaan'] ?? null);
 
 // Query untuk mendapatkan saldo awal kas dengan filter perusahaan
 $sql_saldo_awal = "SELECT COALESCE(SUM(CASE WHEN jenis = 'pemasukan' THEN jumlah ELSE -jumlah END), 0) as saldo
@@ -32,7 +18,7 @@ FROM transaksi
 WHERE tanggal < ? AND id_perusahaan = ?";
 
 $stmt_saldo_awal = $db->prepare($sql_saldo_awal);
-$stmt_saldo_awal->execute([$tanggal_awal, $id_perusahaan]);
+$stmt_saldo_awal->execute([$tanggal_awal, $filter_perusahaan]);
 $saldo_awal = $stmt_saldo_awal->fetch()['saldo'];
 
 // Query untuk aktivitas operasi dengan filter perusahaan
@@ -41,16 +27,17 @@ $sql_operasi = "SELECT
     a.nama_akun,
     COALESCE(SUM(CASE WHEN t.jenis = 'pemasukan' THEN t.jumlah ELSE -t.jumlah END), 0) as jumlah
 FROM akun a
-LEFT JOIN transaksi t ON a.id = t.id_akun_debit OR a.id = t.id_akun_kredit
+LEFT JOIN transaksi t ON (a.id = t.id_akun_debit OR a.id = t.id_akun_kredit)
     AND t.tanggal BETWEEN ? AND ?
     AND t.id_perusahaan = ?
 WHERE a.kategori IN ('pendapatan', 'beban')
+  AND a.id_perusahaan = ?
 GROUP BY a.id, a.kode_akun, a.nama_akun
 HAVING jumlah != 0
 ORDER BY a.kode_akun ASC";
 
 $stmt_operasi = $db->prepare($sql_operasi);
-$stmt_operasi->execute([$tanggal_awal, $tanggal_akhir, $id_perusahaan]);
+$stmt_operasi->execute([$tanggal_awal, $tanggal_akhir, $filter_perusahaan, $filter_perusahaan]);
 $data_operasi = $stmt_operasi->fetchAll();
 
 // Query untuk aktivitas investasi dengan filter perusahaan
@@ -59,16 +46,17 @@ $sql_investasi = "SELECT
     a.nama_akun,
     COALESCE(SUM(CASE WHEN t.jenis = 'pemasukan' THEN t.jumlah ELSE -t.jumlah END), 0) as jumlah
 FROM akun a
-LEFT JOIN transaksi t ON a.id = t.id_akun_debit OR a.id = t.id_akun_kredit
+LEFT JOIN transaksi t ON (a.id = t.id_akun_debit OR a.id = t.id_akun_kredit)
     AND t.tanggal BETWEEN ? AND ?
     AND t.id_perusahaan = ?
 WHERE a.kategori = 'investasi'
+  AND a.id_perusahaan = ?
 GROUP BY a.id, a.kode_akun, a.nama_akun
 HAVING jumlah != 0
 ORDER BY a.kode_akun ASC";
 
 $stmt_investasi = $db->prepare($sql_investasi);
-$stmt_investasi->execute([$tanggal_awal, $tanggal_akhir, $id_perusahaan]);
+$stmt_investasi->execute([$tanggal_awal, $tanggal_akhir, $filter_perusahaan, $filter_perusahaan]);
 $data_investasi = $stmt_investasi->fetchAll();
 
 // Query untuk aktivitas pendanaan dengan filter perusahaan
@@ -77,16 +65,17 @@ $sql_pendanaan = "SELECT
     a.nama_akun,
     COALESCE(SUM(CASE WHEN t.jenis = 'pemasukan' THEN t.jumlah ELSE -t.jumlah END), 0) as jumlah
 FROM akun a
-LEFT JOIN transaksi t ON a.id = t.id_akun_debit OR a.id = t.id_akun_kredit
+LEFT JOIN transaksi t ON (a.id = t.id_akun_debit OR a.id = t.id_akun_kredit)
     AND t.tanggal BETWEEN ? AND ?
     AND t.id_perusahaan = ?
 WHERE a.kategori = 'modal'
+  AND a.id_perusahaan = ?
 GROUP BY a.id, a.kode_akun, a.nama_akun
 HAVING jumlah != 0
 ORDER BY a.kode_akun ASC";
 
 $stmt_pendanaan = $db->prepare($sql_pendanaan);
-$stmt_pendanaan->execute([$tanggal_awal, $tanggal_akhir, $id_perusahaan]);
+$stmt_pendanaan->execute([$tanggal_awal, $tanggal_akhir, $filter_perusahaan, $filter_perusahaan]);
 $data_pendanaan = $stmt_pendanaan->fetchAll();
 
 // Hitung total untuk setiap aktivitas

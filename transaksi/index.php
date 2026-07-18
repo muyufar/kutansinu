@@ -56,6 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         error_log("Update Query: " . $stmt->queryString);
         error_log("Update Params: " . json_encode([$tanggal, $id_akun_debit, $id_akun_kredit, $keterangan, $file_lampiran, $penanggung_jawab, $jenis, $jumlah, $id]));
 
+        logAudit($db, $_SESSION['user_id'], 'edit_transaction', 'Edit transaksi ID: ' . $id);
+
         $_SESSION['success'] = 'Transaksi berhasil diperbarui.';
         header('Location: index.php');
         exit();
@@ -72,6 +74,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'hapus' && isset($_GET['id'])) 
     try {
         $stmt = $db->prepare("DELETE FROM transaksi WHERE id = ?");
         $stmt->execute([$_GET['id']]);
+        logAudit($db, $_SESSION['user_id'], 'delete_transaction', 'Hapus transaksi ID: ' . $_GET['id']);
         $_SESSION['success'] = 'Transaksi berhasil dihapus.';
     } catch (PDOException $e) {
         $_SESSION['error'] = 'Gagal menghapus transaksi: ' . $e->getMessage();
@@ -79,25 +82,48 @@ if (isset($_GET['action']) && $_GET['action'] == 'hapus' && isset($_GET['id'])) 
     header('Location: index.php');
     exit();
 }
-
-// Ambil daftar akun untuk dropdown
-$akun_list = getDaftarAkun($db);
-
-// Ambil id_perusahaan dari default_company pengguna
 $stmt_company = $db->prepare("SELECT default_company FROM users WHERE id = ?");
 $stmt_company->execute([$_SESSION['user_id']]);
 $user_data = $stmt_company->fetch();
 $id_perusahaan = $user_data['default_company'];
+// Ambil daftar akun untuk dropdown
+$stmt = $db->prepare("SELECT * FROM akun WHERE id_perusahaan = ? ORDER BY kode_akun ASC");
+$stmt->execute([$id_perusahaan]);
+$akun_list = $stmt->fetchAll();
+
+// Pagination settings
+$items_per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 10;
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$page = max(1, $page); // Ensure page is at least 1
+$offset = ($page - 1) * $items_per_page;
+
+// Get total records for pagination
+$stmt_count = $db->prepare("SELECT COUNT(*) as total FROM transaksi WHERE id_perusahaan = ?");
+$stmt_count->execute([$id_perusahaan]);
+$total_records = $stmt_count->fetch()['total'];
+$total_pages = $items_per_page > 0 ? ceil($total_records / $items_per_page) : 1;
 
 // Ambil daftar transaksi dengan informasi akun debit dan kredit, hanya untuk perusahaan pengguna yang login
-$stmt = $db->prepare("SELECT t.*, 
-                    ad.kode_akun as kode_akun_debit, ad.nama_akun as nama_akun_debit,
-                    ak.kode_akun as kode_akun_kredit, ak.nama_akun as nama_akun_kredit
-                    FROM transaksi t 
-                    LEFT JOIN akun ad ON t.id_akun_debit = ad.id
-                    LEFT JOIN akun ak ON t.id_akun_kredit = ak.id
-                    WHERE t.id_perusahaan = ?
-                    ORDER BY t.tanggal DESC, t.id DESC");
+if ($items_per_page > 0) {
+    $stmt = $db->prepare("SELECT t.*, 
+                        ad.kode_akun as kode_akun_debit, ad.nama_akun as nama_akun_debit,
+                        ak.kode_akun as kode_akun_kredit, ak.nama_akun as nama_akun_kredit
+                        FROM transaksi t 
+                        LEFT JOIN akun ad ON t.id_akun_debit = ad.id
+                        LEFT JOIN akun ak ON t.id_akun_kredit = ak.id
+                        WHERE t.id_perusahaan = ?
+                        ORDER BY t.tanggal DESC, t.id DESC
+                        LIMIT " . (int)$items_per_page . " OFFSET " . (int)$offset);
+} else {
+    $stmt = $db->prepare("SELECT t.*, 
+                        ad.kode_akun as kode_akun_debit, ad.nama_akun as nama_akun_debit,
+                        ak.kode_akun as kode_akun_kredit, ak.nama_akun as nama_akun_kredit
+                        FROM transaksi t 
+                        LEFT JOIN akun ad ON t.id_akun_debit = ad.id
+                        LEFT JOIN akun ak ON t.id_akun_kredit = ak.id
+                        WHERE t.id_perusahaan = ?
+                        ORDER BY t.tanggal DESC, t.id DESC");
+}
 $stmt->execute([$id_perusahaan]);
 $transaksi_list = $stmt->fetchAll();
 
@@ -105,12 +131,14 @@ $transaksi_list = $stmt->fetchAll();
 include '../templates/header.php';
 ?>
 
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Daftar Transaksi Terbaru</h2>
-        <a href="tambah.php" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Tambah Transaksi
-        </a>
+<div class="container mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5>Daftar Transaksi</h5>
+        <div class="d-flex gap-1">
+            <a href="tambah.php" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Tambah Transaksi
+            </a>
+        </div>
     </div>
 
     <?php if (isset($_SESSION['success'])): ?>
@@ -159,7 +187,12 @@ include '../templates/header.php';
                                 <td><?php echo formatRupiah($transaksi['jumlah']); ?></td>
                                 <td>
                                     <?php if (!empty($transaksi['file_lampiran'])): ?>
-                                        <a href="../<?php echo htmlspecialchars($transaksi['file_lampiran']); ?>" target="_blank" class="badge bg-success">Lihat Bukti</a>
+                                        <a href="../<?php echo htmlspecialchars($transaksi['file_lampiran']); ?>" target="_blank" class="btn btn-sm btn-info">
+                                            <i class="fas fa-image"></i> Lihat Bukti
+                                            <?php if (strpos($transaksi['file_lampiran'], 'pembayaran_bus') !== false): ?>
+                                                <span class="badge bg-primary">Bus</span>
+                                            <?php endif; ?>
+                                        </a>
                                     <?php else: ?>
                                         <span class="badge bg-secondary">Tidak Ada</span>
                                     <?php endif; ?>
@@ -206,6 +239,63 @@ include '../templates/header.php';
                     </tbody>
                 </table>
             </div>
+
+            <!-- Pagination -->
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center align-items-center">
+                    <!-- Items per page selector -->
+                    <li class="page-item">
+                        <select class="form-select form-select-sm" id="perPageSelect" onchange="changePerPage(this.value)">
+                            <option value="10" <?php echo $items_per_page == 10 ? 'selected' : ''; ?>>10 per halaman</option>
+                            <option value="20" <?php echo $items_per_page == 20 ? 'selected' : ''; ?>>20 per halaman</option>
+                            <option value="50" <?php echo $items_per_page == 50 ? 'selected' : ''; ?>>50 per halaman</option>
+                            <option value="0" <?php echo $items_per_page == 0 ? 'selected' : ''; ?>>Semua</option>
+                        </select>
+                    </li>
+
+                    <?php if ($items_per_page > 0 && $total_pages > 1): ?>
+                        <li class="page-item <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
+                            <a class="page-link" href="?page=<?php echo $page - 1; ?>&per_page=<?php echo $items_per_page; ?>" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+
+                        <?php
+                        // Tampilkan maksimal 10 nomor halaman dalam jendela dinamis yang bergeser
+                        $max_visible_pages = 10;
+                        if ($total_pages <= $max_visible_pages) {
+                            $startPage = 1;
+                            $endPage = $total_pages;
+                        } else {
+                            // Geser jendela: 4 sebelum dan 5 sesudah halaman aktif (total 10)
+                            $startPage = $page - 4;
+                            $endPage = $page + 5;
+
+                            if ($startPage < 1) {
+                                $startPage = 1;
+                                $endPage = $max_visible_pages;
+                            }
+                            if ($endPage > $total_pages) {
+                                $endPage = $total_pages;
+                                $startPage = $total_pages - $max_visible_pages + 1;
+                            }
+                        }
+                        for ($i = $startPage; $i <= $endPage; $i++): ?>
+                            <li class="page-item <?php echo ($page == $i) ? 'active' : ''; ?>">
+                                <a class="page-link" href="?page=<?php echo $i; ?>&per_page=<?php echo $items_per_page; ?>">
+                                    <?php echo $i; ?>
+                                </a>
+                            </li>
+                        <?php endfor; ?>
+
+                        <li class="page-item <?php echo ($page >= $total_pages) ? 'disabled' : ''; ?>">
+                            <a class="page-link" href="?page=<?php echo $page + 1; ?>&per_page=<?php echo $items_per_page; ?>" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
+                </ul>
+            </nav>
         </div>
     </div>
 </div>
@@ -306,108 +396,115 @@ include '../templates/header.php';
                 <div class="mb-3">
                     <label class="form-label">Akun Kredit</label>
                     <p id="view_akun_kredit" class="form-control-static"></p>
-                <div class="mb-3">
-                    <label class="form-label">Keterangan</label>
-                    <p id="view_keterangan" class="form-control-static"></p>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Tag</label>
-                    <p id="view_tag" class="form-control-static"></p>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Jenis Transaksi</label>
-                    <p id="view_jenis" class="form-control-static"></p>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Jumlah</label>
-                    <p id="view_jumlah" class="form-control-static"></p>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Penanggung Jawab</label>
-                    <p id="view_pj" class="form-control-static"></p>
-                </div>
+                    <div class="mb-3">
+                        <label class="form-label">Keterangan</label>
+                        <p id="view_keterangan" class="form-control-static"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tag</label>
+                        <p id="view_tag" class="form-control-static"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Jenis Transaksi</label>
+                        <p id="view_jenis" class="form-control-static"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Jumlah</label>
+                        <p id="view_jumlah" class="form-control-static"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Penanggung Jawab</label>
+                        <p id="view_pj" class="form-control-static"></p>
+                    </div>
 
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<script>
-    // Script untuk mengisi modal view
-    document.getElementById('modalViewTransaksi').addEventListener('show.bs.modal', function(event) {
-        var button = event.relatedTarget;
-        var tanggal = button.getAttribute('data-tanggal');
-        var akun_debit = button.getAttribute('data-akun-debit');
-        var akun_kredit = button.getAttribute('data-akun-kredit');
-        var keterangan = button.getAttribute('data-keterangan');
-        var tag = button.getAttribute('data-tag');
-        var jenis = button.getAttribute('data-jenis');
-        var jumlah = button.getAttribute('data-jumlah');
-        var penanggung_jawab = button.getAttribute('data-pj');
-        var file_lampiran = button.getAttribute('data-file');
+    <script>
+        // Script untuk mengisi modal view
+        document.getElementById('modalViewTransaksi').addEventListener('show.bs.modal', function(event) {
+            var button = event.relatedTarget;
+            var tanggal = button.getAttribute('data-tanggal');
+            var akun_debit = button.getAttribute('data-akun-debit');
+            var akun_kredit = button.getAttribute('data-akun-kredit');
+            var keterangan = button.getAttribute('data-keterangan');
+            var tag = button.getAttribute('data-tag');
+            var jenis = button.getAttribute('data-jenis');
+            var jumlah = button.getAttribute('data-jumlah');
+            var penanggung_jawab = button.getAttribute('data-pj');
+            var file_lampiran = button.getAttribute('data-file');
 
-        var modal = this;
-        modal.querySelector('#view_tanggal').textContent = new Date(tanggal).toLocaleDateString('id-ID');
-        modal.querySelector('#view_akun_debit').textContent = akun_debit;
-        modal.querySelector('#view_akun_kredit').textContent = akun_kredit;
-        modal.querySelector('#view_keterangan').textContent = keterangan;
-        modal.querySelector('#view_tag').textContent = tag || '-';
-        modal.querySelector('#view_jenis').textContent = jenis.charAt(0).toUpperCase() + jenis.slice(1);
-        modal.querySelector('#view_jumlah').textContent = jumlah;
-        modal.querySelector('#view_pj').textContent = penanggung_jawab || '-';
+            var modal = this;
+            modal.querySelector('#view_tanggal').textContent = new Date(tanggal).toLocaleDateString('id-ID');
+            modal.querySelector('#view_akun_debit').textContent = akun_debit;
+            modal.querySelector('#view_akun_kredit').textContent = akun_kredit;
+            modal.querySelector('#view_keterangan').textContent = keterangan;
+            modal.querySelector('#view_tag').textContent = tag || '-';
+            modal.querySelector('#view_jenis').textContent = jenis.charAt(0).toUpperCase() + jenis.slice(1);
+            modal.querySelector('#view_jumlah').textContent = jumlah;
+            modal.querySelector('#view_pj').textContent = penanggung_jawab || '-';
 
-        var fileNone = modal.querySelector('#view_file_none');
-        var fileLink = modal.querySelector('#view_file_link');
+            var fileNone = modal.querySelector('#view_file_none');
+            var fileLink = modal.querySelector('#view_file_link');
 
-        if (file_lampiran) {
-            fileNone.classList.add('d-none');
-            fileLink.classList.remove('d-none');
-            fileLink.href = '../' + file_lampiran;
-        } else {
-            fileNone.classList.remove('d-none');
-            fileLink.classList.add('d-none');
+            if (file_lampiran) {
+                fileNone.classList.add('d-none');
+                fileLink.classList.remove('d-none');
+                fileLink.href = '../' + file_lampiran;
+            } else {
+                fileNone.classList.remove('d-none');
+                fileLink.classList.add('d-none');
+            }
+        });
+        document.getElementById('modalEditTransaksi').addEventListener('show.bs.modal', function(event) {
+            var button = event.relatedTarget;
+            var id = button.getAttribute('data-id');
+            var tanggal = button.getAttribute('data-tanggal');
+            var id_akun_debit = button.getAttribute('data-akun-debit');
+            var id_akun_kredit = button.getAttribute('data-akun-kredit');
+            var keterangan = button.getAttribute('data-keterangan');
+            var tag = button.getAttribute('data-tag');
+            var jenis = button.getAttribute('data-jenis');
+            var jumlah = button.getAttribute('data-jumlah');
+            var penanggung_jawab = button.getAttribute('data-pj');
+            var file_lampiran = button.getAttribute('data-file');
+
+            var modal = this;
+            modal.querySelector('#edit_id').value = id;
+            modal.querySelector('#edit_tanggal').value = tanggal;
+            modal.querySelector('#edit_id_akun_debit').value = id_akun_debit;
+            modal.querySelector('#edit_id_akun_kredit').value = id_akun_kredit;
+            modal.querySelector('#edit_keterangan').value = keterangan;
+            modal.querySelector('#edit_tag').value = tag;
+            modal.querySelector('#edit_jenis').value = jenis;
+            modal.querySelector('#edit_jumlah').value = jumlah;
+            modal.querySelector('#edit_pj').value = penanggung_jawab;
+
+            // Tampilkan nama file lampiran lama
+            var fileInput = modal.querySelector('#edit_file_lampiran');
+            if (file_lampiran) {
+                fileInput.setAttribute('data-existing-file', file_lampiran); // Simpan file lama sebagai atribut
+                fileInput.placeholder = 'File lama: ' + file_lampiran;
+            } else {
+                fileInput.removeAttribute('data-existing-file');
+                fileInput.placeholder = 'Tidak ada file lama';
+            }
+        });
+    </script>
+
+    <script>
+        // Function to change items per page
+        function changePerPage(value) {
+            window.location.href = '?page=1&per_page=' + value;
         }
-    });
-    document.getElementById('modalEditTransaksi').addEventListener('show.bs.modal', function(event) {
-        var button = event.relatedTarget;
-        var id = button.getAttribute('data-id');
-        var tanggal = button.getAttribute('data-tanggal');
-        var id_akun_debit = button.getAttribute('data-akun-debit');
-        var id_akun_kredit = button.getAttribute('data-akun-kredit');
-        var keterangan = button.getAttribute('data-keterangan');
-        var tag = button.getAttribute('data-tag');
-        var jenis = button.getAttribute('data-jenis');
-        var jumlah = button.getAttribute('data-jumlah');
-        var penanggung_jawab = button.getAttribute('data-pj');
-        var file_lampiran = button.getAttribute('data-file');
+    </script>
 
-        var modal = this;
-        modal.querySelector('#edit_id').value = id;
-        modal.querySelector('#edit_tanggal').value = tanggal;
-        modal.querySelector('#edit_id_akun_debit').value = id_akun_debit;
-        modal.querySelector('#edit_id_akun_kredit').value = id_akun_kredit;
-        modal.querySelector('#edit_keterangan').value = keterangan;
-        modal.querySelector('#edit_tag').value = tag;
-        modal.querySelector('#edit_jenis').value = jenis;
-        modal.querySelector('#edit_jumlah').value = jumlah;
-        modal.querySelector('#edit_pj').value = penanggung_jawab;
-
-        // Tampilkan nama file lampiran lama
-        var fileInput = modal.querySelector('#edit_file_lampiran');
-        if (file_lampiran) {
-            fileInput.setAttribute('data-existing-file', file_lampiran); // Simpan file lama sebagai atribut
-            fileInput.placeholder = 'File lama: ' + file_lampiran;
-        } else {
-            fileInput.removeAttribute('data-existing-file');
-            fileInput.placeholder = 'Tidak ada file lama';
-        }
-    });
-</script>
-
-<?php
-// Footer
-include '../templates/footer.php';
-?>
+    <?php
+    // Footer
+    include '../templates/footer.php';
+    ?>

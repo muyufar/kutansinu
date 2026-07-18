@@ -22,7 +22,7 @@ $is_nugrosir = $stmt_nugrosir->fetch() ? true : false;
 // Verifikasi role user (hanya untuk nugrosir)
 if (!$is_nugrosir) {
     $_SESSION['error'] = 'Anda tidak memiliki hak akses untuk halaman ini. Hanya perusahaan NUGROSIR yang dapat mengakses fitur pemesanan bus.';
-    header('Location: /kutansinu/index.php');
+    header('Location: /index.php');
     exit();
 }
 
@@ -95,27 +95,27 @@ $total_harga += $biaya_tambahan;
 try {
     // Gabungkan fasilitas menjadi string
     $fasilitas_str = implode(', ', $fasilitas);
-    
+
     // Tambahkan informasi durasi dan tanggal kembali ke catatan
     $catatan_lengkap = "Durasi: $durasi hari (Kembali: $tanggal_kembali). " . $catatan;
-    
+
     $stmt = $db->prepare("INSERT INTO pemesanan_bus (id_user, id_bus, tanggal_pemesanan, tanggal_berangkat, waktu_berangkat, kota_asal, kota_tujuan, jumlah_penumpang, total_harga, status, catatan) VALUES (?, ?, CURDATE(), ?, ?, ?, ?, ?, ?, ?, ?)");
-    
+
     $stmt->execute([
-        $user_id, 
-        $bus['id'], 
-        $tanggal_berangkat, 
-        $waktu_berangkat, 
-        $kota_asal, 
-        $kota_tujuan, 
-        $jumlah_penumpang, 
-        $total_harga, 
-        'menunggu_pembayaran', 
+        $user_id,
+        $bus['id'],
+        $tanggal_berangkat,
+        $waktu_berangkat,
+        $kota_asal,
+        $kota_tujuan,
+        $jumlah_penumpang,
+        $total_harga,
+        'dibayar_dp',
         $catatan_lengkap
     ]);
-    
+
     $pemesanan_id = $db->lastInsertId();
-    
+
     $_SESSION['success'] = 'Pemesanan bus berhasil dibuat. Silakan lakukan pembayaran.';
     header('Location: upload_bukti.php?id=' . $pemesanan_id);
     exit();

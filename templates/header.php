@@ -10,11 +10,29 @@
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <!-- Dark Mode CSS -->
-    <link href="/kutansinu/assets/css/dark-mode.css" rel="stylesheet">
+    <link href="/assets/css/dark-mode.css" rel="stylesheet">
     <!-- Custom CSS -->
     <style>
         .navbar-brand {
             font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .navbar {
+            background-color: rgb(33, 146, 42) !important;
+        }
+
+        .navbar-brand img {
+            height: 32px;
+            width: 32px;
+            margin-right: 10px;
+            border-radius: 50%;
+            background: #fff;
+            object-fit: cover;
+            border: 2px solid #e0e0e0;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
         }
 
         .nav-link {
@@ -39,6 +57,9 @@
         }
     </style>
     <link rel="stylesheet" href="../assets/css/style.css">
+    <!-- Tambahkan di bagian head -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 </head>
 
 <body>
@@ -67,8 +88,8 @@
             // Jika user adalah viewer dan mencoba mengakses halaman selain laporan, redirect ke halaman laporan
             if ($is_viewer) {
                 $current_path = $_SERVER['REQUEST_URI'];
-                if (strpos($current_path, '/laporan/') === false && $current_path !== '/kutansinu/index.php' && $current_path !== '/kutansinu/') {
-                    header('Location: /kutansinu/laporan/transaksi.php');
+                if (strpos($current_path, '/laporan/') === false && $current_path !== '/index.php' && $current_path !== '') {
+                    header('Location: /laporan/transaksi.php');
                     exit();
                 }
             }
@@ -84,25 +105,31 @@
     ?>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="/kutansinu/index.php">
+            <a class="navbar-brand" href="/index.php">
+                <?php
+                $logo_path = '/assets/img/logo.jpg'; // default
+                if (isset($_SESSION['user_id']) && isset($db)) {
+                    $user_id = $_SESSION['user_id'];
+                    // Ambil default_company user
+                    $stmt = $db->prepare("SELECT default_company FROM users WHERE id = ?");
+                    $stmt->execute([$user_id]);
+                    $user_data = $stmt->fetch();
+                    $default_company_id = $user_data['default_company'] ?? null;
+                    if ($default_company_id) {
+                        $stmt = $db->prepare("SELECT logo, nama FROM perusahaan WHERE id = ?");
+                        $stmt->execute([$default_company_id]);
+                        $perusahaan = $stmt->fetch();
+                        if ($perusahaan && !empty($perusahaan['logo'])) {
+                            $logo_path = '/' . $perusahaan['logo'];
+                        }
+                    }
+                }
+                ?>
+                <img src="<?php echo htmlspecialchars($logo_path); ?>" alt="Logo" />
                 <?php
                 // Ambil nama perusahaan yang sedang aktif untuk user yang login
-                if (isset($_SESSION['user_id'])) {
-                    $user_id = $_SESSION['user_id'];
-
-                    // Cek apakah ada perusahaan aktif untuk user ini
-                    $stmt = $db->prepare("SELECT p.nama FROM perusahaan p 
-                                         JOIN user_perusahaan up ON p.id = up.perusahaan_id 
-                                         WHERE up.user_id = ? AND up.status = 'active' 
-                                         LIMIT 1");
-                    $stmt->execute([$user_id]);
-                    $perusahaan = $stmt->fetch();
-
-                    if ($perusahaan) {
-                        echo htmlspecialchars($perusahaan['nama']);
-                    } else {
-                        echo "SiKeu";
-                    }
+                if (isset($perusahaan) && !empty($perusahaan['nama'])) {
+                    echo htmlspecialchars($perusahaan['nama']);
                 } else {
                     echo "SiKeu";
                 }
@@ -118,10 +145,10 @@
                     if (!$is_viewer) :
                     ?>
                         <li class="nav-item">
-                            <a class="nav-link" href="/kutansinu/transaksi/index.php"><i class="fas fa-exchange-alt me-1"></i> Transaksi</a>
+                            <a class="nav-link" href="/transaksi/index.php"><i class="fas fa-exchange-alt me-1"></i> Transaksi</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/kutansinu/akun/index.php"><i class="fas fa-list-alt me-1"></i> Daftar Akun</a>
+                            <a class="nav-link" href="/akun/index.php"><i class="fas fa-list-alt me-1"></i> Daftar Akun</a>
                         </li>
                     <?php endif; ?>
                     <li class="nav-item dropdown">
@@ -129,23 +156,30 @@
                             <i class="fas fa-chart-bar me-1"></i> Laporan
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-                            <li><a class="dropdown-item" href="/kutansinu/laporan/transaksi.php"><i class="fas fa-exchange-alt me-1"></i> Transaksi</a></li>
-                            <li><a class="dropdown-item" href="/kutansinu/laporan/neraca.php"><i class="fas fa-balance-scale me-1"></i> Neraca</a></li>
-                            <li><a class="dropdown-item" href="/kutansinu/laporan/laba-rugi.php"><i class="fas fa-chart-line me-1"></i> Laba Rugi</a></li>
-                            <li><a class="dropdown-item" href="/kutansinu/laporan/arus-kas.php"><i class="fas fa-money-bill-wave me-1"></i> Arus Kas</a></li>
+                            <li><a class="dropdown-item" href="/laporan/transaksi.php"><i class="fas fa-exchange-alt me-1"></i> Transaksi</a></li>
+                            <li><a class="dropdown-item" href="/laporan/neraca.php"><i class="fas fa-balance-scale me-1"></i> Neraca</a></li>
+                            <li><a class="dropdown-item" href="/laporan/laba-rugi.php"><i class="fas fa-chart-line me-1"></i> Laba Rugi</a></li>
+                            <li><a class="dropdown-item" href="/laporan/arus-kas.php"><i class="fas fa-money-bill-wave me-1"></i> Arus Kas</a></li>
                         </ul>
                     </li>
+                    <?php if ($is_nugrosir) : ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/bus/index.php"><i class="fas fa-bus me-1"></i> Pemesanan Bus</a>
+                        </li>
+                    <?php endif; ?>
                     <?php if (!$is_viewer) : ?>
                         <li class="nav-item">
-                            <a class="nav-link" href="/kutansinu/pengaturan/index.php"><i class="fas fa-cog me-1"></i> Pengaturan</a>
+                            <a class="nav-link" href="/pengaturan/index.php"><i class="fas fa-cog me-1"></i> Pengaturan</a>
                         </li>
                     <?php endif; ?>
 
-                    <?php if ($is_nugrosir) : ?>
+                    <?php if (!isset($_SESSION['user_id'])) : ?>
+                        <!-- Menu Jadwal Bus Umum (hanya ditampilkan u  ntuk pengunjung yang belum login) -->
                         <li class="nav-item">
-                            <a class="nav-link" href="/kutansinu/bus/index.php"><i class="fas fa-bus me-1"></i> Pemesanan Bus</a>
+                            <a class="nav-link" href="/jadwal_bus_umum.php"><i class="fas fa-calendar-alt me-1"></i> Jadwal Bus</a>
                         </li>
                     <?php endif; ?>
+
                 </ul>
                 <ul class="navbar-nav">
                     <?php if (isset($_SESSION['user_id'])) :
@@ -156,11 +190,12 @@
                         $username = $user['username'] ?? 'Pengguna';
                     ?>
                         <li class="nav-item">
-                            <a class="nav-link" href="/kutansinu/pengaturan/profil.php">
+                            <a class="nav-link" href="/pengaturan/profil.php">
                                 <i class="fas fa-user me-1"></i>
                                 <span><?php echo htmlspecialchars($username); ?></span>
                             </a>
                         </li>
+
 
                         <li class="nav-item">
                             <div class="theme-switch" onclick="toggleTheme()">
@@ -169,7 +204,7 @@
                             </div>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/kutansinu/logout.php">Keluar</a>
+                            <a class="nav-link" href="/logout.php">Keluar</a>
                         </li>
                     <?php endif; ?>
                 </ul>
