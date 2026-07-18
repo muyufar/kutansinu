@@ -103,8 +103,15 @@
                     // Tampilkan menu Transaksi dan Daftar Akun hanya jika bukan viewer
                     if (!$is_viewer) :
                     ?>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/transaksi/index.php"><i class="fas fa-exchange-alt me-1"></i> Transaksi</a>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="transaksiDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-exchange-alt me-1"></i> Kelola Transaksi
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="transaksiDropdown">
+                                <li><a class="dropdown-item" href="/transaksi/index.php"><i class="fas fa-list me-1"></i> Daftar Transaksi</a></li>
+                                <li><a class="dropdown-item" href="/transaksi/tambah.php"><i class="fas fa-plus me-1"></i> Tambah Baru</a></li>
+                                <li><a class="dropdown-item" href="/transaksi/import.php"><i class="fas fa-file-import me-1"></i> Import CSV</a></li>
+                            </ul>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="/akun/index.php"><i class="fas fa-list-alt me-1"></i> Daftar Akun</a>
@@ -115,10 +122,15 @@
                             <i class="fas fa-chart-bar me-1"></i> Laporan
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-                            <li><a class="dropdown-item" href="/laporan/transaksi.php"><i class="fas fa-exchange-alt me-1"></i> Transaksi</a></li>
+                            <li><a class="dropdown-item" href="/laporan/transaksi.php"><i class="fas fa-search me-1"></i> Rekap Transaksi</a></li>
+                            <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="/laporan/neraca.php"><i class="fas fa-balance-scale me-1"></i> Neraca</a></li>
                             <li><a class="dropdown-item" href="/laporan/laba-rugi.php"><i class="fas fa-chart-line me-1"></i> Laba Rugi</a></li>
                             <li><a class="dropdown-item" href="/laporan/arus-kas.php"><i class="fas fa-money-bill-wave me-1"></i> Arus Kas</a></li>
+                            <?php if ($user_role === 'admin') : ?>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="/laporan/audit_log.php"><i class="fas fa-history me-1"></i> Audit Log</a></li>
+                            <?php endif; ?>
                         </ul>
                     </li>
                     <?php if ($is_nugrosir) : ?>

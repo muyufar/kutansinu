@@ -49,48 +49,126 @@ if ($is_admin) {
     }
 }
 
-// Ambil tanggal 4 hari ke belakang dan 3 hari ke depan
-$labels = [];
-$pemasukan = [];
-$pengeluaran = [];
-$kas_bersih = [];
-$today = new DateTime();
-$saldo_awal = 0;
-
 // Ambil id_perusahaan dari default_company pengguna
 $stmt_company = $db->prepare("SELECT default_company FROM users WHERE id = ?");
 $stmt_company->execute([$_SESSION['user_id']]);
 $user_data = $stmt_company->fetch();
 $id_perusahaan = $user_data['default_company'];
 
-// Hitung saldo awal sebelum 4 hari ke belakang
-$start_date = (clone $today)->modify('-4 days')->format('Y-m-d');
-$stmt = $db->prepare("SELECT SUM(CASE WHEN jenis = 'pemasukan' THEN jumlah ELSE -jumlah END) as saldo FROM transaksi WHERE tanggal < ? AND id_perusahaan = ?");
-$stmt->execute([$start_date, $id_perusahaan]);
-$saldo_awal = (int)($stmt->fetch()['saldo'] ?? 0);
+/**
+ * Bangun data seri arus kas untuk grafik dashboard.
+ * @return array{labels:array,pemasukan:array,pengeluaran:array,kas_bersih:array,period_masuk:int,period_keluar:int,kas_akhir:int,subtitle:string}
+ */
+function buildCashFlowSeries(PDO $db, int $idPerusahaan, string $mode): array
+{
+    $bulanShort = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    $today = new DateTime('today');
+    $periods = [];
+    $subtitle = '';
 
-$kas_bersih_val = $saldo_awal;
-for ($i = -4; $i <= 3; $i++) {
-    $date = (clone $today)->modify("$i days")->format('Y-m-d');
-    $labels[] = (clone $today)->modify("$i days")->format('d M');
-    // Pemasukan
-    $stmt = $db->prepare("SELECT SUM(jumlah) as total FROM transaksi WHERE tanggal = ? AND jenis = 'pemasukan' AND id_perusahaan = ?");
-    $stmt->execute([$date, $id_perusahaan]);
-    $masuk = (int)($stmt->fetch()['total'] ?? 0);
-    $pemasukan[] = $masuk;
-    // Pengeluaran
-    $stmt = $db->prepare("SELECT SUM(jumlah) as total FROM transaksi WHERE tanggal = ? AND jenis = 'pengeluaran' AND id_perusahaan = ?");
-    $stmt->execute([$date, $id_perusahaan]);
-    $keluar = (int)($stmt->fetch()['total'] ?? 0);
-    $pengeluaran[] = -$keluar;
-    // Kas Bersih
-    $kas_bersih_val += $masuk - $keluar;
-    $kas_bersih[] = $kas_bersih_val;
+    if ($mode === 'harian') {
+        for ($i = 13; $i >= 0; $i--) {
+            $d = (clone $today)->modify("-{$i} days");
+            $key = $d->format('Y-m-d');
+            $periods[] = ['start' => $key, 'end' => $key, 'label' => $d->format('d M')];
+        }
+        $subtitle = '14 hari terakhir';
+    } elseif ($mode === 'minggu') {
+        $monday = (clone $today)->modify('monday this week');
+        for ($i = 7; $i >= 0; $i--) {
+            $start = (clone $monday)->modify("-{$i} weeks");
+            $end = (clone $start)->modify('+6 days');
+            if ($end > $today) {
+                $end = clone $today;
+            }
+            $periods[] = [
+                'start' => $start->format('Y-m-d'),
+                'end' => $end->format('Y-m-d'),
+                'label' => $start->format('d/m') . '–' . $end->format('d/m'),
+            ];
+        }
+        $subtitle = '8 minggu terakhir (Sen–Min)';
+    } else {
+        $firstOfMonth = new DateTime($today->format('Y-m-01'));
+        for ($i = 11; $i >= 0; $i--) {
+            $start = (clone $firstOfMonth)->modify("-{$i} months");
+            $end = (clone $start)->modify('last day of this month');
+            if ($end > $today) {
+                $end = clone $today;
+            }
+            $periods[] = [
+                'start' => $start->format('Y-m-d'),
+                'end' => $end->format('Y-m-d'),
+                'label' => $bulanShort[(int)$start->format('n') - 1] . ' ' . $start->format('y'),
+            ];
+        }
+        $subtitle = '12 bulan terakhir';
+    }
+
+    $rangeStart = $periods[0]['start'];
+    $rangeEnd = $periods[count($periods) - 1]['end'];
+
+    $stmt = $db->prepare("SELECT SUM(CASE WHEN jenis = 'pemasukan' THEN jumlah ELSE -jumlah END) AS saldo FROM transaksi WHERE tanggal < ? AND id_perusahaan = ?");
+    $stmt->execute([$rangeStart, $idPerusahaan]);
+    $kasRunning = (int)($stmt->fetchColumn() ?: 0);
+
+    $stmt = $db->prepare("SELECT tanggal, jenis, jumlah FROM transaksi WHERE id_perusahaan = ? AND tanggal >= ? AND tanggal <= ? ORDER BY tanggal");
+    $stmt->execute([$idPerusahaan, $rangeStart, $rangeEnd]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $labels = [];
+    $pemasukan = [];
+    $pengeluaran = [];
+    $kas_bersih = [];
+    $totalMasuk = 0;
+    $totalKeluar = 0;
+
+    foreach ($periods as $p) {
+        $masuk = 0;
+        $keluar = 0;
+        foreach ($rows as $row) {
+            if ($row['tanggal'] >= $p['start'] && $row['tanggal'] <= $p['end']) {
+                if ($row['jenis'] === 'pemasukan') {
+                    $masuk += (int)$row['jumlah'];
+                } else {
+                    $keluar += (int)$row['jumlah'];
+                }
+            }
+        }
+        $totalMasuk += $masuk;
+        $totalKeluar += $keluar;
+        $kasRunning += $masuk - $keluar;
+        $labels[] = $p['label'];
+        $pemasukan[] = $masuk;
+        $pengeluaran[] = -$keluar;
+        $kas_bersih[] = $kasRunning;
+    }
+
+    return [
+        'labels' => $labels,
+        'pemasukan' => $pemasukan,
+        'pengeluaran' => $pengeluaran,
+        'kas_bersih' => $kas_bersih,
+        'period_masuk' => $totalMasuk,
+        'period_keluar' => $totalKeluar,
+        'kas_akhir' => $kasRunning,
+        'subtitle' => $subtitle,
+    ];
 }
-$labels_json = json_encode($labels);
-$pemasukan_json = json_encode($pemasukan);
-$pengeluaran_json = json_encode($pengeluaran);
-$kas_bersih_json = json_encode($kas_bersih);
+
+$cashflow_series = [
+    'harian' => buildCashFlowSeries($db, (int)$id_perusahaan, 'harian'),
+    'minggu' => buildCashFlowSeries($db, (int)$id_perusahaan, 'minggu'),
+    'bulan' => buildCashFlowSeries($db, (int)$id_perusahaan, 'bulan'),
+];
+$cashflow_default = 'minggu';
+$cf = $cashflow_series[$cashflow_default];
+
+$labels_json = json_encode($cf['labels']);
+$pemasukan_json = json_encode($cf['pemasukan']);
+$pengeluaran_json = json_encode($cf['pengeluaran']);
+$kas_bersih_json = json_encode($cf['kas_bersih']);
+$cashflow_all_json = json_encode($cashflow_series);
 
 // Query distribusi pengeluaran per akun debit
 $stmt = $db->prepare("SELECT ad.nama_akun as kategori, SUM(t.jumlah) as total FROM transaksi t LEFT JOIN akun ad ON t.id_akun_debit = ad.id WHERE t.jenis = 'pengeluaran' AND t.id_perusahaan = ? GROUP BY ad.nama_akun ORDER BY total DESC");
@@ -220,8 +298,10 @@ $stmt = $db->prepare("SELECT COUNT(*) FROM transaksi WHERE id_perusahaan = ? AND
 $stmt->execute([$id_perusahaan, $bulan_ini_start]);
 $tx_bulan_ini = (int)$stmt->fetchColumn();
 
-$period_masuk = array_sum($pemasukan);
-$period_keluar = array_sum(array_map('abs', $pengeluaran));
+$period_masuk = $cf['period_masuk'];
+$period_keluar = $cf['period_keluar'];
+$kas_akhir_periode = $cf['kas_akhir'];
+$cashflow_subtitle = $cf['subtitle'];
 
 $stmt = $db->prepare("
     SELECT t.id, t.tanggal, t.jenis, t.jumlah, t.keterangan, t.tag,
@@ -235,8 +315,6 @@ $stmt = $db->prepare("
 ");
 $stmt->execute([$id_perusahaan]);
 $transaksi_terbaru = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-$kas_akhir_periode = (int)end($kas_bersih);
 
 // Header
 include 'templates/header.php';
@@ -318,11 +396,18 @@ include 'templates/header.php';
                     <div class="dashboard-panel-head">
                         <div>
                             <h5 class="dashboard-panel-title mb-0">Arus Kas</h5>
-                            <small class="text-muted">7 hari · 4 hari lalu s/d 3 hari ke depan</small>
+                            <small class="text-muted" id="cashflowSubtitle"><?= htmlspecialchars($cashflow_subtitle) ?></small>
                         </div>
-                        <div class="dashboard-panel-stats">
-                            <span class="dashboard-stat-pill in"><i class="fas fa-circle"></i> Masuk <?= fmtRp($period_masuk) ?></span>
-                            <span class="dashboard-stat-pill out"><i class="fas fa-circle"></i> Keluar <?= fmtRp($period_keluar) ?></span>
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <div class="cashflow-period-toggle btn-group btn-group-sm" role="group" aria-label="Periode arus kas">
+                                <button type="button" class="btn btn-outline-secondary" data-cashflow-period="harian">Harian</button>
+                                <button type="button" class="btn btn-outline-secondary active" data-cashflow-period="minggu">Minggu</button>
+                                <button type="button" class="btn btn-outline-secondary" data-cashflow-period="bulan">Bulan</button>
+                            </div>
+                            <div class="dashboard-panel-stats">
+                                <span class="dashboard-stat-pill in" id="cashflowStatIn"><i class="fas fa-circle"></i> Masuk <?= fmtRp($period_masuk) ?></span>
+                                <span class="dashboard-stat-pill out" id="cashflowStatOut"><i class="fas fa-circle"></i> Keluar <?= fmtRp($period_keluar) ?></span>
+                            </div>
                         </div>
                     </div>
                     <div class="dashboard-chart-wrap">
@@ -330,7 +415,7 @@ include 'templates/header.php';
                     </div>
                     <div class="dashboard-chart-foot">
                         <span>Kas akhir periode</span>
-                        <strong><?= fmtRp($kas_akhir_periode) ?></strong>
+                        <strong id="cashflowEndBalance"><?= fmtRp($kas_akhir_periode) ?></strong>
                     </div>
                 </div>
             </div>
@@ -519,13 +604,22 @@ include 'templates/header.php';
 
 </div>
 
-    <!-- Chart.js -->    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-        const labels = <?php echo $labels_json; ?>;
-        const pemasukan = <?php echo $pemasukan_json; ?>;
-        const pengeluaran = <?php echo $pengeluaran_json; ?>;
-        const kasBersih = <?php echo $kas_bersih_json; ?>;
+        const cashFlowData = <?php echo $cashflow_all_json; ?>;
+        let cashFlowPeriod = localStorage.getItem('cashflowPeriod') || '<?= $cashflow_default ?>';
+        if (!cashFlowData[cashFlowPeriod]) {
+            cashFlowPeriod = 'minggu';
+        }
+        const cfInit = cashFlowData[cashFlowPeriod];
+        const labels = cfInit.labels;
+        const pemasukan = cfInit.pemasukan;
+        const pengeluaran = cfInit.pengeluaran;
+        const kasBersih = cfInit.kas_bersih;
+
+        const formatRpFull = (n) => 'Rp ' + Number(n).toLocaleString('id-ID');
 
         const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
         const gridColor = () => isDark() ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.25)';
@@ -633,6 +727,36 @@ include 'templates/header.php';
         document.addEventListener('DOMContentLoaded', loadTransactionSummary);
 
         document.addEventListener('DOMContentLoaded', function() {
+            function applyCashFlowPeriod(period) {
+                const d = cashFlowData[period];
+                if (!d) return;
+                cashFlowPeriod = period;
+                localStorage.setItem('cashflowPeriod', period);
+
+                financeChart.data.labels = d.labels;
+                financeChart.data.datasets[0].data = d.pemasukan;
+                financeChart.data.datasets[1].data = d.pengeluaran;
+                financeChart.data.datasets[2].data = d.kas_bersih;
+                financeChart.update();
+
+                document.getElementById('cashflowSubtitle').textContent = d.subtitle;
+                document.getElementById('cashflowStatIn').innerHTML = '<i class="fas fa-circle"></i> Masuk ' + formatRpFull(d.period_masuk);
+                document.getElementById('cashflowStatOut').innerHTML = '<i class="fas fa-circle"></i> Keluar ' + formatRpFull(d.period_keluar);
+                document.getElementById('cashflowEndBalance').textContent = formatRpFull(d.kas_akhir);
+
+                document.querySelectorAll('[data-cashflow-period]').forEach(function(btn) {
+                    btn.classList.toggle('active', btn.dataset.cashflowPeriod === period);
+                });
+            }
+
+            document.querySelectorAll('[data-cashflow-period]').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    applyCashFlowPeriod(this.dataset.cashflowPeriod);
+                });
+            });
+
+            applyCashFlowPeriod(cashFlowPeriod);
+
             const observer = new MutationObserver(function() {
                 financeChart.options.scales.y.grid.color = gridColor();
                 financeChart.options.scales.x.ticks.color = tickColor();

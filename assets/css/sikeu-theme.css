@@ -682,6 +682,26 @@ body.sikeu-app {
 
 .dashboard-chart-wrap { position: relative; height: 280px; margin: 0.5rem 0; }
 
+.cashflow-period-toggle .btn {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.35rem 0.65rem;
+    border-color: var(--sikeu-border-strong);
+    color: var(--sikeu-text-muted);
+}
+
+.cashflow-period-toggle .btn.active {
+    background: linear-gradient(135deg, var(--sikeu-primary-700), var(--sikeu-primary-500));
+    border-color: transparent;
+    color: #fff;
+}
+
+.cashflow-period-toggle .btn:hover:not(.active) {
+    background: var(--sikeu-primary-soft);
+    color: var(--sikeu-primary-700);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
 .dashboard-chart-foot {
     display: flex;
     justify-content: space-between;
@@ -1153,6 +1173,104 @@ body.sikeu-login {
         display: none;
     }
 }
+
+/* ─── Audit log page ─── */
+.audit-log-page { max-width: 1280px; }
+
+.audit-log-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.audit-log-eyebrow {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--sikeu-primary-700);
+}
+
+.audit-log-title {
+    font-size: clamp(1.25rem, 2.5vw, 1.65rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--sikeu-text);
+}
+
+.audit-log-count {
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.45rem 0.75rem;
+    border-radius: 999px;
+    background: var(--sikeu-primary-soft);
+    color: var(--sikeu-primary-700);
+}
+
+.audit-log-table thead th {
+    background: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%) !important;
+    color: #065f46 !important;
+    border-bottom: 2px solid rgba(5, 150, 105, 0.2) !important;
+}
+
+.audit-log-table tbody td {
+    color: var(--sikeu-text) !important;
+    background-color: #ffffff;
+}
+
+.audit-log-table.table-striped > tbody > tr:nth-of-type(odd) > * {
+    background-color: #f8fafc !important;
+    color: var(--sikeu-text) !important;
+}
+
+.audit-log-table.table-hover > tbody > tr:hover > * {
+    background-color: rgba(16, 185, 129, 0.08) !important;
+}
+
+.audit-log-time {
+    font-size: 0.82rem;
+    color: var(--sikeu-text-muted);
+    white-space: nowrap;
+}
+
+.audit-log-desc {
+    max-width: 320px;
+    font-size: 0.88rem;
+    line-height: 1.45;
+}
+
+.audit-log-ip {
+    font-size: 0.78rem;
+    color: #475569;
+    background: #f1f5f9;
+    padding: 0.15rem 0.4rem;
+    border-radius: 6px;
+}
+
+.audit-log-ua {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--sikeu-text-muted);
+    cursor: help;
+    border-bottom: 1px dotted var(--sikeu-border-strong);
+}
+
+.audit-action-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.28rem 0.55rem;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.audit-action-login { background: rgba(37, 99, 235, 0.12); color: #1d4ed8; }
+.audit-action-create { background: rgba(16, 185, 129, 0.14); color: #047857; }
+.audit-action-update { background: rgba(245, 158, 11, 0.16); color: #b45309; }
+.audit-action-delete { background: rgba(220, 38, 38, 0.12); color: #b91c1c; }
+.audit-action-default { background: rgba(100, 116, 139, 0.12); color: #475569; }
 
 /* ─── Expense distribution widget ─── */
 .expense-distribution-card .expense-top-badge {
