@@ -111,19 +111,38 @@ $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $page = max(1, $page); // Ensure page is at least 1
 $offset = ($page - 1) * $items_per_page;
 
+// Search and filter parameters
+$search = isset($_GET['search']) ? validateInput($_GET['search']) : '';
+$kategori = isset($_GET['kategori']) ? validateInput($_GET['kategori']) : '';
+
+// Build WHERE clause for search and filter
+$where_clause = "WHERE id_perusahaan = ?";
+$params = [$id_perusahaan];
+
+if (!empty($search)) {
+    $where_clause .= " AND (kode_akun LIKE ? OR nama_akun LIKE ?)";
+    $params[] = "%$search%";
+    $params[] = "%$search%";
+}
+
+if (!empty($kategori)) {
+    $where_clause .= " AND kategori = ?";
+    $params[] = $kategori;
+}
+
 // Get total records for pagination
-$stmt_count = $db->prepare("SELECT COUNT(*) as total FROM akun WHERE id_perusahaan = ?");
-$stmt_count->execute([$id_perusahaan]);
+$stmt_count = $db->prepare("SELECT COUNT(*) as total FROM akun " . $where_clause);
+$stmt_count->execute($params);
 $total_records = $stmt_count->fetch()['total'];
 $total_pages = $items_per_page > 0 ? ceil($total_records / $items_per_page) : 1;
 
 // Ambil daftar akun dengan pagination
 if ($items_per_page > 0) {
-    $stmt = $db->prepare("SELECT * FROM akun WHERE id_perusahaan = ? ORDER BY kode_akun ASC LIMIT " . (int)$items_per_page . " OFFSET " . (int)$offset);
+    $stmt = $db->prepare("SELECT * FROM akun " . $where_clause . " ORDER BY kode_akun ASC LIMIT " . (int)$items_per_page . " OFFSET " . (int)$offset);
 } else {
-    $stmt = $db->prepare("SELECT * FROM akun WHERE id_perusahaan = ? ORDER BY kode_akun ASC");
+    $stmt = $db->prepare("SELECT * FROM akun " . $where_clause . " ORDER BY kode_akun ASC");
 }
-$stmt->execute([$id_perusahaan]);
+$stmt->execute($params);
 $akun_list = $stmt->fetchAll();
 
 // Header
@@ -158,6 +177,35 @@ include '../templates/header.php';
             ?>
         </div>
     <?php endif; ?>
+
+    <!-- Search and Filter Form -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="search" placeholder="Cari kode atau nama akun..." value="<?php echo htmlspecialchars($search); ?>">
+                        <button class="btn btn-outline-secondary" type="submit">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="kategori" onchange="this.form.submit()">
+                        <option value="">Semua Kategori</option>
+                        <option value="aktiva" <?php echo $kategori == 'aktiva' ? 'selected' : ''; ?>>Aktiva</option>
+                        <option value="pasiva" <?php echo $kategori == 'pasiva' ? 'selected' : ''; ?>>Pasiva</option>
+                        <option value="modal" <?php echo $kategori == 'modal' ? 'selected' : ''; ?>>Modal</option>
+                        <option value="pendapatan" <?php echo $kategori == 'pendapatan' ? 'selected' : ''; ?>>Pendapatan</option>
+                        <option value="beban" <?php echo $kategori == 'beban' ? 'selected' : ''; ?>>Beban</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <a href="index.php" class="btn btn-secondary w-100">Reset</a>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <div class="card">
         <div class="card-body">
@@ -219,21 +267,21 @@ include '../templates/header.php';
 
                     <?php if ($items_per_page > 0 && $total_pages > 1): ?>
                         <li class="page-item <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
-                            <a class="page-link" href="?page=<?php echo $page - 1; ?>&per_page=<?php echo $items_per_page; ?>" aria-label="Previous">
+                            <a class="page-link" href="?page=<?php echo $page - 1; ?>&per_page=<?php echo $items_per_page; ?>&search=<?php echo urlencode($search); ?>&kategori=<?php echo urlencode($kategori); ?>" aria-label="Previous">
                                 <span aria-hidden="true">&laquo;</span>
                             </a>
                         </li>
 
                         <?php for ($i = 1; $i <= $total_pages; $i++): ?>
                             <li class="page-item <?php echo ($page == $i) ? 'active' : ''; ?>">
-                                <a class="page-link" href="?page=<?php echo $i; ?>&per_page=<?php echo $items_per_page; ?>">
+                                <a class="page-link" href="?page=<?php echo $i; ?>&per_page=<?php echo $items_per_page; ?>&search=<?php echo urlencode($search); ?>&kategori=<?php echo urlencode($kategori); ?>">
                                     <?php echo $i; ?>
                                 </a>
                             </li>
                         <?php endfor; ?>
 
                         <li class="page-item <?php echo ($page >= $total_pages) ? 'disabled' : ''; ?>">
-                            <a class="page-link" href="?page=<?php echo $page + 1; ?>&per_page=<?php echo $items_per_page; ?>" aria-label="Next">
+                            <a class="page-link" href="?page=<?php echo $page + 1; ?>&per_page=<?php echo $items_per_page; ?>&search=<?php echo urlencode($search); ?>&kategori=<?php echo urlencode($kategori); ?>" aria-label="Next">
                                 <span aria-hidden="true">&raquo;</span>
                             </a>
                         </li>
@@ -351,7 +399,10 @@ include '../templates/header.php';
 
     // Function to change items per page
     function changePerPage(value) {
-        window.location.href = '?page=1&per_page=' + value;
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set('per_page', value);
+        urlParams.set('page', '1');
+        window.location.href = '?' + urlParams.toString();
     }
 </script>
 

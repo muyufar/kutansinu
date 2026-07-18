@@ -563,7 +563,7 @@ include 'templates/header.php';
                         color: '#222',
                         font: {
                             weight: 'bold',
-                            size: 12
+                            size: 15
                         },
                         anchor: 'center',
                         align: 'center',
