@@ -3,6 +3,11 @@
 /**
  * Salin file ini menjadi database.production.php lalu isi kredensial server production.
  * File database.production.php tidak di-push ke GitHub.
+ *
+ * PENTING:
+ * - Wajib diawali <?php dan return [ ... ];
+ * - Jangan pakai variabel $host / $dbname di sini (bukan format lama database.php)
+ * - Password dengan karakter khusus cukup pakai tanda petik tunggal '...'
  */
 return [
     'host' => 'localhost',

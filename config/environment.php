@@ -23,7 +23,9 @@ function appEnvironment(): string
 
     $localHosts = ['localhost', '127.0.0.1', 'keuangan.test'];
 
-    if (in_array($host, $localHosts, true) || str_ends_with($host, '.test')) {
+    $isLocalTestDomain = (strlen($host) > 5 && substr($host, -5) === '.test');
+
+    if (in_array($host, $localHosts, true) || $isLocalTestDomain) {
         $environment = 'local';
         return $environment;
     }
