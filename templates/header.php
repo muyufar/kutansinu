@@ -55,6 +55,15 @@
         .theme-switch:hover {
             color: rgba(255, 255, 255, 1);
         }
+
+        .navbar {
+            position: relative;
+            z-index: 1040;
+        }
+
+        .navbar .dropdown-menu {
+            z-index: 1050;
+        }
     </style>
     <link rel="stylesheet" href="../assets/css/style.css">
     <!-- Tambahkan di bagian head -->

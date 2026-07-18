@@ -328,10 +328,8 @@ include '../templates/header.php';
 <!--    </div>-->
 <!--</div>-->
 
-<!-- jQuery untuk tooltip -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</div><!-- /.container -->
 
-<!-- FullCalendar CSS -->
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.0/main.min.css" rel="stylesheet">
 
 <!-- Custom Modern Calendar CSS -->
@@ -393,6 +391,8 @@ include '../templates/header.php';
         border-radius: 16px;
         overflow: hidden;
         box-shadow: 0 2px 16px rgba(44, 62, 80, 0.04);
+        position: relative;
+        z-index: 1;
     }
 
     .fc .fc-daygrid-day-number {
@@ -415,9 +415,6 @@ include '../templates/header.php';
 <!-- FullCalendar JS -->
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.0/main.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.0/locales/id.js"></script>
-
-<!-- Bootstrap Tooltip -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <!-- Script untuk validasi tanggal dan kalender -->
 <script>
@@ -479,24 +476,9 @@ include '../templates/header.php';
                     if (titleEl && !titleEl.innerHTML.includes('fa-bus')) {
                         titleEl.innerHTML = '<i class="fas fa-bus me-1"></i> ' + titleEl.innerHTML;
                     }
-                    // Tooltip
                     const isPast = props.isPast;
                     let statusText = isPast ? 'Sudah lewat' : props.statusText || ucfirst(props.status);
-                    let tooltipContent = `
-        <div class="tooltip-jadwal">
-            <strong>Bus:</strong> ${props.bus} (${props.tipe})<br>
-            <strong>Rute:</strong> ${props.rute}<br>
-            <strong>Waktu:</strong> ${props.waktu}<br>
-            <strong>Status:</strong> ${statusText}
-        </div>
-    `;
-                    $(info.el).tooltip({
-                        title: tooltipContent,
-                        placement: 'top',
-                        trigger: 'hover',
-                        container: 'body',
-                        html: true
-                    });
+                    info.el.setAttribute('title', `${props.bus} (${props.tipe}) | ${props.rute} | ${props.waktu} | ${statusText}`);
                 }
             });
             calendar.render();
@@ -504,11 +486,8 @@ include '../templates/header.php';
     });
 </script>
 
-<?php include '../templates/footer.php'; ?>
-
-
 <!-- Modal Tambah Bus -->
-<div class="modal fade" id="tambahBusModal">
+<div class="modal fade" id="tambahBusModal" tabindex="-1" aria-labelledby="tambahBusModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
@@ -758,3 +737,5 @@ include '../templates/header.php';
     </div>
 
 </div>
+
+<?php include '../templates/footer.php'; ?>
