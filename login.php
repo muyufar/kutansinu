@@ -1,248 +1,295 @@
 <?php
+
 session_start();
+
 require_once 'config/database.php';
+
 require_once 'config/functions.php';
 
+
+
 // Tangkap parameter redirect jika ada
+
 $redirect = isset($_GET['redirect']) ? $_GET['redirect'] : '';
 
+
+
 // Jika sudah login, redirect ke dashboard
+
 if (isset($_SESSION['user_id'])) {
+
     header("Location: index.php");
+
     exit();
+
 }
+
+
 
 $error = '';
 
+
+
 // Proses login
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+
     $username = validateInput($_POST['username']);
+
     $password = $_POST['password'];
+
     $remember = isset($_POST['remember']);
 
+
+
     $stmt = $db->prepare("SELECT * FROM users WHERE username = ?");
+
     $stmt->execute([$username]);
+
     $user = $stmt->fetch();
 
+
+
     if ($user && password_verify($password, $user['password'])) {
+
         $_SESSION['user_id'] = $user['id'];
+
         $_SESSION['username'] = $user['username'];
+
         if ($remember) {
+
             setcookie('username', $username, time() + (86400 * 30), "/");
+
         }
+
         if (!empty($redirect)) {
+
             header("Location: $redirect");
+
         } else {
+
             header("Location: index.php");
+
         }
+
         logAudit($db, $user['id'], 'login', 'User berhasil login');
+
         exit();
+
     } else {
+
         $error = 'Username atau password salah';
+
     }
+
 }
+
 ?>
 
+
+
 <!DOCTYPE html>
-<html lang="id">
+
+<html lang="id" data-theme="light">
+
+
 
 <head>
+
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Login - Sistem Pelaporan Keuangan</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(90deg, #f8f9fa 50%, rgb(143, 245, 143) 100%);
-            min-height: 100vh;
-        }
 
-        .main-container {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
 
-        .login-section {
-            background: #fff;
-            border-radius: 20px 0 0 20px;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.08);
-            padding: 60px 40px;
-            width: 400px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
+    <link href="/assets/css/sikeu-theme.css" rel="stylesheet">
 
-        .illustration-section {
-            background: linear-gradient(135deg, rgb(143, 245, 148) 0%, #f8f9fa 100%);
-            border-radius: 0 20px 20px 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 450px;
-            min-height: 500px;
-            position: relative;
-            overflow: hidden;
-        }
+    <link href="/assets/css/dark-mode.css" rel="stylesheet">
 
-        .illustration-section::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(120deg, #a18ff5 60%, #fff0 100%);
-            opacity: 0.7;
-            z-index: 1;
-        }
-
-        .illustration-section img {
-            max-width: 100%;
-            max-height: 100%;
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            position: relative;
-            z-index: 2;
-            display: block;
-            margin: 0 auto;
-        }
-
-        .nu-brand-logo {
-            display: block;
-            margin: 0 auto 10px auto;
-            height: 48px;
-            width: 80px;
-            border-radius: 5px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.13);
-            background: #fff;
-            object-fit: cover;
-        }
-
-        .brand {
-            color: #22c55e !important;
-            text-align: center;
-        }
-
-        .login-title {
-            font-size: 2.2rem;
-            font-weight: 700;
-            margin-bottom: 10px;
-        }
-
-        .login-subtitle {
-            color: #888;
-            margin-bottom: 30px;
-        }
-
-        .form-check-label {
-            font-size: 0.95rem;
-        }
-
-        .forgot-link,
-        .signup-link {
-            color: #219c2c;
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .forgot-link:hover,
-        .signup-link:hover {
-            text-decoration: underline;
-        }
-
-        .btn-primary {
-            background: rgb(38, 168, 48);
-            border: none;
-            font-weight: 600;
-        }
-
-        .btn-primary:hover {
-            background: #219c2c;
-        }
-
-        @media (max-width: 900px) {
-            .main-container {
-                flex-direction: column;
-            }
-
-            .illustration-section,
-            .login-section {
-                border-radius: 20px 20px 0 0;
-                width: 100%;
-            }
-
-            .illustration-section img {
-                max-width: 350px;
-            }
-        }
-
-        @media (max-width: 600px) {
-            body {
-                background: url('assets/img/loginuser.png') center center/cover no-repeat !important;
-            }
-
-            .main-container {
-                background: none !important;
-                flex-direction: column;
-            }
-
-            .illustration-section {
-                background: none !important;
-                min-height: 0;
-                height: 0;
-                padding: 0;
-            }
-
-            .illustration-section img {
-                display: none;
-            }
-
-            .login-section {
-                background: rgba(255, 255, 255, 0.92);
-                padding: 40px 10px;
-                border-radius: 18px;
-                box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-                margin: 30px 8px;
-            }
-        }
-    </style>
 </head>
 
-<body>
+
+
+<body class="sikeu-login">
+
     <div class="main-container">
-        <div class="login-section">
-            <img src="assets/img/logo-nu.jpg" alt="Logo NU" class="nu-brand-logo">
-            <div class="login-title">Assalamualaikum,</div>
-            <div class="login-subtitle">Silahkan login untuk melanjutkan ke sistem pelaporan keuangan PCNU KAB Magelang</div>
-            <?php if ($error): ?>
-                <div class="alert alert-danger"><?php echo $error; ?></div>
-            <?php endif; ?>
-            <form method="POST" action="">
-                <div class="mb-3">
-                    <label for="username" class="form-label">Email or Username</label>
-                    <input type="text" class="form-control" id="username" name="username" required value="<?php echo isset($_COOKIE['username']) ? $_COOKIE['username'] : ''; ?>">
+
+        <button type="button" class="login-theme-toggle" id="loginThemeToggle" aria-label="Toggle theme">
+
+            <i class="fas fa-moon"></i>
+
+            <span>Mode Gelap</span>
+
+        </button>
+
+
+
+        <div class="login-card-shell">
+
+            <div class="login-section">
+
+                <div class="login-logo-frame" style="--logo-src: url('assets/img/logo-nu.jpg');">
+
+                    <img src="assets/img/logo-nu.jpg" alt="Logo NU" class="nu-brand-logo">
+
                 </div>
-                <div class="mb-3">
-                    <label for="password" class="form-label">Password</label>
-                    <input type="password" class="form-control" id="password" name="password" required>
-                </div>
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="remember" name="remember" <?php echo isset($_COOKIE['username']) ? 'checked' : ''; ?>>
-                        <label class="form-check-label" for="remember">Remember me</label>
+
+                <div class="login-title">Assalamualaikum,</div>
+
+                <div class="login-subtitle">Silahkan login untuk melanjutkan ke sistem pelaporan keuangan PCNU KAB Magelang</div>
+
+                <?php if ($error): ?>
+
+                    <div class="alert alert-danger"><?php echo $error; ?></div>
+
+                <?php endif; ?>
+
+                <form method="POST" action="">
+
+                    <div class="mb-3">
+
+                        <label for="username" class="form-label">Email or Username</label>
+
+                        <input type="text" class="form-control" id="username" name="username" required value="<?php echo isset($_COOKIE['username']) ? htmlspecialchars($_COOKIE['username']) : ''; ?>">
+
                     </div>
-                    <a href="#" class="forgot-link">Lupa Password?</a>
+
+                    <div class="mb-3">
+
+                        <label for="password" class="form-label">Password</label>
+
+                        <input type="password" class="form-control" id="password" name="password" required>
+
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+
+                        <div class="form-check">
+
+                            <input class="form-check-input" type="checkbox" id="remember" name="remember" <?php echo isset($_COOKIE['username']) ? 'checked' : ''; ?>>
+
+                            <label class="form-check-label" for="remember">Remember me</label>
+
+                        </div>
+
+                        <a href="#" class="forgot-link">Lupa Password?</a>
+
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 mb-3">Masuk</button>
+
+                </form>
+
+            </div>
+
+            <div class="illustration-section" role="img" aria-label="Ilustrasi pelaporan keuangan PCNU Kab Magelang">
+
+                <div class="illustration-glow illustration-glow-1"></div>
+
+                <div class="illustration-glow illustration-glow-2"></div>
+
+                <div class="illustration-inner">
+
+                    <span class="illustration-badge"><i class="fas fa-mosque"></i> PCNU Kab. Magelang</span>
+
+                    <h2 class="illustration-heading">Keuangan Amanah &amp; Transparan</h2>
+
+                    <p class="illustration-desc">Sistem pelaporan keuangan organisasi — dari transaksi harian hingga laporan akuntabilitas yang terpercaya.</p>
+
+                    <ul class="illustration-features">
+
+                        <li><i class="fas fa-book-open"></i> Buku Kas &amp; Transaksi</li>
+
+                        <li><i class="fas fa-chart-pie"></i> Laporan Keuangan</li>
+
+                        <li><i class="fas fa-hand-holding-heart"></i> Akuntabilitas Amanah</li>
+
+                    </ul>
+
+                    <div class="illustration-visual">
+
+                        <img src="assets/img/login-pcnu-keuangan.png" alt="Ilustrasi keuangan agama PCNU" class="login-illustration-img">
+
+                    </div>
+
                 </div>
-                <button type="submit" class="btn btn-primary w-100 mb-3">Masuk</button>
-            </form>
+
+            </div>
 
         </div>
-        <div class="illustration-section">
-            <img src="assets/img/loginuser.png" alt="Login Illustration">
-        </div>
+
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+
+        (function() {
+
+            const root = document.documentElement;
+
+            const toggle = document.getElementById('loginThemeToggle');
+
+            const saved = localStorage.getItem('theme') || 'light';
+
+            root.setAttribute('data-theme', saved);
+
+            updateToggleLabel(saved);
+
+
+
+            toggle.addEventListener('click', function() {
+
+                const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+
+                root.setAttribute('data-theme', next);
+
+                localStorage.setItem('theme', next);
+
+                updateToggleLabel(next);
+
+            });
+
+
+
+            function updateToggleLabel(theme) {
+
+                const icon = toggle.querySelector('i');
+
+                const label = toggle.querySelector('span');
+
+                if (theme === 'dark') {
+
+                    icon.className = 'fas fa-sun';
+
+                    label.textContent = 'Mode Terang';
+
+                } else {
+
+                    icon.className = 'fas fa-moon';
+
+                    label.textContent = 'Mode Gelap';
+
+                }
+
+            }
+
+        })();
+
+    </script>
+
 </body>
 
+
+
 </html>
+
+

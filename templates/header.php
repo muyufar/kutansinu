@@ -5,73 +5,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Pelaporan Keuangan</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <!-- SiKeu Design System -->
+    <link href="/assets/css/sikeu-theme.css" rel="stylesheet">
     <!-- Dark Mode CSS -->
     <link href="/assets/css/dark-mode.css" rel="stylesheet">
-    <!-- Custom CSS -->
-    <style>
-        .navbar-brand {
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .navbar {
-            background-color: rgb(33, 146, 42) !important;
-        }
-
-        .navbar-brand img {
-            height: 32px;
-            width: 32px;
-            margin-right: 10px;
-            border-radius: 50%;
-            background: #fff;
-            object-fit: cover;
-            border: 2px solid #e0e0e0;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
-        }
-
-        .nav-link {
-            color: rgba(255, 255, 255, .8) !important;
-        }
-
-        .nav-link:hover {
-            color: rgba(255, 255, 255, 1) !important;
-        }
-
-        .theme-switch {
-            cursor: pointer;
-            padding: 0.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: rgba(255, 255, 255, .8);
-        }
-
-        .theme-switch:hover {
-            color: rgba(255, 255, 255, 1);
-        }
-
-        .navbar {
-            position: relative;
-            z-index: 1040;
-        }
-
-        .navbar .dropdown-menu {
-            z-index: 1050;
-        }
-    </style>
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <!-- Tambahkan di bagian head -->
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <!-- Leaflet (maps) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 </head>
 
-<body>
+<body class="sikeu-app">
     <?php
     // Cek role user untuk menampilkan menu yang sesuai
     $is_viewer = false;
@@ -112,7 +62,7 @@
         $is_nugrosir = $stmt_nugrosir->fetch() ? true : false;
     }
     ?>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <nav class="navbar navbar-expand-lg navbar-dark sikeu-navbar">
         <div class="container">
             <a class="navbar-brand" href="/index.php">
                 <?php
@@ -214,8 +164,8 @@
                         </li>
 
 
-                        <li class="nav-item">
-                            <div class="theme-switch" onclick="toggleTheme()">
+                        <li class="nav-item d-flex align-items-center px-1">
+                            <div class="sikeu-theme-switch" onclick="toggleTheme()" role="button" tabindex="0" aria-label="Toggle theme">
                                 <i class="fas fa-moon"></i>
                                 <span class="d-none d-lg-inline">Mode Gelap</span>
                             </div>
@@ -240,27 +190,29 @@
             localStorage.setItem('theme', newTheme);
 
             // Update ikon dan teks
-            const themeIcon = document.querySelector('.theme-switch i');
-            const themeText = document.querySelector('.theme-switch span');
+            const themeIcon = document.querySelector('.sikeu-theme-switch i');
+            const themeText = document.querySelector('.sikeu-theme-switch span');
 
-            if (newTheme === 'dark') {
-                themeIcon.className = 'fas fa-sun';
-                themeText.textContent = 'Mode Terang';
-            } else {
-                themeIcon.className = 'fas fa-moon';
-                themeText.textContent = 'Mode Gelap';
+            if (themeIcon && themeText) {
+                if (newTheme === 'dark') {
+                    themeIcon.className = 'fas fa-sun';
+                    themeText.textContent = 'Mode Terang';
+                } else {
+                    themeIcon.className = 'fas fa-moon';
+                    themeText.textContent = 'Mode Gelap';
+                }
             }
         }
 
-        // Set tema berdasarkan preferensi yang tersimpan
         document.addEventListener('DOMContentLoaded', () => {
             const savedTheme = localStorage.getItem('theme') || 'light';
             document.documentElement.setAttribute('data-theme', savedTheme);
 
-            // Update ikon dan teks sesuai tema yang tersimpan
-            if (savedTheme === 'dark') {
-                document.querySelector('.theme-switch i').className = 'fas fa-sun';
-                document.querySelector('.theme-switch span').textContent = 'Mode Terang';
+            const themeIcon = document.querySelector('.sikeu-theme-switch i');
+            const themeText = document.querySelector('.sikeu-theme-switch span');
+            if (savedTheme === 'dark' && themeIcon && themeText) {
+                themeIcon.className = 'fas fa-sun';
+                themeText.textContent = 'Mode Terang';
             }
         });
     </script>

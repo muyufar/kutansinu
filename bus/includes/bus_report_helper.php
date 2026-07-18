@@ -341,3 +341,168 @@ function getMonthNameId(string $bulan): string
     $month = date('m', strtotime($bulan . '-01'));
     return $names[$month] ?? strtoupper($bulan);
 }
+
+function fetchBusCalendarEvents(PDO $db, ?int $idPerusahaan): array
+{
+    ensureBusReportSchema($db);
+
+    $events = [];
+    $stats = ['trip' => 0, 'maintenance' => 0, 'pemesanan' => 0];
+    $linkedPemesananIds = [];
+    $companySql = $idPerusahaan ? ' AND b.id_perusahaan = ?' : '';
+    $companyParams = $idPerusahaan ? [$idPerusahaan] : [];
+
+    $stmtTrips = $db->prepare("SELECT t.*, b.nama_bus, b.tipe, b.kode_armada, b.id AS bus_id
+        FROM bus_laporan_trip t
+        JOIN bus b ON t.id_bus = b.id
+        WHERE 1=1 {$companySql}
+        ORDER BY t.tanggal ASC, t.id ASC");
+    $stmtTrips->execute($companyParams);
+    $trips = $stmtTrips->fetchAll();
+
+    foreach ($trips as $trip) {
+        if (!empty($trip['id_pemesanan'])) {
+            $linkedPemesananIds[] = (int) $trip['id_pemesanan'];
+        }
+
+        $busLabel = $trip['kode_armada'] ?: $trip['nama_bus'];
+        $orderLabel = $trip['nama_order'] ?: 'Trip operasional';
+        $orderShort = function_exists('mb_strimwidth')
+            ? mb_strimwidth($orderLabel, 0, 28, '…')
+            : (strlen($orderLabel) > 28 ? substr($orderLabel, 0, 27) . '…' : $orderLabel);
+        $isPast = strtotime($trip['tanggal']) < strtotime(date('Y-m-d'));
+        $bulan = date('Y-m', strtotime($trip['tanggal']));
+
+        $events[] = [
+            'id' => 'trip-' . $trip['id'],
+            'title' => $busLabel . ' · ' . $orderShort,
+            'start' => $trip['tanggal'],
+            'allDay' => true,
+            'backgroundColor' => $isPast ? '#64748b' : '#059669',
+            'borderColor' => $isPast ? '#475569' : '#047857',
+            'extendedProps' => [
+                'type' => 'trip',
+                'typeLabel' => 'Trip Operasional',
+                'bus' => $trip['nama_bus'],
+                'tipe' => $trip['tipe'],
+                'kode' => $trip['kode_armada'],
+                'order' => $orderLabel,
+                'tujuan' => $trip['tujuan'] ?? '-',
+                'tanggal' => $trip['tanggal'],
+                'sewa' => (float) $trip['harga_sewa'],
+                'ops' => getTripOperationalCost($trip),
+                'crew' => $trip['crew'] ?? '-',
+                'isPast' => $isPast,
+                'detailUrl' => '/bus/operasional_bus.php?bulan=' . $bulan,
+                'armadaUrl' => '/bus/laporan_armada.php?bus_id=' . $trip['bus_id'] . '&bulan=' . $bulan,
+            ],
+        ];
+        $stats['trip']++;
+    }
+
+    $stmtMaint = $db->prepare("SELECT m.*, b.nama_bus, b.tipe, b.kode_armada, b.id AS bus_id
+        FROM bus_laporan_maintenance m
+        JOIN bus b ON m.id_bus = b.id
+        WHERE 1=1 {$companySql}
+        ORDER BY m.tanggal ASC, m.id ASC");
+    $stmtMaint->execute($companyParams);
+    $maintRows = $stmtMaint->fetchAll();
+
+    foreach ($maintRows as $item) {
+        $busLabel = $item['kode_armada'] ?: $item['nama_bus'];
+        $ket = $item['keterangan'] ?: 'Maintenance';
+        $isPast = strtotime($item['tanggal']) < strtotime(date('Y-m-d'));
+        $bulan = date('Y-m', strtotime($item['tanggal']));
+
+        $ketShort = function_exists('mb_strimwidth')
+            ? mb_strimwidth($ket, 0, 22, '…')
+            : (strlen($ket) > 22 ? substr($ket, 0, 21) . '…' : $ket);
+
+        $events[] = [
+            'id' => 'maint-' . $item['id'],
+            'title' => '🔧 ' . $busLabel . ' · ' . $ketShort,
+            'start' => $item['tanggal'],
+            'allDay' => true,
+            'backgroundColor' => $isPast ? '#78716c' : '#d97706',
+            'borderColor' => $isPast ? '#57534e' : '#b45309',
+            'extendedProps' => [
+                'type' => 'maintenance',
+                'typeLabel' => 'Maintenance',
+                'bus' => $item['nama_bus'],
+                'tipe' => $item['tipe'],
+                'kode' => $item['kode_armada'],
+                'order' => $ket,
+                'tujuan' => '-',
+                'tanggal' => $item['tanggal'],
+                'sewa' => 0,
+                'ops' => (float) $item['biaya'],
+                'crew' => '-',
+                'isPast' => $isPast,
+                'detailUrl' => '/bus/operasional_bus.php?bulan=' . $bulan,
+                'armadaUrl' => '/bus/laporan_armada.php?bus_id=' . $item['bus_id'] . '&bulan=' . $bulan,
+            ],
+        ];
+        $stats['maintenance']++;
+    }
+
+    $pemesananSql = "SELECT pb.*, b.nama_bus, b.tipe, b.kode_armada, b.id AS bus_id
+        FROM pemesanan_bus pb
+        JOIN bus b ON pb.id_bus = b.id
+        WHERE pb.status NOT IN ('dibatalkan', 'ditolak') {$companySql}
+        ORDER BY pb.tanggal_berangkat ASC, pb.waktu_berangkat ASC";
+    $stmtPemesanan = $db->prepare($pemesananSql);
+    $stmtPemesanan->execute($companyParams);
+    $pemesananRows = $stmtPemesanan->fetchAll();
+
+    $statusColors = [
+        'pending' => ['#6366f1', '#4f46e5'],
+        'dibayar_dp' => ['#2563eb', '#1d4ed8'],
+        'dibayar' => ['#0ea5e9', '#0284c7'],
+        'selesai' => ['#64748b', '#475569'],
+    ];
+
+    foreach ($pemesananRows as $order) {
+        if (in_array((int) $order['id'], $linkedPemesananIds, true)) {
+            continue;
+        }
+
+        $datetime = $order['tanggal_berangkat'] . 'T' . ($order['waktu_berangkat'] ?: '08:00:00');
+        $isPast = strtotime($datetime) < time();
+        $colors = $statusColors[$order['status']] ?? ['#6366f1', '#4f46e5'];
+        if ($isPast) {
+            $colors = ['#64748b', '#475569'];
+        }
+
+        $events[] = [
+            'id' => 'order-' . $order['id'],
+            'title' => ($order['kode_armada'] ?: $order['nama_bus']) . ' · ' . ($order['nama_pemesan'] ?: 'Pemesanan'),
+            'start' => $datetime,
+            'backgroundColor' => $colors[0],
+            'borderColor' => $colors[1],
+            'extendedProps' => [
+                'type' => 'pemesanan',
+                'typeLabel' => 'Pemesanan Online',
+                'bus' => $order['nama_bus'],
+                'tipe' => $order['tipe'],
+                'kode' => $order['kode_armada'],
+                'order' => $order['nama_pemesan'] ?: ('Pemesanan #' . $order['id']),
+                'tujuan' => $order['kota_asal'] . ' → ' . $order['kota_tujuan'],
+                'tanggal' => $order['tanggal_berangkat'],
+                'waktu' => substr($order['waktu_berangkat'], 0, 5),
+                'sewa' => (float) $order['total_harga'],
+                'ops' => 0,
+                'status' => $order['status'],
+                'isPast' => $isPast,
+                'detailUrl' => '/bus/verifikasi_pesanan.php',
+                'armadaUrl' => '/bus/jadwal.php?id=' . $order['bus_id'],
+            ],
+        ];
+        $stats['pemesanan']++;
+    }
+
+    return [
+        'events' => $events,
+        'stats' => $stats,
+        'total' => count($events),
+    ];
+}

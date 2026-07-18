@@ -2,79 +2,38 @@
 session_start();
 require_once '../config/database.php';
 require_once '../config/functions.php';
+require_once 'includes/bus_report_helper.php';
 
 // Cek login
 requireLogin();
 
-// Cek role user (hanya nugrosir yang boleh mengakses halaman pemesanan bus)
+ensureBusReportSchema($db);
+$idPerusahaan = getNugoCompanyId($db);
+
 $user_id = $_SESSION['user_id'];
 $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
 
-// Ambil daftar bus yang tersedia
-$stmt = $db->prepare("SELECT * FROM bus WHERE status = 'tersedia' ORDER BY nama_bus ASC");
-$stmt->execute();
+$busSql = "SELECT * FROM bus WHERE status = 'tersedia'";
+$busParams = [];
+if ($idPerusahaan) {
+    $busSql .= " AND id_perusahaan = ?";
+    $busParams[] = $idPerusahaan;
+}
+$busSql .= " ORDER BY nama_bus ASC";
+$stmt = $db->prepare($busSql);
+$stmt->execute($busParams);
 $bus_list = $stmt->fetchAll();
 
-// Ambil daftar tipe bus untuk dropdown
-$stmt = $db->prepare("SELECT DISTINCT tipe FROM bus WHERE status = 'tersedia' ORDER BY tipe ASC");
-$stmt->execute();
+$stmt = $db->prepare("SELECT DISTINCT tipe FROM bus WHERE status = 'tersedia'" . ($idPerusahaan ? " AND id_perusahaan = ?" : "") . " ORDER BY tipe ASC");
+$stmt->execute($idPerusahaan ? [$idPerusahaan] : []);
 $tipe_bus_list = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-// Ambil data jadwal bus untuk kalender (termasuk yang sudah lewat)
-$stmt = $db->prepare("SELECT jb.id, jb.id_bus, jb.tanggal_berangkat, jb.waktu_berangkat, jb.kota_asal, jb.kota_tujuan, jb.status, b.nama_bus, b.tipe 
-                    FROM pemesanan_bus jb 
-                    JOIN bus b ON jb.id_bus = b.id 
-                    ORDER BY jb.tanggal_berangkat, jb.waktu_berangkat");
-$stmt->execute();
-$jadwal_bus_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Format data jadwal untuk kalender
-$events = [];
-foreach ($jadwal_bus_list as $jadwal) {
-    $datetime = $jadwal['tanggal_berangkat'] . 'T' . $jadwal['waktu_berangkat'];
-    $color = '';
-    $status_text = '';
-
-    // Set warna berdasarkan status
-    if ($jadwal['status'] == 'tersedia') {
-        $color = '#28a745'; // hijau
-        $status_text = 'Tersedia';
-    } elseif ($jadwal['status'] == 'penuh') {
-        $color = '#dc3545'; // merah
-        $status_text = 'Penuh';
-    } elseif ($jadwal['status'] == 'dibatalkan') {
-        $color = '#ffc107'; // kuning
-        $status_text = 'Dibatalkan';
-    } else {
-        $color = '#ffc107'; // kuning untuk status lainnya
-        $status_text = ucfirst($jadwal['status']);
-    }
-
-    // Cek apakah jadwal sudah lewat
-    $isPast = strtotime($datetime) < time();
-    if ($isPast) {
-        $color = '#6c757d'; // abu-abu untuk jadwal yang sudah lewat
-    }
-
-    $events[] = [
-        'id' => $jadwal['id'],
-        'title' => $jadwal['nama_bus'] . ' (' . $jadwal['tipe'] . '): ' . $jadwal['kota_asal'] . ' - ' . $jadwal['kota_tujuan'],
-        'start' => $datetime,
-        'color' => $color,
-        'url' => 'jadwal.php?id=' . $jadwal['id_bus'],
-        'extendedProps' => [
-            'status' => $jadwal['status'],
-            'statusText' => $status_text,
-            'isPast' => $isPast,
-            'bus' => $jadwal['nama_bus'],
-            'tipe' => $jadwal['tipe'],
-            'rute' => $jadwal['kota_asal'] . ' - ' . $jadwal['kota_tujuan'],
-            'waktu' => $jadwal['waktu_berangkat']
-        ]
-    ];
-}
+$calendarData = fetchBusCalendarEvents($db, $idPerusahaan);
+$events = $calendarData['events'];
+$calendarStats = $calendarData['stats'];
+$calendarTotal = $calendarData['total'];
 
 // Header
 include '../templates/header.php';
@@ -257,14 +216,36 @@ include '../templates/header.php';
         </div>
     </div>
 
-    <!-- Kalender Jadwal Bus -->
+    <!-- Kalender Operasional Bus -->
     <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Kalender Jadwal Bus</h5>
+        <div class="col-12">
+            <div class="calendar-modern-card">
+                <div class="calendar-modern-header">
+                    <div class="calendar-modern-title">
+                        <div class="calendar-icon-wrap">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-1">Kalender Operasional Bus</h5>
+                            <p class="mb-0 text-muted small">Sinkron trip, maintenance & pemesanan — <?= (int) $calendarTotal ?> kegiatan</p>
+                        </div>
+                    </div>
+                    <div class="calendar-stat-chips">
+                        <span class="stat-chip stat-trip"><i class="fas fa-route"></i> <?= (int) $calendarStats['trip'] ?> Trip</span>
+                        <span class="stat-chip stat-maint"><i class="fas fa-tools"></i> <?= (int) $calendarStats['maintenance'] ?> Maintenance</span>
+                        <span class="stat-chip stat-order"><i class="fas fa-ticket-alt"></i> <?= (int) $calendarStats['pemesanan'] ?> Pemesanan</span>
+                        <a href="operasional_bus.php" class="btn btn-sm btn-light border ms-1">Kelola Data</a>
+                    </div>
                 </div>
-                <div class="card-body">
+
+                <div class="calendar-legend">
+                    <span class="legend-item"><span class="legend-dot legend-trip"></span> Trip Operasional</span>
+                    <span class="legend-item"><span class="legend-dot legend-maint"></span> Maintenance</span>
+                    <span class="legend-item"><span class="legend-dot legend-order"></span> Pemesanan Online</span>
+                    <span class="legend-item"><span class="legend-dot legend-past"></span> Sudah Lewat</span>
+                </div>
+
+                <div class="calendar-body-wrap">
                     <div id="calendar"></div>
                 </div>
             </div>
@@ -332,94 +313,294 @@ include '../templates/header.php';
 
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.0/main.min.css" rel="stylesheet">
 
-<!-- Custom Modern Calendar CSS -->
 <style>
-    /* Clean, Simple Calendar Look with Blue Events */
+    .calendar-modern-card {
+        background: #fff;
+        border-radius: 20px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+    }
+
+    .calendar-modern-header {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        background: linear-gradient(135deg, #0f766e 0%, #059669 45%, #10b981 100%);
+        color: #fff;
+    }
+
+    .calendar-modern-title {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .calendar-modern-title h5 {
+        color: #fff;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+    }
+
+    .calendar-modern-title .text-muted {
+        color: rgba(255, 255, 255, 0.82) !important;
+    }
+
+    .calendar-icon-wrap {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.16);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        backdrop-filter: blur(8px);
+    }
+
+    .calendar-stat-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    .stat-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        background: rgba(255, 255, 255, 0.18);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        color: #fff;
+        backdrop-filter: blur(6px);
+    }
+
+    .calendar-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        padding: 0.85rem 1.5rem;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-size: 0.82rem;
+        color: #475569;
+        font-weight: 500;
+    }
+
+    .legend-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+
+    .legend-trip { background: #059669; }
+    .legend-maint { background: #d97706; }
+    .legend-order { background: #2563eb; }
+    .legend-past { background: #64748b; }
+
+    .calendar-body-wrap {
+        padding: 1rem 1.25rem 1.5rem;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    }
+
+    #calendar {
+        --fc-border-color: #e2e8f0;
+        --fc-today-bg-color: rgba(16, 185, 129, 0.08);
+    }
+
+    .fc .fc-toolbar {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1rem !important;
+    }
+
     .fc .fc-toolbar-title {
-        font-size: 2rem;
-        font-weight: bold;
-        color: #3a4658;
-        letter-spacing: 1px;
+        font-size: 1.35rem;
+        font-weight: 800;
+        color: #0f172a;
+        letter-spacing: -0.03em;
     }
 
     .fc .fc-button {
-        background: #3575ec;
-        border: none;
-        color: #fff;
-        font-weight: bold;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(79, 140, 255, 0.08);
-        transition: background 0.2s, color 0.2s;
+        background: #fff !important;
+        border: 1px solid #cbd5e1 !important;
+        color: #334155 !important;
+        font-weight: 600 !important;
+        border-radius: 10px !important;
+        padding: 0.45rem 0.85rem !important;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        transition: all 0.18s ease;
     }
 
     .fc .fc-button:hover,
     .fc .fc-button:focus {
-        background: #285bb5;
-        color: #fff;
+        background: #f1f5f9 !important;
+        border-color: #94a3b8 !important;
+        color: #0f172a !important;
     }
 
-    .fc .fc-daygrid-day.fc-day-today {
-        background: #f0f6ff !important;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(79, 140, 255, 0.06);
-    }
-
-    .fc .fc-daygrid-event {
-        background: #3575ec !important;
+    .fc .fc-button-primary:not(:disabled).fc-button-active,
+    .fc .fc-button-primary:not(:disabled):active {
+        background: #059669 !important;
+        border-color: #059669 !important;
         color: #fff !important;
-        border: none !important;
-        border-radius: 8px !important;
-        box-shadow: none;
-        font-weight: 500;
-        padding: 4px 8px;
-        transition: transform 0.15s, box-shadow 0.15s;
     }
 
-    .fc .fc-daygrid-event:hover {
-        transform: scale(1.04);
-        box-shadow: 0 4px 16px rgba(53, 117, 236, 0.13);
-        z-index: 10;
+    .fc .fc-col-header-cell {
+        background: #f1f5f9;
+        border-color: #e2e8f0;
     }
 
     .fc .fc-col-header-cell-cushion {
-        font-weight: bold;
-        color: #3575ec;
-        font-size: 1.1rem;
+        font-weight: 700;
+        color: #475569;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        padding: 0.65rem 0;
     }
 
     .fc .fc-scrollgrid {
         border-radius: 16px;
         overflow: hidden;
-        box-shadow: 0 2px 16px rgba(44, 62, 80, 0.04);
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
         position: relative;
         z-index: 1;
     }
 
+    .fc .fc-daygrid-day {
+        transition: background 0.15s ease;
+    }
+
+    .fc .fc-daygrid-day:hover {
+        background: rgba(241, 245, 249, 0.65);
+    }
+
+    .fc .fc-daygrid-day.fc-day-today {
+        background: rgba(16, 185, 129, 0.07) !important;
+    }
+
     .fc .fc-daygrid-day-number {
-        color: #3a4658;
+        color: #334155;
+        font-weight: 600;
+        font-size: 0.85rem;
+        padding: 0.45rem;
     }
 
     .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
-        color: #3575ec;
-        font-weight: bold;
+        background: #059669;
+        color: #fff;
+        border-radius: 8px;
+        width: 1.75rem;
+        height: 1.75rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0.2rem;
     }
 
-    /* Responsive for calendar */
-    @media (max-width: 600px) {
+    .fc .fc-daygrid-event {
+        border: none !important;
+        border-radius: 8px !important;
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 3px 6px;
+        margin-bottom: 2px;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        cursor: pointer;
+    }
+
+    .fc .fc-daygrid-event:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
+        z-index: 5;
+    }
+
+    .fc .fc-more-link {
+        color: #059669;
+        font-weight: 700;
+        font-size: 0.75rem;
+    }
+
+    .fc .fc-list-event:hover td {
+        background: #f0fdf4;
+    }
+
+    .event-detail-grid {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 0.5rem 1rem;
+        font-size: 0.92rem;
+    }
+
+    .event-detail-grid dt {
+        color: #64748b;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .event-detail-grid dd {
+        margin: 0;
+        color: #0f172a;
+    }
+
+    .event-type-badge {
+        display: inline-block;
+        padding: 0.25rem 0.65rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    .event-type-badge.trip { background: #d1fae5; color: #065f46; }
+    .event-type-badge.maintenance { background: #fef3c7; color: #92400e; }
+    .event-type-badge.pemesanan { background: #dbeafe; color: #1e40af; }
+
+    @media (max-width: 768px) {
+        .calendar-modern-header {
+            padding: 1rem;
+        }
+
         .fc .fc-toolbar-title {
-            font-size: 1.2rem;
+            font-size: 1.05rem;
+        }
+
+        .calendar-legend {
+            padding: 0.75rem 1rem;
+            gap: 0.65rem;
         }
     }
+
+    [data-theme="dark"] .event-type-badge.trip { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+    [data-theme="dark"] .event-type-badge.maintenance { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+    [data-theme="dark"] .event-type-badge.pemesanan { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+    [data-theme="dark"] .event-detail-grid dt { color: #94a3b8; }
+    [data-theme="dark"] .event-detail-grid dd { color: #e2e8f0; }
 </style>
 
 <!-- FullCalendar JS -->
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.0/main.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.0/locales/id.js"></script>
 
-<!-- Script untuk validasi tanggal dan kalender -->
+<!-- Script kalender operasional -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Validasi tanggal
         const tanggalBerangkat = document.getElementById('tanggal_berangkat');
         const tanggalKembali = document.getElementById('tanggal_kembali');
 
@@ -432,10 +613,40 @@ include '../templates/header.php';
             });
         }
 
-        function ucfirst(str) {
-            return str.charAt(0).toUpperCase() + str.slice(1);
+        const rupiah = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID');
+        const detailModal = document.getElementById('eventDetailModal');
+        const detailModalBody = document.getElementById('eventDetailBody');
+        const detailModalTitle = document.getElementById('eventDetailModalLabel');
+        const detailModalLink = document.getElementById('eventDetailLink');
+        const bsModal = detailModal ? new bootstrap.Modal(detailModal) : null;
+
+        function showEventDetail(props, title) {
+            if (!bsModal) return;
+            detailModalTitle.textContent = title;
+            const badgeClass = props.type || 'trip';
+            let html = `<div class="mb-3"><span class="event-type-badge ${badgeClass}">${props.typeLabel || props.type}</span>`;
+            if (props.isPast) html += ' <span class="badge bg-secondary ms-1">Sudah lewat</span>';
+            html += '</div><dl class="event-detail-grid">';
+            html += `<dt>Armada</dt><dd>${props.kode ? props.kode + ' · ' : ''}${props.bus} (${props.tipe || '-'})</dd>`;
+            html += `<dt>${props.type === 'maintenance' ? 'Keterangan' : 'Order'}</dt><dd>${props.order || '-'}</dd>`;
+            if (props.tujuan && props.tujuan !== '-') html += `<dt>Tujuan</dt><dd>${props.tujuan}</dd>`;
+            html += `<dt>Tanggal</dt><dd>${props.tanggal}${props.waktu ? ' · ' + props.waktu : ''}</dd>`;
+            if (props.type === 'trip') {
+                html += `<dt>Harga Sewa</dt><dd>${rupiah(props.sewa)}</dd>`;
+                html += `<dt>Beban Ops</dt><dd>${rupiah(props.ops)}</dd>`;
+                if (props.crew && props.crew !== '-') html += `<dt>Crew</dt><dd>${props.crew}</dd>`;
+            } else if (props.type === 'maintenance') {
+                html += `<dt>Biaya</dt><dd>${rupiah(props.ops)}</dd>`;
+            } else if (props.type === 'pemesanan') {
+                html += `<dt>Total</dt><dd>${rupiah(props.sewa)}</dd>`;
+                if (props.status) html += `<dt>Status</dt><dd>${props.status.replace('_', ' ')}</dd>`;
+            }
+            html += '</dl>';
+            detailModalBody.innerHTML = html;
+            detailModalLink.href = props.detailUrl || '#';
+            bsModal.show();
         }
-        // Inisialisasi kalender
+
         const calendarEl = document.getElementById('calendar');
         if (calendarEl) {
             const calendar = new FullCalendar.Calendar(calendarEl, {
@@ -446,45 +657,49 @@ include '../templates/header.php';
                     right: 'dayGridMonth,timeGridWeek,listWeek'
                 },
                 locale: 'id',
-                events: <?php echo json_encode($events); ?>,
+                height: 'auto',
+                dayMaxEvents: 3,
+                moreLinkText: '+%d lainnya',
+                navLinks: true,
+                nowIndicator: true,
+                events: <?php echo json_encode($events, JSON_UNESCAPED_UNICODE); ?>,
                 eventTimeFormat: {
                     hour: '2-digit',
                     minute: '2-digit',
                     hour12: false
                 },
                 eventClick: function(info) {
-                    const props = info.event.extendedProps;
-                    if (props.isPast) {
-                        info.jsEvent.preventDefault();
-                        alert('Jadwal ini sudah lewat.');
-                        return;
-                    }
-                    if (props.status === 'dibatalkan') {
-                        info.jsEvent.preventDefault();
-                        alert('Jadwal ini telah dibatalkan.');
-                        return;
-                    }
+                    info.jsEvent.preventDefault();
+                    showEventDetail(info.event.extendedProps, info.event.title);
                 },
                 eventDidMount: function(info) {
                     const props = info.event.extendedProps;
-                    let color = '#3575ec'; // solid blue for all events
-                    // Atur warna latar belakang event
-                    info.el.style.backgroundColor = color;
-                    info.el.style.color = '#fff';
-                    // Tambahkan icon bus di depan judul event
-                    let titleEl = info.el.querySelector('.fc-event-title');
-                    if (titleEl && !titleEl.innerHTML.includes('fa-bus')) {
-                        titleEl.innerHTML = '<i class="fas fa-bus me-1"></i> ' + titleEl.innerHTML;
-                    }
-                    const isPast = props.isPast;
-                    let statusText = isPast ? 'Sudah lewat' : props.statusText || ucfirst(props.status);
-                    info.el.setAttribute('title', `${props.bus} (${props.tipe}) | ${props.rute} | ${props.waktu} | ${statusText}`);
+                    const lines = [props.typeLabel, props.bus, props.order];
+                    if (props.tujuan && props.tujuan !== '-') lines.push(props.tujuan);
+                    info.el.setAttribute('title', lines.filter(Boolean).join(' | '));
                 }
             });
             calendar.render();
         }
     });
 </script>
+
+<!-- Modal Detail Event Kalender -->
+<div class="modal fade" id="eventDetailModal" tabindex="-1" aria-labelledby="eventDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="eventDetailModalLabel">Detail Kegiatan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-2" id="eventDetailBody"></div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Tutup</button>
+                <a href="#" id="eventDetailLink" class="btn btn-success">Lihat Detail</a>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Modal Tambah Bus -->
 <div class="modal fade" id="tambahBusModal" tabindex="-1" aria-labelledby="tambahBusModalLabel" aria-hidden="true">

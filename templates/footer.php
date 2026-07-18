@@ -1,6 +1,6 @@
-<footer class="footer mt-5 py-3 bg-light">
+<footer class="footer sikeu-footer mt-5 py-3">
         <div class="container text-center">
-            <span class="text-muted">© 2025 Sistem Pelaporan Keuangan</span>
+            <span class="text-muted">© <?php echo date('Y'); ?> Sistem Pelaporan Keuangan · SiKeu</span>
         </div>
     </footer>
 
@@ -9,6 +9,6 @@
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Custom JS -->
-    <script src="../assets/js/script.js"></script>
+    <script src="/assets/js/script.js"></script>
 </body>
 </html>

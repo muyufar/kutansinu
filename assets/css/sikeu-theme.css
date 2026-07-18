@@ -1,0 +1,906 @@
+/**
+ * SiKeu Design System 2026
+ * Global UI refresh — CSS only, no functional changes.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&display=swap');
+
+:root,
+:root[data-theme="light"] {
+    --sikeu-font: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --sikeu-bg: #f4f7fb;
+    --sikeu-bg-accent: radial-gradient(1200px 600px at 10% -10%, rgba(16, 185, 129, 0.08), transparent 55%),
+        radial-gradient(900px 500px at 90% 0%, rgba(59, 130, 246, 0.06), transparent 50%),
+        #f4f7fb;
+    --sikeu-surface: #ffffff;
+    --sikeu-surface-muted: #f8fafc;
+    --sikeu-text: #0f172a;
+    --sikeu-text-muted: #64748b;
+    --sikeu-border: rgba(15, 23, 42, 0.08);
+    --sikeu-border-strong: #e2e8f0;
+
+    --sikeu-primary-900: #064e3b;
+    --sikeu-primary-700: #047857;
+    --sikeu-primary-600: #059669;
+    --sikeu-primary-500: #10b981;
+    --sikeu-primary-400: #34d399;
+    --sikeu-primary: #059669;
+    --sikeu-primary-soft: rgba(16, 185, 129, 0.12);
+
+    --sikeu-danger: #ef4444;
+    --sikeu-warning: #f59e0b;
+    --sikeu-info: #0ea5e9;
+    --sikeu-success: #10b981;
+
+    --sikeu-radius-sm: 10px;
+    --sikeu-radius: 14px;
+    --sikeu-radius-lg: 18px;
+    --sikeu-radius-xl: 22px;
+
+    --sikeu-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+    --sikeu-shadow-sm: 0 4px 14px rgba(15, 23, 42, 0.06);
+    --sikeu-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    --sikeu-shadow-lg: 0 20px 50px rgba(15, 23, 42, 0.12);
+
+    --sikeu-nav-gradient: linear-gradient(135deg, #065f46 0%, #059669 45%, #10b981 100%);
+    --sikeu-transition: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body.sikeu-app {
+    font-family: var(--sikeu-font);
+    background: var(--sikeu-bg-accent);
+    color: var(--sikeu-text);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+/* ─── Navbar ─── */
+.sikeu-navbar {
+    background: var(--sikeu-nav-gradient) !important;
+    box-shadow: 0 8px 32px rgba(5, 150, 105, 0.18);
+    backdrop-filter: blur(10px);
+    padding: 0.55rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 1040;
+}
+
+.sikeu-navbar .navbar-brand {
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.sikeu-navbar .navbar-brand img {
+    height: 38px;
+    width: 38px;
+    border-radius: 12px;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.85);
+    box-shadow: var(--sikeu-shadow-xs);
+}
+
+.sikeu-navbar .nav-link {
+    color: rgba(255, 255, 255, 0.88) !important;
+    font-weight: 600;
+    font-size: 0.92rem;
+    padding: 0.55rem 0.85rem !important;
+    border-radius: var(--sikeu-radius-sm);
+    transition: background var(--sikeu-transition), color var(--sikeu-transition);
+}
+
+.sikeu-navbar .nav-link:hover,
+.sikeu-navbar .nav-link:focus {
+    color: #fff !important;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.sikeu-navbar .dropdown-menu {
+    border: 1px solid var(--sikeu-border);
+    border-radius: var(--sikeu-radius);
+    box-shadow: var(--sikeu-shadow-lg);
+    padding: 0.45rem;
+    margin-top: 0.45rem !important;
+    z-index: 1050;
+}
+
+.sikeu-navbar .dropdown-item {
+    border-radius: var(--sikeu-radius-sm);
+    font-weight: 500;
+    font-size: 0.9rem;
+    padding: 0.55rem 0.85rem;
+    transition: background var(--sikeu-transition), color var(--sikeu-transition);
+}
+
+.sikeu-navbar .dropdown-item:hover {
+    background: var(--sikeu-primary-soft);
+    color: var(--sikeu-primary-700);
+}
+
+.sikeu-theme-switch {
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    transition: all var(--sikeu-transition);
+    user-select: none;
+}
+
+.sikeu-theme-switch:hover {
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+}
+
+/* ─── Layout & typography ─── */
+.sikeu-app .container,
+.sikeu-app .container-fluid {
+    padding-top: 0.25rem;
+}
+
+.sikeu-app h1,
+.sikeu-app h2,
+.sikeu-app h3,
+.sikeu-app h4,
+.sikeu-app h5 {
+    letter-spacing: -0.02em;
+    color: var(--sikeu-text);
+}
+
+.sikeu-app h2 {
+    font-weight: 800;
+    font-size: clamp(1.35rem, 2vw, 1.75rem);
+}
+
+.sikeu-app .text-muted {
+    color: var(--sikeu-text-muted) !important;
+}
+
+.sikeu-page-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+/* ─── Cards ─── */
+.sikeu-app .card {
+    background: var(--sikeu-surface);
+    border: 1px solid var(--sikeu-border);
+    border-radius: var(--sikeu-radius-lg);
+    box-shadow: var(--sikeu-shadow-sm);
+    overflow: hidden;
+    transition: box-shadow var(--sikeu-transition), transform var(--sikeu-transition);
+}
+
+.sikeu-app .card:hover {
+    box-shadow: var(--sikeu-shadow);
+}
+
+.sikeu-app .card-header {
+    background: var(--sikeu-surface-muted);
+    border-bottom: 1px solid var(--sikeu-border);
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 0.95rem 1.15rem;
+    color: var(--sikeu-text);
+}
+
+.sikeu-app .card-header.bg-primary,
+.sikeu-app .card-header.bg-success,
+.sikeu-app .card-header.bg-info,
+.sikeu-app .card-header.bg-warning,
+.sikeu-app .card-header.bg-danger {
+    background: var(--sikeu-nav-gradient) !important;
+    border-bottom: none;
+    color: #fff !important;
+}
+
+.sikeu-app .card-header.bg-light {
+    background: var(--sikeu-surface-muted) !important;
+    color: var(--sikeu-text) !important;
+}
+
+.sikeu-app .card-body {
+    padding: 1.15rem 1.25rem;
+}
+
+.sikeu-app .card-footer {
+    background: var(--sikeu-surface-muted);
+    border-top: 1px solid var(--sikeu-border);
+}
+
+/* ─── Buttons ─── */
+.sikeu-app .btn {
+    font-weight: 600;
+    border-radius: var(--sikeu-radius-sm);
+    padding: 0.5rem 1rem;
+    transition: all var(--sikeu-transition);
+    box-shadow: var(--sikeu-shadow-xs);
+}
+
+.sikeu-app .btn-sm {
+    border-radius: 8px;
+    padding: 0.35rem 0.75rem;
+}
+
+.sikeu-app .btn-primary {
+    background: linear-gradient(135deg, var(--sikeu-primary-600), var(--sikeu-primary-500));
+    border: none;
+    color: #fff;
+}
+
+.sikeu-app .btn-primary:hover,
+.sikeu-app .btn-primary:focus {
+    background: linear-gradient(135deg, var(--sikeu-primary-700), var(--sikeu-primary-600));
+    box-shadow: 0 6px 20px rgba(5, 150, 105, 0.25);
+    transform: translateY(-1px);
+    color: #fff;
+}
+
+.sikeu-app .btn-success {
+    background: linear-gradient(135deg, #059669, #10b981);
+    border: none;
+}
+
+.sikeu-app .btn-success:hover {
+    background: linear-gradient(135deg, #047857, #059669);
+    transform: translateY(-1px);
+}
+
+.sikeu-app .btn-outline-primary {
+    border-color: var(--sikeu-primary-600);
+    color: var(--sikeu-primary-700);
+}
+
+.sikeu-app .btn-outline-primary:hover {
+    background: var(--sikeu-primary-soft);
+    border-color: var(--sikeu-primary-600);
+    color: var(--sikeu-primary-900);
+}
+
+.sikeu-app .btn-light,
+.sikeu-app .btn-outline-secondary {
+    background: #fff;
+    border-color: var(--sikeu-border-strong);
+}
+
+.sikeu-app .btn-light:hover {
+    background: var(--sikeu-surface-muted);
+}
+
+/* ─── Forms ─── */
+.sikeu-app .form-label {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--sikeu-text);
+    margin-bottom: 0.35rem;
+}
+
+.sikeu-app .form-control,
+.sikeu-app .form-select {
+    border: 1px solid var(--sikeu-border-strong);
+    border-radius: var(--sikeu-radius-sm);
+    padding: 0.6rem 0.85rem;
+    font-size: 0.92rem;
+    background: #fff;
+    transition: border-color var(--sikeu-transition), box-shadow var(--sikeu-transition);
+}
+
+.sikeu-app .form-control:focus,
+.sikeu-app .form-select:focus {
+    border-color: var(--sikeu-primary-500);
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
+}
+
+.sikeu-app .input-group-text {
+    border-radius: var(--sikeu-radius-sm);
+    background: var(--sikeu-surface-muted);
+    border-color: var(--sikeu-border-strong);
+}
+
+/* ─── Tables ─── */
+.sikeu-app .table-responsive {
+    border-radius: var(--sikeu-radius);
+    border: 1px solid var(--sikeu-border);
+    overflow: hidden;
+}
+
+.sikeu-app .table {
+    margin-bottom: 0;
+    font-size: 0.9rem;
+}
+
+.sikeu-app .table thead th {
+    background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+    color: var(--sikeu-text);
+    font-weight: 700;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid var(--sikeu-border-strong);
+    padding: 0.85rem 1rem;
+    white-space: nowrap;
+}
+
+.sikeu-app .table tbody td {
+    padding: 0.75rem 1rem;
+    vertical-align: middle;
+    border-color: var(--sikeu-border);
+    color: var(--sikeu-text);
+}
+
+.sikeu-app .table-striped > tbody > tr:nth-of-type(odd) > * {
+    background-color: rgba(248, 250, 252, 0.85);
+}
+
+.sikeu-app .table-hover > tbody > tr:hover > * {
+    background-color: rgba(16, 185, 129, 0.06);
+}
+
+.sikeu-app .table-sm td,
+.sikeu-app .table-sm th {
+    padding: 0.55rem 0.75rem;
+}
+
+/* ─── Alerts & badges ─── */
+.sikeu-app .alert {
+    border: none;
+    border-radius: var(--sikeu-radius);
+    font-weight: 500;
+    box-shadow: var(--sikeu-shadow-xs);
+}
+
+.sikeu-app .alert-success {
+    background: #ecfdf5;
+    color: #065f46;
+}
+
+.sikeu-app .alert-danger {
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+.sikeu-app .alert-warning {
+    background: #fffbeb;
+    color: #92400e;
+}
+
+.sikeu-app .alert-info {
+    background: #eff6ff;
+    color: #1e40af;
+}
+
+.sikeu-app .badge {
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 0.35em 0.7em;
+    letter-spacing: 0.01em;
+}
+
+/* ─── Modals ─── */
+.sikeu-app .modal-content {
+    border: none;
+    border-radius: var(--sikeu-radius-lg);
+    box-shadow: var(--sikeu-shadow-lg);
+    overflow: hidden;
+}
+
+.sikeu-app .modal-header {
+    border-bottom: 1px solid var(--sikeu-border);
+    padding: 1rem 1.25rem;
+}
+
+.sikeu-app .modal-header.bg-primary,
+.sikeu-app .modal-header.bg-info,
+.sikeu-app .modal-header.bg-success {
+    background: var(--sikeu-nav-gradient) !important;
+    border-bottom: none;
+}
+
+.sikeu-app .modal-footer {
+    border-top: 1px solid var(--sikeu-border);
+    padding: 0.85rem 1.25rem;
+}
+
+/* ─── Pagination ─── */
+.sikeu-app .pagination .page-link {
+    border-radius: 8px !important;
+    margin: 0 2px;
+    border-color: var(--sikeu-border-strong);
+    color: var(--sikeu-text);
+    font-weight: 600;
+}
+
+.sikeu-app .pagination .page-item.active .page-link {
+    background: var(--sikeu-primary-600);
+    border-color: var(--sikeu-primary-600);
+}
+
+.sikeu-app .pagination .page-link:hover {
+    background: var(--sikeu-primary-soft);
+    color: var(--sikeu-primary-800);
+}
+
+/* ─── List group ─── */
+.sikeu-app .list-group-item {
+    border-color: var(--sikeu-border);
+    padding: 0.85rem 1rem;
+}
+
+.sikeu-app .list-group-item-action:hover {
+    background: var(--sikeu-primary-soft);
+}
+
+/* ─── Dashboard summary cards (index.php) ─── */
+.sikeu-app .summary-card {
+    border-radius: var(--sikeu-radius-lg);
+    box-shadow: var(--sikeu-shadow-sm);
+    border: 1px solid var(--sikeu-border);
+    background: var(--sikeu-surface);
+    transition: transform var(--sikeu-transition), box-shadow var(--sikeu-transition);
+    padding: 1.15rem 0 1rem;
+    text-align: center;
+}
+
+.sikeu-app .summary-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--sikeu-shadow);
+}
+
+.sikeu-app .summary-card .icon {
+    font-size: 1.35rem;
+    margin-bottom: 0.45rem;
+    border-radius: 14px;
+    padding: 0.55rem;
+    background: var(--sikeu-surface-muted);
+    display: inline-block;
+}
+
+.sikeu-app .summary-card .label {
+    font-size: 0.78rem;
+    color: var(--sikeu-text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.sikeu-app .summary-card .value {
+    font-size: 1.2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.sikeu-app .summary-card.income .value { color: var(--sikeu-success); }
+.sikeu-app .summary-card.expense .value { color: var(--sikeu-danger); }
+.sikeu-app .summary-card.balance .value { color: #2563eb; }
+
+.sikeu-app .summary-company-card {
+    border-radius: var(--sikeu-radius-lg);
+    min-height: 210px;
+    box-shadow: var(--sikeu-shadow-sm);
+    border: 1px solid var(--sikeu-border);
+    transition: transform var(--sikeu-transition), box-shadow var(--sikeu-transition);
+}
+
+.sikeu-app .summary-card.income .icon {
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    color: #059669;
+}
+
+.sikeu-app .summary-card.expense .icon {
+    background: linear-gradient(135deg, #fef2f2, #fee2e2);
+    color: #dc2626;
+}
+
+.sikeu-app .summary-card.balance .icon {
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    color: #2563eb;
+}
+
+.sikeu-app .summary-company-card:hover {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), var(--sikeu-surface));
+}
+
+/* ─── Footer ─── */
+.sikeu-footer {
+    margin-top: 3rem !important;
+    padding: 1.25rem 0 !important;
+    background: rgba(255, 255, 255, 0.72) !important;
+    border-top: 1px solid var(--sikeu-border);
+    backdrop-filter: blur(8px);
+}
+
+.sikeu-footer .text-muted {
+    font-size: 0.88rem;
+    font-weight: 500;
+}
+
+/* ─── Login page ─── */
+body.sikeu-login {
+    font-family: var(--sikeu-font);
+    background: radial-gradient(900px 500px at 0% 0%, rgba(16, 185, 129, 0.15), transparent 50%),
+        radial-gradient(700px 400px at 100% 100%, rgba(59, 130, 246, 0.1), transparent 45%),
+        linear-gradient(160deg, #f8fafc 0%, #ecfdf5 100%);
+    min-height: 100vh;
+}
+
+.sikeu-login .main-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    position: relative;
+}
+
+.sikeu-login .login-theme-toggle {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    border: 1px solid var(--sikeu-border-strong);
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--sikeu-text);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    transition: all var(--sikeu-transition);
+}
+
+.sikeu-login .login-theme-toggle:hover {
+    box-shadow: var(--sikeu-shadow-sm);
+}
+
+.sikeu-login .login-card-shell {
+    display: flex;
+    max-width: 920px;
+    width: 100%;
+    border-radius: var(--sikeu-radius-xl);
+    overflow: hidden;
+    box-shadow: var(--sikeu-shadow-lg);
+    border: 1px solid var(--sikeu-border);
+}
+
+.sikeu-login .login-section {
+    background: rgba(255, 255, 255, 0.94);
+    padding: 2.5rem 2rem;
+    width: 420px;
+    flex-shrink: 0;
+    backdrop-filter: blur(12px);
+}
+
+.sikeu-login .login-logo-frame {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 52px;
+    margin-bottom: 1.25rem;
+    border-radius: 12px;
+    background-color: #ffffff;
+    background-image: var(--logo-src);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-blend-mode: multiply;
+    box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+    overflow: hidden;
+}
+
+.sikeu-login .login-logo-frame .nu-brand-logo {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.sikeu-login .illustration-section {
+    background: linear-gradient(165deg, #022c22 0%, #047857 38%, #059669 72%, #10b981 100%);
+    flex: 1;
+    min-height: 520px;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    padding: 2rem 1.75rem;
+}
+
+.sikeu-login .illustration-glow {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.sikeu-login .illustration-glow-1 {
+    width: 220px;
+    height: 220px;
+    top: -40px;
+    right: -30px;
+    background: rgba(255, 255, 255, 0.1);
+    filter: blur(30px);
+}
+
+.sikeu-login .illustration-glow-2 {
+    width: 180px;
+    height: 180px;
+    bottom: 10%;
+    left: -50px;
+    background: rgba(251, 191, 36, 0.18);
+    filter: blur(45px);
+}
+
+.sikeu-login .illustration-inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 380px;
+    color: #ecfdf5;
+}
+
+.sikeu-login .illustration-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    align-self: flex-start;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+    backdrop-filter: blur(6px);
+}
+
+.sikeu-login .illustration-heading {
+    font-size: 1.55rem;
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: -0.03em;
+    color: #ffffff;
+    margin: 0 0 0.65rem;
+}
+
+.sikeu-login .illustration-desc {
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: rgba(236, 253, 245, 0.88);
+    margin: 0 0 1.1rem;
+}
+
+.sikeu-login .illustration-features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.sikeu-login .illustration-features li {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.sikeu-login .illustration-features li i {
+    width: 1.35rem;
+    text-align: center;
+    color: #fde68a;
+    font-size: 0.9rem;
+}
+
+.sikeu-login .illustration-visual {
+    margin-top: auto;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    flex: 1;
+    min-height: 0;
+}
+
+.sikeu-login .login-illustration-img {
+    width: 100%;
+    max-width: 320px;
+    height: auto;
+    display: block;
+    border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28);
+    object-fit: contain;
+}
+
+.sikeu-login .illustration-section::before,
+.sikeu-login .illustration-section::after {
+    display: none;
+}
+
+.sikeu-login .illustration-art-wrap {
+    display: none;
+}
+
+.sikeu-login .btn-primary {
+    background: linear-gradient(135deg, var(--sikeu-primary-700), var(--sikeu-primary-500));
+    border: none;
+    border-radius: 12px;
+    padding: 0.72rem 1rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    box-shadow: 0 8px 22px rgba(5, 150, 105, 0.28);
+    transition: transform var(--sikeu-transition), box-shadow var(--sikeu-transition);
+}
+
+.sikeu-login .btn-primary:hover,
+.sikeu-login .btn-primary:focus {
+    background: linear-gradient(135deg, var(--sikeu-primary-900), var(--sikeu-primary-600));
+    box-shadow: 0 10px 28px rgba(5, 150, 105, 0.35);
+    transform: translateY(-1px);
+}
+
+.sikeu-login .form-control {
+    border-radius: 12px;
+    padding: 0.65rem 0.85rem;
+    border-color: var(--sikeu-border-strong);
+}
+
+.sikeu-login .form-control:focus {
+    border-color: var(--sikeu-primary-500);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+}
+
+.sikeu-login .login-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--sikeu-text);
+}
+
+.sikeu-login .login-subtitle {
+    color: var(--sikeu-text-muted);
+    font-size: 0.92rem;
+    line-height: 1.55;
+    margin-bottom: 1.5rem;
+}
+
+.sikeu-login .nu-brand-logo {
+    height: 48px;
+    width: auto;
+    display: block;
+}
+
+.sikeu-login .forgot-link {
+    color: var(--sikeu-primary-700);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.sikeu-login .forgot-link:hover {
+    color: var(--sikeu-primary-900);
+}
+
+@media (max-width: 900px) {
+    .sikeu-login .login-card-shell {
+        flex-direction: column;
+    }
+
+    .sikeu-login .login-section,
+    .sikeu-login .illustration-section {
+        width: 100%;
+    }
+
+    .sikeu-login .illustration-section {
+        min-height: auto;
+        padding: 1.75rem 1.5rem;
+    }
+
+    .sikeu-login .illustration-inner {
+        max-width: none;
+    }
+
+    .sikeu-login .login-illustration-img {
+        max-width: 260px;
+        margin: 0 auto;
+    }
+}
+
+@media (max-width: 600px) {
+    .sikeu-login .login-section {
+        padding: 2rem 1.25rem;
+    }
+
+    .sikeu-login .illustration-section {
+        display: none;
+    }
+}
+
+/* ─── Utilities ─── */
+.sikeu-app .shadow-soft {
+    box-shadow: var(--sikeu-shadow-sm) !important;
+}
+
+.sikeu-app .rounded-modern {
+    border-radius: var(--sikeu-radius-lg) !important;
+}
+
+.sikeu-app ::selection {
+    background: rgba(16, 185, 129, 0.25);
+}
+
+.sikeu-app .nav-tabs .nav-link {
+    border-radius: var(--sikeu-radius-sm) var(--sikeu-radius-sm) 0 0;
+    font-weight: 600;
+    color: var(--sikeu-text-muted);
+}
+
+.sikeu-app .nav-tabs .nav-link.active {
+    color: var(--sikeu-primary-700);
+    border-color: var(--sikeu-border-strong) var(--sikeu-border-strong) #fff;
+}
+
+.sikeu-app .breadcrumb {
+    background: transparent;
+    font-weight: 500;
+    font-size: 0.88rem;
+}
+
+.sikeu-app .progress {
+    border-radius: 999px;
+    height: 0.65rem;
+    background: var(--sikeu-surface-muted);
+}
+
+.sikeu-app .progress-bar {
+    background: linear-gradient(90deg, var(--sikeu-primary-600), var(--sikeu-primary-400));
+}
+
+@media (max-width: 768px) {
+    .sikeu-navbar .navbar-collapse {
+        background: rgba(6, 95, 70, 0.95);
+        border-radius: var(--sikeu-radius);
+        padding: 0.75rem;
+        margin-top: 0.5rem;
+    }
+}
+
+@media print {
+    .sikeu-navbar,
+    .sikeu-footer,
+    .no-print {
+        display: none !important;
+    }
+
+    body.sikeu-app {
+        background: #fff;
+    }
+}
