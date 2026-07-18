@@ -33,12 +33,6 @@ if ($is_admin) {
     $daftar_perusahaan = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-// Ambil filter perusahaan dari GET jika admin, jika tidak pakai default
-$filter_perusahaan = $id_perusahaan;
-if ($is_admin && isset($_GET['perusahaan']) && $_GET['perusahaan']) {
-    $filter_perusahaan = $_GET['perusahaan'];
-}
-
 // Query untuk mendapatkan saldo awal kas dengan filter perusahaan
 $sql_saldo_awal = "SELECT COALESCE(SUM(CASE WHEN jenis = 'pemasukan' THEN jumlah ELSE -jumlah END), 0) as saldo
 FROM transaksi

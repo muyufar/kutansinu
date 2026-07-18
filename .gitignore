@@ -2,8 +2,8 @@
 .DS_Store
 Thumbs.db
 
-# Ignore configuration files that may contain sensitive information
-config/database.php
+# Ignore production database credentials (local config is safe to commit)
+config/database.production.php
 
 # Ignore temporary files
 *.log
