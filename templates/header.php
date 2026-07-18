@@ -163,8 +163,16 @@
                         </ul>
                     </li>
                     <?php if ($is_nugrosir) : ?>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/bus/index.php"><i class="fas fa-bus me-1"></i> Pemesanan Bus</a>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="busDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-bus me-1"></i> Pemesanan Bus
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="busDropdown">
+                                <li><a class="dropdown-item" href="/bus/index.php"><i class="fas fa-list me-1"></i> Dashboard Bus</a></li>
+                                <li><a class="dropdown-item" href="/bus/operasional_bus.php"><i class="fas fa-clipboard-list me-1"></i> Operasional Bus</a></li>
+                                <li><a class="dropdown-item" href="/bus/laporan_bulanan.php"><i class="fas fa-file-invoice me-1"></i> Laporan Bulanan</a></li>
+                                <li><a class="dropdown-item" href="/bus/import_laporan_dokumen.php"><i class="fas fa-file-import me-1"></i> Import dari Dokumen</a></li>
+                            </ul>
                         </li>
                     <?php endif; ?>
                     <?php if (!$is_viewer) : ?>

@@ -52,7 +52,7 @@ if (isset($_POST['verifikasi'])) {
 
     try {
         // Ambil data pemesanan untuk mendapatkan jumlah_bayar dan bukti_pembayaran
-        $stmt_pemesanan = $db->prepare("SELECT pb.jumlah_bayar, pb.bukti_pembayaran, pb.pembayaran_dp, pb.sisa_pembayaran, pb.jenis_pembayaran, pb.id_bus, b.nama_bus FROM pemesanan_bus pb JOIN bus b ON pb.id_bus = b.id WHERE pb.id = ?");
+        $stmt_pemesanan = $db->prepare("SELECT pb.jumlah_bayar, pb.bukti_pembayaran, pb.pembayaran_dp, pb.sisa_pembayaran, pb.jenis_pembayaran, pb.id_bus, pb.tanggal_berangkat, pb.nama_pemesan, pb.kota_asal, pb.kota_tujuan, pb.total_harga, b.nama_bus FROM pemesanan_bus pb JOIN bus b ON pb.id_bus = b.id WHERE pb.id = ?");
         $stmt_pemesanan->execute([$pemesanan_id]);
         $pemesanan_data = $stmt_pemesanan->fetch();
 
@@ -84,55 +84,14 @@ if (isset($_POST['verifikasi'])) {
             $stmt->execute([$status, $catatan_admin, $status, $status, $pemesanan_id]);
         }
 
-        // Jika status diubah menjadi 'selesai', tambahkan transaksi keuangan secara otomatis
+        // Jika status selesai, buat draft operasional dari pemesanan (input biaya di Operasional Bus)
         if ($status === 'selesai') {
-            // Ambil id_perusahaan dari default_company pengguna
-            $stmt_company = $db->prepare("SELECT default_company FROM users WHERE id = ?");
-            $stmt_company->execute([$_SESSION['user_id']]);
-            $user_data = $stmt_company->fetch();
-            $id_perusahaan = $user_data['default_company'];
-
-            // Cari akun kas (untuk kredit) dan akun pendapatan (untuk debit)
-            $stmt_kas = $db->prepare("SELECT id FROM akun WHERE nama_akun LIKE '%kas%' AND id_perusahaan = ? LIMIT 1");
-            $stmt_kas->execute([$id_perusahaan]);
-            $akun_kas = $stmt_kas->fetch();
-
-            $stmt_pendapatan = $db->prepare("SELECT id FROM akun WHERE kode_akun LIKE '%4-40000%' AND id_perusahaan = ? LIMIT 1");
-            $stmt_pendapatan->execute([$id_perusahaan]);
-            $akun_pendapatan = $stmt_pendapatan->fetch();
-
-            // Jika akun kas dan pendapatan ditemukan
-            if ($akun_kas && $akun_pendapatan) {
-                $id_akun_debit = $akun_kas['id']; // Kas bertambah (debit)
-                $id_akun_kredit = $akun_pendapatan['id']; // Pendapatan bertambah (kredit)
-
-                // Hitung total pendapatan berdasarkan jenis pembayaran
-                if ($pemesanan_data['jenis_pembayaran'] === 'lunas') {
-                    $total_pendapatan = $pemesanan_data['jumlah_bayar']; // Gunakan jumlah_bayar untuk pembayaran lunas
-                } else {
-                    $total_pendapatan = $pemesanan_data['pembayaran_dp'] + $pemesanan_data['sisa_pembayaran']; // Untuk DP
-                }
-
-                $keterangan = "Transaksi bus - Pemesanan #$pemesanan_id";
-                $jenis = "pemasukan";
-                $tanggal = date('Y-m-d');
-                $penanggung_jawab = "Admin";
-                $tag = "pendapatan,bus," . str_replace(' ', '_', strtolower($pemesanan_data['nama_bus']));
-
-                // Path bukti pembayaran
-                $file_lampiran = '';
-                // Ambil bukti pembayaran terbaru dari tabel bukti_pembayaran_bus
-                $stmt_bukti = $db->prepare("SELECT nama_file FROM bukti_pembayaran_bus WHERE pemesanan_id = ? ORDER BY tanggal_upload DESC LIMIT 1");
-                $stmt_bukti->execute([$pemesanan_id]);
-                $bukti = $stmt_bukti->fetch();
-
-                if ($bukti) {
-                    $file_lampiran = 'uploads/pembayaran_bus/' . $bukti['nama_file'];
-                }
-
-                // Tambahkan transaksi ke database
-                $stmt_transaksi = $db->prepare("INSERT INTO transaksi (tanggal, id_akun_debit, id_akun_kredit, keterangan, jenis, jumlah, pajak, bunga, total, file_lampiran, penanggung_jawab, tag, created_by, id_perusahaan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt_transaksi->execute([$tanggal, $id_akun_debit, $id_akun_kredit, $keterangan, $jenis, $total_pendapatan, 0, 0, $total_pendapatan, $file_lampiran, $penanggung_jawab, $tag, $_SESSION['user_id'], $id_perusahaan]);
+            require_once 'includes/bus_transaksi_sync.php';
+            $tripId = createTripFromPemesanan($db, $pemesanan_id);
+            if ($tripId) {
+                $_SESSION['success'] = 'Status pemesanan diperbarui. Data operasional dibuat — lengkapi biaya BBM/driver di Operasional Bus.';
+                header('Location: operasional_bus.php?bulan=' . date('Y-m', strtotime($pemesanan_data['tanggal_berangkat'])) . '&pemesanan_id=' . $pemesanan_id);
+                exit();
             }
         }
 
