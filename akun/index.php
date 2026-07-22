@@ -26,8 +26,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     }
 
     try {
-        $stmt = $db->prepare("INSERT INTO akun (kode_akun, nama_akun, kategori, deskripsi, id_perusahaan, created_by) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$kode_akun, $nama_akun, $kategori, $deskripsi, $id_perusahaan, $_SESSION['user_id']]);
+        $tipe_akun = in_array($kategori, ['aktiva', 'beban'], true) ? 'debit' : 'kredit';
+        $sub_kategori_map = [
+            'aktiva' => 'Lainnya',
+            'pasiva' => 'Kewajiban Lancar Lainnya',
+            'modal' => 'Modal',
+            'pendapatan' => 'Pendapatan',
+            'beban' => 'Biaya Operasional',
+        ];
+        $sub_kategori = $sub_kategori_map[$kategori] ?? 'Lainnya';
+
+        $stmt = $db->prepare("INSERT INTO akun (kode_akun, nama_akun, kategori, sub_kategori, tipe_akun, saldo, deskripsi, id_perusahaan) VALUES (?, ?, ?, ?, ?, 0, ?, ?)");
+        $stmt->execute([$kode_akun, $nama_akun, $kategori, $sub_kategori, $tipe_akun, $deskripsi, $id_perusahaan]);
         $_SESSION['success'] = 'Akun berhasil ditambahkan';
         header('Location: index.php');
         exit();
