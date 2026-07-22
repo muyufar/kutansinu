@@ -21,3 +21,6 @@ config/database.production.php
 # Ignore dependencies
 vendor/
 node_modules/
+
+# Dokumentasi - kredensial capture screenshot
+docs/capture.env

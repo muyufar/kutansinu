@@ -5,7 +5,8 @@
     "require": {
         "php": ">=8.0",
         "dompdf/dompdf": "^2.0",
-        "erusev/parsedown": "^1.7"
+        "erusev/parsedown": "^1.7",
+        "mpdf/mpdf": "^8.2"
     },
     "autoload": {
         "psr-4": {

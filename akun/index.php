@@ -6,6 +6,12 @@ require_once '../config/functions.php';
 // Cek login
 requireLogin();
 
+// Ambil id_perusahaan dari default_company pengguna (sumber yang sama dengan halaman lain)
+$stmt_company = $db->prepare("SELECT default_company FROM users WHERE id = ?");
+$stmt_company->execute([$_SESSION['user_id']]);
+$user_data = $stmt_company->fetch();
+$id_perusahaan = $user_data['default_company'] ?? null;
+
 // Proses tambah akun
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'tambah') {
     $kode_akun = validateInput($_POST['kode_akun']);
@@ -13,10 +19,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $kategori = validateInput($_POST['kategori']);
     $deskripsi = validateInput($_POST['deskripsi']);
 
-    // Mendapatkan id_perusahaan dari user yang sedang login
-    $id_perusahaan = $_SESSION['default_company'] ?? null;
     if (!$id_perusahaan) {
-        $_SESSION['error'] = 'Anda harus memiliki perusahaan aktif untuk menambahkan akun';
+        $_SESSION['error'] = 'Anda belum memiliki perusahaan default. Atur di menu Pengaturan > Perusahaan.';
         header('Location: index.php');
         exit();
     }
@@ -40,10 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     $kategori = validateInput($_POST['kategori']);
     $deskripsi = validateInput($_POST['deskripsi']);
 
-    // Mendapatkan id_perusahaan dari user yang sedang login
-    $id_perusahaan = $_SESSION['default_company'] ?? null;
     if (!$id_perusahaan) {
-        $_SESSION['error'] = 'Anda harus memiliki perusahaan aktif untuk mengedit akun';
+        $_SESSION['error'] = 'Anda belum memiliki perusahaan default. Atur di menu Pengaturan > Perusahaan.';
         header('Location: index.php');
         exit();
     }
@@ -70,10 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
 
 // Proses hapus akun
 if (isset($_GET['action']) && $_GET['action'] == 'hapus' && isset($_GET['id'])) {
-    // Mendapatkan id_perusahaan dari user yang sedang login
-    $id_perusahaan = $_SESSION['default_company'] ?? null;
     if (!$id_perusahaan) {
-        $_SESSION['error'] = 'Anda harus memiliki perusahaan aktif untuk menghapus akun';
+        $_SESSION['error'] = 'Anda belum memiliki perusahaan default. Atur di menu Pengaturan > Perusahaan.';
         header('Location: index.php');
         exit();
     }
@@ -98,12 +98,6 @@ if (isset($_GET['action']) && $_GET['action'] == 'hapus' && isset($_GET['id'])) 
     exit();
 }
 
-
-// Ambil id_perusahaan dari default_company pengguna
-$stmt_company = $db->prepare("SELECT default_company FROM users WHERE id = ?");
-$stmt_company->execute([$_SESSION['user_id']]);
-$user_data = $stmt_company->fetch();
-$id_perusahaan = $user_data['default_company'];
 
 // Pagination settings
 $items_per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 10;

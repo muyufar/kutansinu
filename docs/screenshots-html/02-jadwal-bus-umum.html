@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Cek Ketersediaan Bus</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+<style>
+.navbar{background:rgb(33,146,42)!important}
+.navbar .nav-link{color:#fff!important}
+</style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark mb-4"><div class="container"><span class="navbar-brand text-white">Sistem Keuangan</span><span class="nav-link">Jadwal Bus</span></div></nav>
+<div class="container">
+  <h2 class="mb-4">Cek Ketersediaan Bus</h2>
+  <div class="card mb-4">
+    <div class="card-header bg-primary text-white"><h5 class="mb-0">Cari Bus yang Tersedia</h5></div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-3"><label class="form-label">Tanggal Berangkat</label><input type="date" class="form-control" value="2026-07-25"></div>
+        <div class="col-md-3"><label class="form-label">Tanggal Pulang</label><input type="date" class="form-control" value="2026-07-26"></div>
+        <div class="col-md-3"><label class="form-label">Tipe Bus</label><select class="form-select"><option>Semua Tipe</option><option>VIP</option><option>KELUARGA</option></select></div>
+        <div class="col-md-3"><label class="form-label">Jumlah Armada Bus</label><input type="number" class="form-control" value="1"></div>
+        <div class="col-12"><button class="btn btn-primary"><i class="fas fa-search"></i> Cari Bus</button></div>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-6">
+      <div class="card">
+        <img src="https://via.placeholder.com/600x220/21922a/ffffff?text=NUGO+1" class="card-img-top" alt="Bus">
+        <div class="card-body">
+          <h5>NUGO 1 <span class="badge bg-info">KELUARGA</span></h5>
+          <p><strong>Kapasitas:</strong> 50 penumpang<br><strong>Fasilitas:</strong> AC, WiFi, Toilet, TV</p>
+          <button class="btn btn-success"><i class="fab fa-whatsapp"></i> Pesan via WhatsApp</button>
+          <button class="btn btn-primary ms-2">Pesan Sekarang</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
