@@ -103,29 +103,32 @@ function validateInput($data)
 function validateSaldo($id_akun, $jumlah, $jenis)
 {
     global $db;
-    
-    // Jika id_perusahaan tidak diberikan, coba ambil dari session
-    if ($id_perusahaan === null && isset($_SESSION['default_company'])) {
-        $id_perusahaan = $_SESSION['default_company'];
+
+    if (!in_array($jenis, ['pengeluaran', 'tarik_modal', 'transfer_uang', 'transfer_hutang'], true)) {
+        return true;
     }
-    
-    // Jika id_perusahaan tersedia, filter berdasarkan perusahaan
+
+    $id_perusahaan = $_SESSION['default_company'] ?? null;
+
     if ($id_perusahaan) {
-        $stmt = $db->prepare("SELECT saldo FROM akun WHERE id = ? AND id_perusahaan = ?");
+        $stmt = $db->prepare("SELECT saldo, kategori FROM akun WHERE id = ? AND id_perusahaan = ?");
         $stmt->execute([$id_akun, $id_perusahaan]);
     } else {
-        // Jika tidak ada id_perusahaan, cari berdasarkan ID saja
-        $stmt = $db->prepare("SELECT saldo FROM akun WHERE id = ?");
+        $stmt = $db->prepare("SELECT saldo, kategori FROM akun WHERE id = ?");
         $stmt->execute([$id_akun]);
     }
-    
+
     $akun = $stmt->fetch();
-    if ($jenis == 'pengeluaran' || $jenis == 'tarik_modal' || $jenis == 'transfer_uang' || $jenis == 'transfer_hutang') {
-        if ($akun['saldo'] < $jumlah) {
-            return false;
-        }
+    if (!$akun) {
+        return false;
     }
-    return true;
+
+    // Hanya cek saldo kas/bank; akun non-aktiva (mis. hutang) tidak dibatasi saldo
+    if ($akun['kategori'] !== 'aktiva') {
+        return true;
+    }
+
+    return $akun['saldo'] >= $jumlah;
 }
 
 // Cek apakah user sudah login

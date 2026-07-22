@@ -459,69 +459,23 @@ include '../templates/header.php';
         const selectDebit = document.getElementById('id_akun_debit');
         const selectKredit = document.getElementById('id_akun_kredit');
 
-        // Reset options
         selectDebit.innerHTML = '<option value="">Pilih Akun Debit</option>';
         selectKredit.innerHTML = '<option value="">Pilih Akun Kredit</option>';
 
-        // Filter akun berdasarkan jenis transaksi
-        let akunDebit = [];
-        let akunKredit = [];
+        // Selaras dengan Numart: semua akun perusahaan tersedia untuk debit dan kredit.
+        // Jenis transaksi hanya mengubah label, bukan membatasi pilihan akun.
+        akunList.forEach(akun => {
+            const label = akun.kode_akun + ' - ' + akun.nama_akun;
 
-        switch (jenisTransaksi) {
-            case 'pemasukan':
-                akunDebit = akunList.filter(akun => akun.kategori === 'aktiva');
-                akunKredit = akunList.filter(akun => akun.kategori === 'pendapatan');
-                break;
-            case 'pengeluaran':
-                akunDebit = akunList.filter(akun => akun.kategori === 'beban');
-                akunKredit = akunList.filter(akun => akun.kategori === 'aktiva');
-                break;
-            case 'hutang':
-                akunDebit = akunList.filter(akun => akun.kategori === 'aktiva');
-                akunKredit = akunList.filter(akun => akun.kategori === 'pasiva');
-                break;
-            case 'piutang':
-                akunDebit = akunList.filter(akun => akun.kategori === 'aktiva');
-                akunKredit = akunList.filter(akun => akun.kategori === 'pendapatan');
-                break;
-            case 'tanam_modal':
-                akunDebit = akunList.filter(akun => akun.kategori === 'aktiva');
-                akunKredit = akunList.filter(akun => akun.kategori === 'modal');
-                break;
-            case 'tarik_modal':
-                akunDebit = akunList.filter(akun => akun.kategori === 'modal');
-                akunKredit = akunList.filter(akun => akun.kategori === 'aktiva');
-                break;
-            case 'transfer_uang':
-                akunDebit = akunList.filter(akun => akun.kategori === 'aktiva');
-                akunKredit = akunList.filter(akun => akun.kategori === 'aktiva');
-                break;
-            case 'pemasukan_piutang':
-                akunDebit = akunList.filter(akun => akun.kategori === 'aktiva');
-                akunKredit = akunList.filter(akun => akun.kategori === 'aktiva');
-                break;
-            case 'transfer_hutang':
-                akunDebit = akunList.filter(akun => akun.kategori === 'pasiva');
-                akunKredit = akunList.filter(akun => akun.kategori === 'aktiva');
-                break;
-            default:
-                akunDebit = akunList;
-                akunKredit = akunList;
-        }
+            const optionDebit = document.createElement('option');
+            optionDebit.value = akun.id;
+            optionDebit.textContent = label;
+            selectDebit.appendChild(optionDebit);
 
-        // Populate options
-        akunDebit.forEach(akun => {
-            const option = document.createElement('option');
-            option.value = akun.id;
-            option.textContent = akun.kode_akun + ' - ' + akun.nama_akun;
-            selectDebit.appendChild(option);
-        });
-
-        akunKredit.forEach(akun => {
-            const option = document.createElement('option');
-            option.value = akun.id;
-            option.textContent = akun.kode_akun + ' - ' + akun.nama_akun;
-            selectKredit.appendChild(option);
+            const optionKredit = document.createElement('option');
+            optionKredit.value = akun.id;
+            optionKredit.textContent = label;
+            selectKredit.appendChild(optionKredit);
         });
     }
 
