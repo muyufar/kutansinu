@@ -682,24 +682,56 @@ body.sikeu-app {
 
 .dashboard-chart-wrap { position: relative; height: 280px; margin: 0.5rem 0; }
 
-.cashflow-period-toggle .btn {
+.cashflow-period-toggle {
+    display: inline-flex;
+    align-items: stretch;
+    flex-shrink: 0;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.cashflow-period-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 3.6rem;
+    padding: 0.38rem 0.75rem;
+    border: none;
+    border-right: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #64748b;
     font-size: 0.72rem;
     font-weight: 700;
-    padding: 0.35rem 0.65rem;
-    border-color: var(--sikeu-border-strong);
-    color: var(--sikeu-text-muted);
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
 }
 
-.cashflow-period-toggle .btn.active {
-    background: linear-gradient(135deg, var(--sikeu-primary-700), var(--sikeu-primary-500));
-    border-color: transparent;
-    color: #fff;
+.cashflow-period-btn:last-child {
+    border-right: none;
 }
 
-.cashflow-period-toggle .btn:hover:not(.active) {
-    background: var(--sikeu-primary-soft);
-    color: var(--sikeu-primary-700);
-    border-color: rgba(16, 185, 129, 0.3);
+.cashflow-period-btn:hover:not(.is-active) {
+    background: rgba(16, 185, 129, 0.1);
+    color: #047857;
+}
+
+.cashflow-period-btn.is-active {
+    background: linear-gradient(135deg, #047857 0%, #059669 100%) !important;
+    color: #ffffff !important;
+    border-color: transparent !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.cashflow-period-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+    z-index: 1;
 }
 
 .dashboard-chart-foot {

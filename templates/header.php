@@ -12,10 +12,15 @@
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <!-- SiKeu Design System -->
-    <link href="/assets/css/sikeu-theme.css" rel="stylesheet">
+    <?php
+    $sikeu_theme_ver = @filemtime(__DIR__ . '/../assets/css/sikeu-theme.css') ?: time();
+    $sikeu_dark_ver = @filemtime(__DIR__ . '/../assets/css/dark-mode.css') ?: time();
+    $sikeu_style_ver = @filemtime(__DIR__ . '/../assets/css/style.css') ?: time();
+    ?>
+    <link href="/assets/css/sikeu-theme.css?v=<?= $sikeu_theme_ver ?>" rel="stylesheet">
     <!-- Dark Mode CSS -->
-    <link href="/assets/css/dark-mode.css" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <link href="/assets/css/dark-mode.css?v=<?= $sikeu_dark_ver ?>" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/style.css?v=<?= $sikeu_style_ver ?>">
     <!-- Leaflet (maps) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>

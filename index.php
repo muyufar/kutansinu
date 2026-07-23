@@ -399,10 +399,10 @@ include 'templates/header.php';
                             <small class="text-muted" id="cashflowSubtitle"><?= htmlspecialchars($cashflow_subtitle) ?></small>
                         </div>
                         <div class="d-flex flex-wrap align-items-center gap-2">
-                            <div class="cashflow-period-toggle btn-group btn-group-sm" role="group" aria-label="Periode arus kas">
-                                <button type="button" class="btn btn-outline-secondary" data-cashflow-period="harian">Harian</button>
-                                <button type="button" class="btn btn-outline-secondary active" data-cashflow-period="minggu">Minggu</button>
-                                <button type="button" class="btn btn-outline-secondary" data-cashflow-period="bulan">Bulan</button>
+                            <div class="cashflow-period-toggle" role="group" aria-label="Periode arus kas">
+                                <button type="button" class="cashflow-period-btn" data-cashflow-period="harian">Harian</button>
+                                <button type="button" class="cashflow-period-btn is-active" data-cashflow-period="minggu">Minggu</button>
+                                <button type="button" class="cashflow-period-btn" data-cashflow-period="bulan">Bulan</button>
                             </div>
                             <div class="dashboard-panel-stats">
                                 <span class="dashboard-stat-pill in" id="cashflowStatIn"><i class="fas fa-circle"></i> Masuk <?= fmtRp($period_masuk) ?></span>
@@ -745,7 +745,7 @@ include 'templates/header.php';
                 document.getElementById('cashflowEndBalance').textContent = formatRpFull(d.kas_akhir);
 
                 document.querySelectorAll('[data-cashflow-period]').forEach(function(btn) {
-                    btn.classList.toggle('active', btn.dataset.cashflowPeriod === period);
+                    btn.classList.toggle('is-active', btn.dataset.cashflowPeriod === period);
                 });
             }
 

@@ -643,19 +643,25 @@
     border-color: #334155;
 }
 
-[data-theme="dark"] .cashflow-period-toggle .btn {
+[data-theme="dark"] .cashflow-period-toggle {
     border-color: #334155;
+    background: #0f1623;
+}
+
+[data-theme="dark"] .cashflow-period-btn {
+    background: #0f1623;
     color: #94a3b8;
+    border-right-color: #334155;
 }
 
-[data-theme="dark"] .cashflow-period-toggle .btn.active {
-    background: linear-gradient(135deg, #047857, #059669);
-    color: #fff;
-}
-
-[data-theme="dark"] .cashflow-period-toggle .btn:hover:not(.active) {
+[data-theme="dark"] .cashflow-period-btn:hover:not(.is-active) {
     background: rgba(16, 185, 129, 0.12);
     color: #6ee7b7;
+}
+
+[data-theme="dark"] .cashflow-period-btn.is-active {
+    background: linear-gradient(135deg, #047857 0%, #059669 100%) !important;
+    color: #ffffff !important;
 }
 
 [data-theme="dark"] .audit-log-table thead th {

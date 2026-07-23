@@ -6,6 +6,18 @@ require_once '../config/functions.php';
 // Cek login
 requireLogin();
 
+$jenis_transaksi_options = [
+    'pemasukan' => 'Pemasukan',
+    'pengeluaran' => 'Pengeluaran',
+    'hutang' => 'Hutang',
+    'piutang' => 'Piutang',
+    'tanam_modal' => 'Tanam Modal',
+    'tarik_modal' => 'Tarik Modal',
+    'transfer_uang' => 'Transfer Uang',
+    'pemasukan_piutang' => 'Pemasukan Piutang',
+    'transfer_hutang' => 'Transfer Hutang',
+];
+
 // Proses edit transaksi
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'edit') {
     $id = validateInput($_POST['id']);
@@ -181,7 +193,7 @@ include '../templates/header.php';
                                 <td><?php echo htmlspecialchars($transaksi['keterangan']); ?></td>
                                 <td>
                                     <span class="badge <?php echo $transaksi['jenis'] == 'pemasukan' ? 'bg-success' : 'bg-danger'; ?>">
-                                        <?php echo ucfirst($transaksi['jenis']); ?>
+                                        <?php echo htmlspecialchars($jenis_transaksi_options[$transaksi['jenis']] ?? ucwords(str_replace('_', ' ', $transaksi['jenis']))); ?>
                                     </span>
                                 </td>
                                 <td><?php echo formatRupiah($transaksi['jumlah']); ?></td>
@@ -345,8 +357,9 @@ include '../templates/header.php';
                     <div class="mb-3">
                         <label for="edit_jenis" class="form-label">Jenis Transaksi</label>
                         <select class="form-select" id="edit_jenis" name="jenis" required>
-                            <option value="pemasukan">Pemasukan</option>
-                            <option value="pengeluaran">Pengeluaran</option>
+                            <?php foreach ($jenis_transaksi_options as $value => $label): ?>
+                                <option value="<?= htmlspecialchars($value) ?>"><?= htmlspecialchars($label) ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -426,6 +439,8 @@ include '../templates/header.php';
     </div>
 
     <script>
+        const jenis_transaksi_labels = <?= json_encode($jenis_transaksi_options, JSON_UNESCAPED_UNICODE) ?>;
+
         // Script untuk mengisi modal view
         document.getElementById('modalViewTransaksi').addEventListener('show.bs.modal', function(event) {
             var button = event.relatedTarget;
@@ -445,7 +460,7 @@ include '../templates/header.php';
             modal.querySelector('#view_akun_kredit').textContent = akun_kredit;
             modal.querySelector('#view_keterangan').textContent = keterangan;
             modal.querySelector('#view_tag').textContent = tag || '-';
-            modal.querySelector('#view_jenis').textContent = jenis.charAt(0).toUpperCase() + jenis.slice(1);
+            modal.querySelector('#view_jenis').textContent = (jenis_transaksi_labels[jenis] || jenis.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); }));
             modal.querySelector('#view_jumlah').textContent = jumlah;
             modal.querySelector('#view_pj').textContent = penanggung_jawab || '-';
 
@@ -482,6 +497,13 @@ include '../templates/header.php';
             modal.querySelector('#edit_keterangan').value = keterangan;
             modal.querySelector('#edit_tag').value = tag;
             modal.querySelector('#edit_jenis').value = jenis;
+            if (modal.querySelector('#edit_jenis').value !== jenis) {
+                var opt = document.createElement('option');
+                opt.value = jenis;
+                opt.textContent = jenis.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+                modal.querySelector('#edit_jenis').appendChild(opt);
+                modal.querySelector('#edit_jenis').value = jenis;
+            }
             modal.querySelector('#edit_jumlah').value = jumlah;
             modal.querySelector('#edit_pj').value = penanggung_jawab;
 
