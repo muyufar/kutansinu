@@ -147,6 +147,9 @@ include '../templates/header.php';
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h5>Daftar Transaksi</h5>
         <div class="d-flex gap-1">
+            <a href="../laporan/buku-besar.php" class="btn btn-outline-success btn-sm">
+                <i class="fas fa-book"></i> Buku Besar
+            </a>
             <a href="tambah.php" class="btn btn-primary btn-sm">
                 <i class="fas fa-plus"></i> Tambah Transaksi
             </a>

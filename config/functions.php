@@ -261,3 +261,152 @@ function appendTransaksiTagFilter(&$sql, &$params, $tags, $prefix = 't.', $param
 
     $sql .= ' AND (' . implode(' OR ', $tag_conditions) . ')';
 }
+
+function hitungMutasiAkun($total_debit, $total_kredit, $tipe_akun)
+{
+    $total_debit = (float)$total_debit;
+    $total_kredit = (float)$total_kredit;
+
+    if ($tipe_akun === 'debit') {
+        return $total_debit - $total_kredit;
+    }
+
+    return $total_kredit - $total_debit;
+}
+
+function getAkunById($db, $id_akun, $id_perusahaan)
+{
+    $stmt = $db->prepare('SELECT * FROM akun WHERE id = ? AND id_perusahaan = ?');
+    $stmt->execute([$id_akun, $id_perusahaan]);
+    $akun = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $akun ?: null;
+}
+
+function getSaldoAwalAkun($db, $id_akun, $tanggal_awal, $id_perusahaan, $tipe_akun)
+{
+    $stmt = $db->prepare('
+        SELECT
+            COALESCE(SUM(CASE WHEN t.id_akun_debit = ? THEN t.jumlah ELSE 0 END), 0) AS total_debit,
+            COALESCE(SUM(CASE WHEN t.id_akun_kredit = ? THEN t.jumlah ELSE 0 END), 0) AS total_kredit
+        FROM transaksi t
+        WHERE t.id_perusahaan = ?
+          AND t.tanggal < ?
+          AND (t.id_akun_debit = ? OR t.id_akun_kredit = ?)
+    ');
+    $stmt->execute([$id_akun, $id_akun, $id_perusahaan, $tanggal_awal, $id_akun, $id_akun]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return hitungMutasiAkun($row['total_debit'], $row['total_kredit'], $tipe_akun);
+}
+
+function getBukuBesarMutasi($db, $id_akun, $tanggal_awal, $tanggal_akhir, $id_perusahaan)
+{
+    $sql = '
+        SELECT * FROM (
+            SELECT
+                t.id AS transaksi_id,
+                t.tanggal,
+                t.keterangan,
+                t.jenis,
+                t.jumlah AS debit,
+                0 AS kredit,
+                \'D\' AS posisi,
+                ak.kode_akun AS lawan_kode,
+                ak.nama_akun AS lawan_nama,
+                t.penanggung_jawab,
+                t.tag
+            FROM transaksi t
+            INNER JOIN akun ak ON t.id_akun_kredit = ak.id
+            WHERE t.id_akun_debit = ?
+              AND t.id_perusahaan = ?
+              AND t.tanggal BETWEEN ? AND ?
+
+            UNION ALL
+
+            SELECT
+                t.id AS transaksi_id,
+                t.tanggal,
+                t.keterangan,
+                t.jenis,
+                0 AS debit,
+                t.jumlah AS kredit,
+                \'K\' AS posisi,
+                ad.kode_akun AS lawan_kode,
+                ad.nama_akun AS lawan_nama,
+                t.penanggung_jawab,
+                t.tag
+            FROM transaksi t
+            INNER JOIN akun ad ON t.id_akun_debit = ad.id
+            WHERE t.id_akun_kredit = ?
+              AND t.id_perusahaan = ?
+              AND t.tanggal BETWEEN ? AND ?
+        ) AS mutasi
+        ORDER BY tanggal ASC, transaksi_id ASC, posisi ASC
+    ';
+
+    $stmt = $db->prepare($sql);
+    $stmt->execute([
+        $id_akun,
+        $id_perusahaan,
+        $tanggal_awal,
+        $tanggal_akhir,
+        $id_akun,
+        $id_perusahaan,
+        $tanggal_awal,
+        $tanggal_akhir,
+    ]);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function buildBukuBesarRows(array $mutasi_list, $saldo_awal, $tipe_akun)
+{
+    $saldo = (float)$saldo_awal;
+    $rows = [];
+    $total_debit = 0;
+    $total_kredit = 0;
+
+    foreach ($mutasi_list as $mutasi) {
+        $debit = (float)$mutasi['debit'];
+        $kredit = (float)$mutasi['kredit'];
+        $total_debit += $debit;
+        $total_kredit += $kredit;
+
+        if ($tipe_akun === 'debit') {
+            $saldo += $debit - $kredit;
+        } else {
+            $saldo += $kredit - $debit;
+        }
+
+        $rows[] = array_merge($mutasi, ['saldo' => $saldo]);
+    }
+
+    return [
+        'rows' => $rows,
+        'total_debit' => $total_debit,
+        'total_kredit' => $total_kredit,
+        'saldo_akhir' => $saldo,
+    ];
+}
+
+function getBukuBesarData($db, $id_akun, $tanggal_awal, $tanggal_akhir, $id_perusahaan)
+{
+    $akun = getAkunById($db, $id_akun, $id_perusahaan);
+    if (!$akun) {
+        return null;
+    }
+
+    $saldo_awal = getSaldoAwalAkun($db, $id_akun, $tanggal_awal, $id_perusahaan, $akun['tipe_akun']);
+    $mutasi_list = getBukuBesarMutasi($db, $id_akun, $tanggal_awal, $tanggal_akhir, $id_perusahaan);
+    $ledger = buildBukuBesarRows($mutasi_list, $saldo_awal, $akun['tipe_akun']);
+
+    return [
+        'akun' => $akun,
+        'saldo_awal' => $saldo_awal,
+        'rows' => $ledger['rows'],
+        'total_debit' => $ledger['total_debit'],
+        'total_kredit' => $ledger['total_kredit'],
+        'saldo_akhir' => $ledger['saldo_akhir'],
+    ];
+}

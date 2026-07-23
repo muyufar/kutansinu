@@ -128,6 +128,8 @@
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
                             <li><a class="dropdown-item" href="/laporan/transaksi.php"><i class="fas fa-search me-1"></i> Rekap Transaksi</a></li>
+                            <li><a class="dropdown-item" href="/laporan/buku-besar.php"><i class="fas fa-book me-1"></i> Buku Besar</a></li>
+                            <li><a class="dropdown-item" href="/laporan/jurnal.php"><i class="fas fa-book-open me-1"></i> Jurnal Umum</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="/laporan/neraca.php"><i class="fas fa-balance-scale me-1"></i> Neraca</a></li>
                             <li><a class="dropdown-item" href="/laporan/laba-rugi.php"><i class="fas fa-chart-line me-1"></i> Laba Rugi</a></li>
