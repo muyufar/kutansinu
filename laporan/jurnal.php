@@ -119,52 +119,33 @@ include '../templates/header.php';
                                 <td colspan="8" class="text-center">Tidak ada data jurnal</td>
                             </tr>
                         <?php else: ?>
-                            <?php 
-                            $current_date = null;
-                            $current_transaction_id = null;
-                            foreach ($jurnal_list as $index => $jurnal): 
-                                $show_date = ($current_date != $jurnal['tanggal_transaksi']);
-                                $show_transaction = ($current_transaction_id != $jurnal['id']);
-                                $current_date = $jurnal['tanggal_transaksi'];
-                                $current_transaction_id = $jurnal['id'];
-                            ?>
-                                <!-- Baris untuk akun debit -->
-                                <tr>
-                                    <?php if ($show_date): ?>
-                                    <td rowspan="2">
-                                        <?= date('d M Y', strtotime($jurnal['tanggal_transaksi'])) ?><br>
-                                        <small class="text-muted"><?= date('H:i:s', strtotime($jurnal['tanggal_transaksi'])) ?></small>
+                            <?php foreach ($jurnal_list as $jurnal): ?>
+                                <!-- Baris debit -->
+                                <tr class="jurnal-row-start">
+                                    <td rowspan="2" class="align-middle">
+                                        <?= date('d/m/Y', strtotime($jurnal['tanggal_transaksi'])) ?>
                                     </td>
-                                    <?php endif; ?>
-                                    
-                                    <?php if ($show_transaction): ?>
-                                    <td rowspan="2">
+                                    <td rowspan="2" class="align-middle">
                                         <span class="badge <?= getJenisBadgeClass($jurnal['jenis_transaksi']) ?>">
-                                            <?= ucfirst($jurnal['jenis_transaksi']) ?>
+                                            <?= htmlspecialchars(formatJenisTransaksi($jurnal['jenis_transaksi'])) ?>
                                         </span>
                                     </td>
-                                    <?php endif; ?>
-                                    
-                                    <td><?= $jurnal['kode_akun_debit'] ?></td>
-                                    <td><?= $jurnal['nama_akun_debit'] ?></td>
+                                    <td><?= htmlspecialchars($jurnal['kode_akun_debit']) ?></td>
+                                    <td><?= htmlspecialchars($jurnal['nama_akun_debit']) ?></td>
                                     <td class="text-end"><?= formatRupiah($jurnal['jumlah']) ?></td>
-                                    <td></td>
-                                    
-                                    <?php if ($show_transaction): ?>
-                                    <td rowspan="2"><?= htmlspecialchars($jurnal['keterangan']) ?></td>
-                                    <td rowspan="2">
-                                        <a href="../transaksi/index.php?id=<?= $jurnal['id'] ?>" class="btn btn-sm btn-info">
+                                    <td class="text-end text-muted">-</td>
+                                    <td rowspan="2" class="align-middle"><?= htmlspecialchars($jurnal['keterangan']) ?></td>
+                                    <td rowspan="2" class="align-middle text-center">
+                                        <a href="../transaksi/index.php" class="btn btn-sm btn-info" title="Lihat di Daftar Transaksi">
                                             <i class="fas fa-eye"></i>
                                         </a>
                                     </td>
-                                    <?php endif; ?>
                                 </tr>
-                                
-                                <!-- Baris untuk akun kredit -->
-                                <tr>
-                                    <td><?= $jurnal['kode_akun_kredit'] ?></td>
-                                    <td><?= $jurnal['nama_akun_kredit'] ?></td>
-                                    <td></td>
+                                <!-- Baris kredit -->
+                                <tr class="jurnal-row-end">
+                                    <td><?= htmlspecialchars($jurnal['kode_akun_kredit']) ?></td>
+                                    <td><?= htmlspecialchars($jurnal['nama_akun_kredit']) ?></td>
+                                    <td class="text-end text-muted">-</td>
                                     <td class="text-end"><?= formatRupiah($jurnal['jumlah']) ?></td>
                                 </tr>
                             <?php endforeach; ?>
@@ -184,22 +165,39 @@ include '../templates/header.php';
     </div>
 </div>
 
+<style>
+    .jurnal-row-start {
+        border-top: 2px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .jurnal-row-start td,
+    .jurnal-row-end td {
+        vertical-align: middle;
+    }
+</style>
+
 <?php
-// Fungsi untuk mendapatkan kelas badge berdasarkan jenis transaksi
-function getJenisBadgeClass($jenis) {
+function formatJenisTransaksi($jenis)
+{
+    return ucwords(str_replace('_', ' ', $jenis));
+}
+
+function getJenisBadgeClass($jenis)
+{
     switch ($jenis) {
         case 'pemasukan':
+        case 'pemasukan_piutang':
+        case 'tanam_modal':
             return 'bg-success';
         case 'pengeluaran':
-            return 'bg-danger';
-        case 'transfer':
-            return 'bg-primary';
-        case 'tanam_modal':
-            return 'bg-info';
+        case 'transfer_hutang':
         case 'tarik_modal':
-            return 'bg-warning';
-        case 'beli_aset':
-            return 'bg-secondary';
+            return 'bg-danger';
+        case 'transfer_uang':
+            return 'bg-primary';
+        case 'hutang':
+        case 'piutang':
+            return 'bg-warning text-dark';
         default:
             return 'bg-secondary';
     }
