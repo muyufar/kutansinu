@@ -15,6 +15,21 @@ function getUserData($db, $user_id)
     return $stmt->fetch();
 }
 
+function getBlockingBookingStatuses()
+{
+    return ['pending', 'dibayar_dp', 'dibayar', 'menunggu_pembayaran', 'dikonfirmasi'];
+}
+
+function buildBlockingStatusSql($column = 'status')
+{
+    $statuses = getBlockingBookingStatuses();
+    $quoted = array_map(function ($status) {
+        return "'" . str_replace("'", "''", $status) . "'";
+    }, $statuses);
+
+    return $column . ' IN (' . implode(', ', $quoted) . ')';
+}
+
 function validateBookingDate($tanggal_berangkat)
 {
     // Validasi format tanggal
@@ -49,10 +64,11 @@ function checkBusAvailability($db, $bus_id, $tanggal_berangkat, $waktu_berangkat
 
     try {
         // Query untuk cek ketersediaan bus
+        $blockingSql = buildBlockingStatusSql('status');
         $sql = "SELECT COUNT(*) as total FROM pemesanan_bus 
                 WHERE id_bus = ? 
                 AND tanggal_berangkat = ? 
-                AND status IN ('dibayar_dp', 'dibayar', 'pending')
+                AND {$blockingSql}
                 AND id != ?";
 
         $params = [$bus_id, $tanggal_berangkat, $exclude_pemesanan_id ?: 0];
@@ -142,7 +158,7 @@ function validateBusBooking($db, $bus_id, $tanggal_berangkat, $waktu_berangkat, 
                 WHERE pb.tanggal_berangkat = ? 
                 AND pb.id_bus = ?
                 AND pb.id != ? 
-                AND pb.status IN ('dibayar_dp', 'dibayar', 'pending')
+                AND " . buildBlockingStatusSql('pb.status') . "
                 AND (
                     (pb.waktu_berangkat = ?) OR 
                     (ABS(TIME_TO_SEC(TIMEDIFF(pb.waktu_berangkat, ?)) / 3600) < 2)
@@ -169,7 +185,7 @@ function validateBusBooking($db, $bus_id, $tanggal_berangkat, $waktu_berangkat, 
                             WHERE pb.tanggal_berangkat = ? 
                             AND pb.id != ? 
                             AND pb.id_bus = ? 
-                            AND pb.status IN ('dibayar_dp', 'dibayar', 'pending')";
+                            AND " . buildBlockingStatusSql('pb.status') . "";
 
         $stmt_conflict = $db->prepare($sql_bus_conflict);
         $stmt_conflict->execute([$tanggal_berangkat, $exclude_pemesanan_id ?: 0, $bus_id]);
@@ -232,7 +248,7 @@ function getAvailableBusSchedule($db, $tanggal_berangkat, $waktu_berangkat = nul
                 LEFT JOIN pemesanan_bus pb 
                        ON pb.id_bus = b.id 
                       AND pb.tanggal_berangkat = ?
-                      AND pb.status IN ('dibayar_dp','dibayar','pending')
+                      AND " . buildBlockingStatusSql('pb.status') . "
                 WHERE b.status = 'tersedia'";
 
         $params = [$tanggal_berangkat];
@@ -270,7 +286,7 @@ function isDateBooked($db, $tanggal_berangkat, $exclude_pemesanan_id = null, $bu
     try {
         $sql = "SELECT COUNT(*) as total FROM pemesanan_bus 
                 WHERE tanggal_berangkat = ? 
-                AND status IN ('dibayar_dp', 'dibayar', 'pending')";
+                AND " . buildBlockingStatusSql('status');
 
         $params = [$tanggal_berangkat];
 

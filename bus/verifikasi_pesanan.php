@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/database.php';
 require_once '../config/functions.php';
+require_once 'includes/pemesanan_helper.php';
 
 // Cek login
 requireLogin();
@@ -11,6 +12,7 @@ $user_id = $_SESSION['user_id'];
 $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
+$is_staff = isBusStaff($db, $user_id);
 
 // Proses verifikasi pesanan jika ada
 if (isset($_POST['verifikasi'])) {
@@ -320,9 +322,26 @@ include '../templates/header.php';
                                         </span>
                                     </td>
                                     <td>
-                                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#detailModal<?php echo $pemesanan['id']; ?>">
-                                            <i class="fas fa-eye"></i> Detail
-                                        </button>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#detailModal<?php echo $pemesanan['id']; ?>">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <?php if (pemesananCanEdit($pemesanan['status'])): ?>
+                                                <a href="edit_pesanan.php?id=<?= (int) $pemesanan['id'] ?>&redirect=<?= urlencode('verifikasi_pesanan.php') ?>" class="btn btn-outline-secondary" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            <?php endif; ?>
+                                            <?php if (pemesananCanCancel($pemesanan['status'])): ?>
+                                                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#batalModalAdmin<?= (int) $pemesanan['id'] ?>" title="Batalkan">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                            <?php if ($is_staff && pemesananCanDelete($pemesanan['status'], true)): ?>
+                                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#hapusModal<?= (int) $pemesanan['id'] ?>" title="Hapus">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -545,6 +564,13 @@ include '../templates/header.php';
 
                     <!-- Form Verifikasi Pesanan -->
                     <?php if ($pemesanan['status'] != 'selesai'): ?>
+                        <?php if (pemesananCanEdit($pemesanan['status'])): ?>
+                            <div class="mt-3 mb-3">
+                                <a href="edit_pesanan.php?id=<?= (int) $pemesanan['id'] ?>&redirect=<?= urlencode('verifikasi_pesanan.php') ?>" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-edit"></i> Edit Jadwal / Detail
+                                </a>
+                            </div>
+                        <?php endif; ?>
                         <div class="card mt-3">
                             <div class="card-header bg-primary text-white">
                                 <h5 class="mb-0">Verifikasi Pesanan</h5>
@@ -617,6 +643,62 @@ include '../templates/header.php';
             </div>
         </div>
     </div>
+<?php endforeach; ?>
+
+<?php foreach ($pemesanan_list as $pemesanan): ?>
+    <?php if (pemesananCanCancel($pemesanan['status'])): ?>
+        <div class="modal fade" id="batalModalAdmin<?= (int) $pemesanan['id'] ?>" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form method="POST" action="aksi_pesanan.php">
+                        <input type="hidden" name="action" value="cancel">
+                        <input type="hidden" name="pemesanan_id" value="<?= (int) $pemesanan['id'] ?>">
+                        <input type="hidden" name="redirect" value="verifikasi_pesanan.php">
+                        <div class="modal-header bg-danger text-white">
+                            <h5 class="modal-title">Batalkan Pemesanan #<?= (int) $pemesanan['id'] ?></h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Pemesanan akan ditandai <strong>Dibatalkan</strong> dan slot jadwal bus dibebaskan.</p>
+                            <label class="form-label">Catatan admin</label>
+                            <textarea class="form-control" name="catatan_batal" rows="3" placeholder="Alasan pembatalan..."></textarea>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                            <button type="submit" class="btn btn-danger">Batalkan Pemesanan</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($is_staff && pemesananCanDelete($pemesanan['status'], true)): ?>
+        <div class="modal fade" id="hapusModal<?= (int) $pemesanan['id'] ?>" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form method="POST" action="aksi_pesanan.php">
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="pemesanan_id" value="<?= (int) $pemesanan['id'] ?>">
+                        <input type="hidden" name="redirect" value="verifikasi_pesanan.php">
+                        <div class="modal-header bg-dark text-white">
+                            <h5 class="modal-title">Hapus Permanen #<?= (int) $pemesanan['id'] ?></h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-warning mb-0">
+                                Data pemesanan, bukti pembayaran, dan trip operasional terkait (jika ada) akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-danger">Hapus Permanen</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
 <?php endforeach; ?>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

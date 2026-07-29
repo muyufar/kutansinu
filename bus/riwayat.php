@@ -2,11 +2,13 @@
 session_start();
 require_once '../config/database.php';
 require_once '../config/functions.php';
+require_once 'includes/pemesanan_helper.php';
 
 // Cek login
 requireLogin();
 
 $user_id = $_SESSION['user_id'];
+$is_staff = isBusStaff($db, $user_id);
 $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
@@ -59,8 +61,8 @@ include '../templates/header.php';
                     <div class="card h-100">
                         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">Pemesanan #<?php echo $pemesanan['id']; ?></h5>
-                            <span class="badge <?php echo getStatusBadgeClass($pemesanan['status']); ?>">
-                                <?php echo formatStatus($pemesanan['status']); ?>
+                            <span class="badge <?php echo getPemesananStatusBadgeClass($pemesanan['status']); ?>">
+                                <?php echo htmlspecialchars(formatPemesananStatus($pemesanan['status'])); ?>
                             </span>
                         </div>
                         <div class="card-body">
@@ -102,7 +104,7 @@ include '../templates/header.php';
                                     </p>
                                     <div class="mt-3">
                                         <strong>Status:</strong>
-                                        <span class="badge bg-<?php echo getStatusBadgeClass($pemesanan['status']); ?>"><?php echo formatStatus($pemesanan['status']); ?></span>
+                                        <span class="badge <?= getPemesananStatusBadgeClass($pemesanan['status']) ?>"><?= htmlspecialchars(formatPemesananStatus($pemesanan['status'])) ?></span>
                                     </div>
 
                                     <?php
@@ -159,6 +161,17 @@ include '../templates/header.php';
                                     </a>
                                 </div>
                             <?php endif; ?>
+
+                            <?php if (pemesananCanEdit($pemesanan['status'])): ?>
+                                <div class="mt-3 d-flex flex-wrap gap-2">
+                                    <a href="edit_pesanan.php?id=<?= (int) $pemesanan['id'] ?>&redirect=riwayat.php" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-edit"></i> Edit Jadwal
+                                    </a>
+                                    <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#batalModal<?= (int) $pemesanan['id'] ?>">
+                                        <i class="fas fa-times-circle"></i> Batalkan
+                                    </button>
+                                </div>
+                            <?php endif; ?>
                         </div>
                         <div class="card-footer bg-light">
                             <small class="text-muted">Pemesanan dibuat pada <?php echo date('d/m/Y H:i', strtotime($pemesanan['tanggal_pemesanan'])); ?></small>
@@ -167,47 +180,36 @@ include '../templates/header.php';
                 </div>
             <?php endforeach; ?>
         </div>
+
+        <?php foreach ($pemesanan_list as $pemesanan): ?>
+            <?php if (pemesananCanCancel($pemesanan['status'])): ?>
+                <div class="modal fade" id="batalModal<?= (int) $pemesanan['id'] ?>" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form method="POST" action="aksi_pesanan.php">
+                                <input type="hidden" name="action" value="cancel">
+                                <input type="hidden" name="pemesanan_id" value="<?= (int) $pemesanan['id'] ?>">
+                                <input type="hidden" name="redirect" value="riwayat.php">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Batalkan Pemesanan #<?= (int) $pemesanan['id'] ?></h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>Yakin ingin membatalkan pemesanan ini? Jadwal bus akan kembali tersedia.</p>
+                                    <label for="catatan_batal<?= (int) $pemesanan['id'] ?>" class="form-label">Alasan pembatalan (opsional)</label>
+                                    <textarea class="form-control" id="catatan_batal<?= (int) $pemesanan['id'] ?>" name="catatan_batal" rows="3"></textarea>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                                    <button type="submit" class="btn btn-danger">Ya, Batalkan</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
+        <?php endforeach; ?>
     <?php endif; ?>
 </div>
-
-<?php
-// Fungsi untuk menentukan class badge berdasarkan status
-function getStatusBadgeClass($status)
-{
-    switch ($status) {
-        case 'menunggu_pembayaran':
-            return 'bg-warning';
-        case 'dibayar':
-            return 'bg-info';
-        case 'dikonfirmasi':
-            return 'bg-primary';
-        case 'selesai':
-            return 'bg-success';
-        case 'dibatalkan':
-            return 'bg-danger';
-        default:
-            return 'bg-secondary';
-    }
-}
-
-// Fungsi untuk memformat status
-function formatStatus($status)
-{
-    switch ($status) {
-        case 'menunggu_pembayaran':
-            return 'Menunggu Pembayaran';
-        case 'dibayar':
-            return 'Pembayaran Diproses';
-        case 'dikonfirmasi':
-            return 'Dikonfirmasi';
-        case 'selesai':
-            return 'Selesai';
-        case 'dibatalkan':
-            return 'Dibatalkan';
-        default:
-            return ucfirst($status);
-    }
-}
-?>
 
 <?php include '../templates/footer.php'; ?>
