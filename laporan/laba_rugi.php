@@ -53,62 +53,12 @@ if ($is_admin && isset($_GET['perusahaan']) && $_GET['perusahaan']) {
     $filter_perusahaan = $_GET['perusahaan'];
 }
 
-// Query untuk mendapatkan data pendapatan dengan filter perusahaan
-$sql_pendapatan = "SELECT 
-    a.kode_akun,
-    a.nama_akun,
-    COALESCE(SUM(CASE WHEN t.jenis = 'pemasukan' THEN t.jumlah ELSE -t.jumlah END), 0) as jumlah
-FROM akun a
-LEFT JOIN transaksi t ON (a.id = t.id_akun_kredit OR a.id = t.id_akun_debit)
-    AND t.tanggal BETWEEN ? AND ?
-    AND t.id_perusahaan = ?
-WHERE a.kategori = 'pendapatan'
-GROUP BY a.id, a.kode_akun, a.nama_akun
-ORDER BY a.kode_akun ASC";
-
-$stmt_pendapatan = $db->prepare($sql_pendapatan);
-$stmt_pendapatan->execute([$tanggal_awal, $tanggal_akhir, $filter_perusahaan]);
-$data_pendapatan = $stmt_pendapatan->fetchAll();
-
-// Filter hanya akun yang memiliki transaksi
-$data_pendapatan = array_filter($data_pendapatan, function ($item) {
-    return $item['jumlah'] != 0;
-});
-
-// Query untuk mendapatkan data beban dengan filter perusahaan
-$sql_beban = "SELECT 
-    a.kode_akun,
-    a.nama_akun,
-    COALESCE(SUM(CASE WHEN t.jenis = 'pengeluaran' THEN t.jumlah ELSE -t.jumlah END), 0) as jumlah
-FROM akun a
-LEFT JOIN transaksi t ON (a.id = t.id_akun_debit OR a.id = t.id_akun_kredit)
-    AND t.tanggal BETWEEN ? AND ?
-    AND t.id_perusahaan = ?
-WHERE a.kategori = 'beban'
-GROUP BY a.id, a.kode_akun, a.nama_akun
-ORDER BY a.kode_akun ASC";
-
-$stmt_beban = $db->prepare($sql_beban);
-$stmt_beban->execute([$tanggal_awal, $tanggal_akhir, $filter_perusahaan]);
-$data_beban = $stmt_beban->fetchAll();
-
-// Filter hanya akun yang memiliki transaksi
-$data_beban = array_filter($data_beban, function ($item) {
-    return $item['jumlah'] != 0;
-});
-
-// Hitung total
-$total_pendapatan = 0;
-foreach ($data_pendapatan as $pendapatan) {
-    $total_pendapatan += $pendapatan['jumlah'];
-}
-
-$total_beban = 0;
-foreach ($data_beban as $beban) {
-    $total_beban += $beban['jumlah'];
-}
-
-$laba_rugi = $total_pendapatan - $total_beban;
+$laba_rugi_data = getLabaRugiPeriode($db, $tanggal_awal, $tanggal_akhir, $filter_perusahaan);
+$data_pendapatan = $laba_rugi_data['pendapatan'];
+$data_beban = $laba_rugi_data['beban'];
+$total_pendapatan = $laba_rugi_data['total_pendapatan'];
+$total_beban = $laba_rugi_data['total_beban'];
+$laba_rugi = $laba_rugi_data['laba_bersih'];
 
 // Include header
 require_once '../templates/header.php';

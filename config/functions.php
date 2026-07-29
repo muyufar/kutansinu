@@ -228,43 +228,53 @@ function getSaldoAkunSampaiTanggal($db, $id_akun, $tanggal_akhir, $id_perusahaan
 
 function getLabaRugiPeriode($db, $tanggal_awal, $tanggal_akhir, $id_perusahaan)
 {
-    $sql_pendapatan = "SELECT 
+    $sql_mutasi = "SELECT
         a.kode_akun,
         a.nama_akun,
-        COALESCE(SUM(CASE WHEN t.jenis = 'pemasukan' THEN t.jumlah ELSE -t.jumlah END), 0) as jumlah
-    FROM akun a
-    LEFT JOIN transaksi t ON (a.id = t.id_akun_kredit OR a.id = t.id_akun_debit)
-        AND t.tanggal BETWEEN ? AND ?
-        AND t.id_perusahaan = ?
-    WHERE a.kategori = 'pendapatan'
-      AND a.id_perusahaan = ?
-    GROUP BY a.id, a.kode_akun, a.nama_akun
-    ORDER BY a.kode_akun ASC";
-
-    $stmt_pendapatan = $db->prepare($sql_pendapatan);
-    $stmt_pendapatan->execute([$tanggal_awal, $tanggal_akhir, $id_perusahaan, $id_perusahaan]);
-    $data_pendapatan = array_values(array_filter($stmt_pendapatan->fetchAll(), function ($item) {
-        return $item['jumlah'] != 0;
-    }));
-
-    $sql_beban = "SELECT 
-        a.kode_akun,
-        a.nama_akun,
-        COALESCE(SUM(CASE WHEN t.jenis = 'pengeluaran' THEN t.jumlah ELSE -t.jumlah END), 0) as jumlah
+        a.kategori,
+        COALESCE(SUM(
+            CASE
+                WHEN a.tipe_akun = 'debit' THEN
+                    CASE WHEN t.id_akun_debit = a.id THEN t.jumlah ELSE 0 END -
+                    CASE WHEN t.id_akun_kredit = a.id THEN t.jumlah ELSE 0 END
+                ELSE
+                    CASE WHEN t.id_akun_kredit = a.id THEN t.jumlah ELSE 0 END -
+                    CASE WHEN t.id_akun_debit = a.id THEN t.jumlah ELSE 0 END
+            END
+        ), 0) AS jumlah
     FROM akun a
     LEFT JOIN transaksi t ON (a.id = t.id_akun_debit OR a.id = t.id_akun_kredit)
         AND t.tanggal BETWEEN ? AND ?
         AND t.id_perusahaan = ?
-    WHERE a.kategori = 'beban'
+    WHERE a.kategori IN ('pendapatan', 'beban')
       AND a.id_perusahaan = ?
-    GROUP BY a.id, a.kode_akun, a.nama_akun
+    GROUP BY a.id, a.kode_akun, a.nama_akun, a.kategori
     ORDER BY a.kode_akun ASC";
 
-    $stmt_beban = $db->prepare($sql_beban);
-    $stmt_beban->execute([$tanggal_awal, $tanggal_akhir, $id_perusahaan, $id_perusahaan]);
-    $data_beban = array_values(array_filter($stmt_beban->fetchAll(), function ($item) {
-        return $item['jumlah'] != 0;
-    }));
+    $stmt = $db->prepare($sql_mutasi);
+    $stmt->execute([$tanggal_awal, $tanggal_akhir, $id_perusahaan, $id_perusahaan]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $data_pendapatan = [];
+    $data_beban = [];
+
+    foreach ($rows as $row) {
+        if (abs((float) $row['jumlah']) < 0.005) {
+            continue;
+        }
+
+        $item = [
+            'kode_akun' => $row['kode_akun'],
+            'nama_akun' => $row['nama_akun'],
+            'jumlah' => (float) $row['jumlah'],
+        ];
+
+        if ($row['kategori'] === 'pendapatan') {
+            $data_pendapatan[] = $item;
+        } else {
+            $data_beban[] = $item;
+        }
+    }
 
     $total_pendapatan = array_sum(array_column($data_pendapatan, 'jumlah'));
     $total_beban = array_sum(array_column($data_beban, 'jumlah'));
