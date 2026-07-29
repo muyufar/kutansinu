@@ -209,6 +209,168 @@ function getNeracaSaldo($db, $tanggal_awal, $tanggal_akhir, $id_perusahaan)
     return $stmt->fetchAll();
 }
 
+function getSaldoAkunSampaiTanggal($db, $id_akun, $tanggal_akhir, $id_perusahaan, $tipe_akun)
+{
+    $stmt = $db->prepare('
+        SELECT
+            COALESCE(SUM(CASE WHEN t.id_akun_debit = ? THEN t.jumlah ELSE 0 END), 0) AS total_debit,
+            COALESCE(SUM(CASE WHEN t.id_akun_kredit = ? THEN t.jumlah ELSE 0 END), 0) AS total_kredit
+        FROM transaksi t
+        WHERE t.id_perusahaan = ?
+          AND t.tanggal <= ?
+          AND (t.id_akun_debit = ? OR t.id_akun_kredit = ?)
+    ');
+    $stmt->execute([$id_akun, $id_akun, $id_perusahaan, $tanggal_akhir, $id_akun, $id_akun]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return hitungMutasiAkun($row['total_debit'], $row['total_kredit'], $tipe_akun);
+}
+
+function getLabaRugiPeriode($db, $tanggal_awal, $tanggal_akhir, $id_perusahaan)
+{
+    $sql_pendapatan = "SELECT 
+        a.kode_akun,
+        a.nama_akun,
+        COALESCE(SUM(CASE WHEN t.jenis = 'pemasukan' THEN t.jumlah ELSE -t.jumlah END), 0) as jumlah
+    FROM akun a
+    LEFT JOIN transaksi t ON (a.id = t.id_akun_kredit OR a.id = t.id_akun_debit)
+        AND t.tanggal BETWEEN ? AND ?
+        AND t.id_perusahaan = ?
+    WHERE a.kategori = 'pendapatan'
+      AND a.id_perusahaan = ?
+    GROUP BY a.id, a.kode_akun, a.nama_akun
+    ORDER BY a.kode_akun ASC";
+
+    $stmt_pendapatan = $db->prepare($sql_pendapatan);
+    $stmt_pendapatan->execute([$tanggal_awal, $tanggal_akhir, $id_perusahaan, $id_perusahaan]);
+    $data_pendapatan = array_values(array_filter($stmt_pendapatan->fetchAll(), function ($item) {
+        return $item['jumlah'] != 0;
+    }));
+
+    $sql_beban = "SELECT 
+        a.kode_akun,
+        a.nama_akun,
+        COALESCE(SUM(CASE WHEN t.jenis = 'pengeluaran' THEN t.jumlah ELSE -t.jumlah END), 0) as jumlah
+    FROM akun a
+    LEFT JOIN transaksi t ON (a.id = t.id_akun_debit OR a.id = t.id_akun_kredit)
+        AND t.tanggal BETWEEN ? AND ?
+        AND t.id_perusahaan = ?
+    WHERE a.kategori = 'beban'
+      AND a.id_perusahaan = ?
+    GROUP BY a.id, a.kode_akun, a.nama_akun
+    ORDER BY a.kode_akun ASC";
+
+    $stmt_beban = $db->prepare($sql_beban);
+    $stmt_beban->execute([$tanggal_awal, $tanggal_akhir, $id_perusahaan, $id_perusahaan]);
+    $data_beban = array_values(array_filter($stmt_beban->fetchAll(), function ($item) {
+        return $item['jumlah'] != 0;
+    }));
+
+    $total_pendapatan = array_sum(array_column($data_pendapatan, 'jumlah'));
+    $total_beban = array_sum(array_column($data_beban, 'jumlah'));
+
+    return [
+        'pendapatan' => $data_pendapatan,
+        'beban' => $data_beban,
+        'total_pendapatan' => $total_pendapatan,
+        'total_beban' => $total_beban,
+        'laba_bersih' => $total_pendapatan - $total_beban,
+    ];
+}
+
+function groupAkunBySubKategori(array $accounts)
+{
+    $grouped = [];
+
+    foreach ($accounts as $account) {
+        $sub = $account['sub_kategori'] ?: 'Lainnya';
+        $grouped[$sub][] = $account;
+    }
+
+    return $grouped;
+}
+
+function getNeracaData($db, $tanggal_akhir, $id_perusahaan, $tanggal_awal_laba = null)
+{
+    if (!$tanggal_awal_laba) {
+        $tanggal_awal_laba = date('Y-01-01', strtotime($tanggal_akhir));
+    }
+
+    $sql = "SELECT 
+                a.id,
+                a.kode_akun,
+                a.nama_akun,
+                a.kategori,
+                a.sub_kategori,
+                a.tipe_akun,
+                COALESCE(SUM(CASE WHEN t.id_akun_debit = a.id THEN t.jumlah ELSE 0 END), 0) AS total_debit,
+                COALESCE(SUM(CASE WHEN t.id_akun_kredit = a.id THEN t.jumlah ELSE 0 END), 0) AS total_kredit
+            FROM akun a
+            LEFT JOIN transaksi t ON (a.id = t.id_akun_debit OR a.id = t.id_akun_kredit)
+                AND t.tanggal <= ?
+                AND t.id_perusahaan = ?
+            WHERE a.id_perusahaan = ?
+              AND a.kategori IN ('aktiva', 'pasiva', 'modal')
+            GROUP BY a.id, a.kode_akun, a.nama_akun, a.kategori, a.sub_kategori, a.tipe_akun
+            ORDER BY a.kode_akun ASC";
+
+    $stmt = $db->prepare($sql);
+    $stmt->execute([$tanggal_akhir, $id_perusahaan, $id_perusahaan]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $aktiva = [];
+    $kewajiban = [];
+    $ekuitas = [];
+
+    foreach ($rows as $row) {
+        $saldo = hitungMutasiAkun($row['total_debit'], $row['total_kredit'], $row['tipe_akun']);
+        if (abs($saldo) < 0.005) {
+            continue;
+        }
+
+        $item = [
+            'kode_akun' => $row['kode_akun'],
+            'nama_akun' => $row['nama_akun'],
+            'sub_kategori' => $row['sub_kategori'],
+            'saldo' => $saldo,
+        ];
+
+        if ($row['kategori'] === 'aktiva') {
+            $aktiva[] = $item;
+        } elseif ($row['kategori'] === 'pasiva') {
+            $kewajiban[] = $item;
+        } else {
+            $ekuitas[] = $item;
+        }
+    }
+
+    $laba_rugi = getLabaRugiPeriode($db, $tanggal_awal_laba, $tanggal_akhir, $id_perusahaan);
+    $laba_bersih = $laba_rugi['laba_bersih'];
+
+    $total_aktiva = array_sum(array_column($aktiva, 'saldo'));
+    $total_kewajiban = array_sum(array_column($kewajiban, 'saldo'));
+    $total_ekuitas_akun = array_sum(array_column($ekuitas, 'saldo'));
+    $total_ekuitas = $total_ekuitas_akun + $laba_bersih;
+    $total_pasiva = $total_kewajiban + $total_ekuitas;
+
+    return [
+        'aktiva' => $aktiva,
+        'aktiva_grouped' => groupAkunBySubKategori($aktiva),
+        'kewajiban' => $kewajiban,
+        'kewajiban_grouped' => groupAkunBySubKategori($kewajiban),
+        'ekuitas' => $ekuitas,
+        'ekuitas_grouped' => groupAkunBySubKategori($ekuitas),
+        'laba_bersih' => $laba_bersih,
+        'tanggal_awal_laba' => $tanggal_awal_laba,
+        'total_aktiva' => $total_aktiva,
+        'total_kewajiban' => $total_kewajiban,
+        'total_ekuitas_akun' => $total_ekuitas_akun,
+        'total_ekuitas' => $total_ekuitas,
+        'total_pasiva' => $total_pasiva,
+        'seimbang' => abs($total_aktiva - $total_pasiva) < 0.01,
+    ];
+}
+
 function logAudit($db, $user_id, $action, $description = '')
 {
     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
