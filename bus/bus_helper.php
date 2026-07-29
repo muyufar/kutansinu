@@ -135,11 +135,12 @@ function validateBusBooking($db, $bus_id, $tanggal_berangkat, $waktu_berangkat, 
             ];
         }
 
-        // 2. Cek apakah ada konflik waktu dengan pemesanan lain pada tanggal yang sama
+        // 2. Cek konflik waktu pada bus yang sama (bukan bus lain)
         $sql = "SELECT pb.*, b.nama_bus 
                 FROM pemesanan_bus pb 
                 JOIN bus b ON pb.id_bus = b.id 
                 WHERE pb.tanggal_berangkat = ? 
+                AND pb.id_bus = ?
                 AND pb.id != ? 
                 AND pb.status IN ('dibayar_dp', 'dibayar', 'pending')
                 AND (
@@ -148,7 +149,7 @@ function validateBusBooking($db, $bus_id, $tanggal_berangkat, $waktu_berangkat, 
                 )";
 
         $stmt = $db->prepare($sql);
-        $stmt->execute([$tanggal_berangkat, $exclude_pemesanan_id ?: 0, $waktu_berangkat, $waktu_berangkat]);
+        $stmt->execute([$tanggal_berangkat, $bus_id, $exclude_pemesanan_id ?: 0, $waktu_berangkat, $waktu_berangkat]);
         $conflicting_bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         if (!empty($conflicting_bookings)) {
@@ -159,11 +160,11 @@ function validateBusBooking($db, $bus_id, $tanggal_berangkat, $waktu_berangkat, 
 
             return [
                 'valid' => false,
-                'message' => 'Ada konflik jadwal dengan pemesanan lain pada tanggal yang sama: ' . implode(', ', $conflict_details)
+                'message' => 'Bus ini sudah memiliki jadwal berangkat pada tanggal yang sama: ' . implode(', ', $conflict_details)
             ];
         }
 
-        // 3. Cek apakah ada konflik bus yang sama pada tanggal yang sama (mencegah pemesanan ganda)
+        // 3. Cek apakah bus yang sama sudah dipesan pada tanggal yang sama (mencegah pemesanan ganda)
         $sql_bus_conflict = "SELECT COUNT(*) as total FROM pemesanan_bus pb 
                             WHERE pb.tanggal_berangkat = ? 
                             AND pb.id != ? 
@@ -181,24 +182,7 @@ function validateBusBooking($db, $bus_id, $tanggal_berangkat, $waktu_berangkat, 
             ];
         }
 
-        // 4. Cek apakah ada bus lain yang sudah dipesan pada tanggal yang sama (mencegah jadwal ganda)
-        $sql_other_bus = "SELECT COUNT(*) as total FROM pemesanan_bus pb 
-                          WHERE pb.tanggal_berangkat = ? 
-                          AND pb.id != ? 
-                          AND pb.status IN ('dibayar_dp', 'dibayar', 'pending')";
-
-        $stmt_other_bus = $db->prepare($sql_other_bus);
-        $stmt_other_bus->execute([$tanggal_berangkat, $exclude_pemesanan_id ?: 0]);
-        $other_bus_count = $stmt_other_bus->fetch(PDO::FETCH_ASSOC);
-
-        if ($other_bus_count['total'] > 0) {
-            return [
-                'valid' => false,
-                'message' => 'Sudah ada bus lain yang dipesan pada tanggal ' . date('d/m/Y', strtotime($tanggal_berangkat)) . '. Hanya satu bus yang boleh berangkat per tanggal.'
-            ];
-        }
-
-        // 5. Cek apakah bus tersedia untuk tanggal tersebut (tidak sedang maintenance atau rusak)
+        // 4. Cek apakah bus tersedia untuk tanggal tersebut (tidak sedang maintenance atau rusak)
         $stmt_bus = $db->prepare("SELECT status FROM bus WHERE id = ?");
         $stmt_bus->execute([$bus_id]);
         $bus_status = $stmt_bus->fetch(PDO::FETCH_COLUMN);
@@ -240,30 +224,18 @@ function validateBusBooking($db, $bus_id, $tanggal_berangkat, $waktu_berangkat, 
 function getAvailableBusSchedule($db, $tanggal_berangkat, $waktu_berangkat = null, $exclude_bus_ids = [])
 {
     try {
-        // Debug info
         error_log("getAvailableBusSchedule called with tanggal: $tanggal_berangkat");
 
-        // Cek apakah sudah ada bus yang dipesan pada tanggal ini
-        $stmt_check_date = $db->prepare("SELECT COUNT(*) as total FROM pemesanan_bus 
-                                        WHERE tanggal_berangkat = ? 
-                                        AND status IN ('dibayar_dp', 'dibayar', 'pending')");
-        $stmt_check_date->execute([$tanggal_berangkat]);
-        $existing_booking = $stmt_check_date->fetch(PDO::FETCH_ASSOC);
-
-        // Jika sudah ada bus yang dipesan pada tanggal ini, tidak ada bus yang tersedia
-        if ($existing_booking['total'] > 0) {
-            error_log("getAvailableBusSchedule: Sudah ada " . $existing_booking['total'] . " pemesanan untuk tanggal $tanggal_berangkat");
-            return [];
-        }
-
-        // Jika belum ada pemesanan, semua bus dengan status 'tersedia' bisa dipilih
         $sql = "SELECT b.id, b.nama_bus, b.kapasitas, b.nomor_polisi, b.fasilitas,
-                0 as total_pemesanan,
-                b.kapasitas as sisa_kapasitas
-                FROM bus b 
+                       COALESCE(COUNT(pb.id), 0) as total_pemesanan
+                FROM bus b
+                LEFT JOIN pemesanan_bus pb 
+                       ON pb.id_bus = b.id 
+                      AND pb.tanggal_berangkat = ?
+                      AND pb.status IN ('dibayar_dp','dibayar','pending')
                 WHERE b.status = 'tersedia'";
 
-        $params = [];
+        $params = [$tanggal_berangkat];
 
         if (!empty($exclude_bus_ids)) {
             $placeholders = str_repeat('?,', count($exclude_bus_ids) - 1) . '?';
@@ -271,13 +243,14 @@ function getAvailableBusSchedule($db, $tanggal_berangkat, $waktu_berangkat = nul
             $params = array_merge($params, $exclude_bus_ids);
         }
 
-        $sql .= " ORDER BY b.nama_bus ASC";
+        $sql .= " GROUP BY b.id, b.nama_bus, b.kapasitas, b.nomor_polisi, b.fasilitas
+                  HAVING total_pemesanan = 0
+                  ORDER BY b.nama_bus ASC";
 
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
         $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Debug info
         error_log("getAvailableBusSchedule result: " . count($result) . " buses found for date $tanggal_berangkat");
 
         return $result;

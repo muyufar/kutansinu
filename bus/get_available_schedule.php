@@ -66,7 +66,7 @@ if (!empty($available_schedule)): ?>
     </div>
 <?php else: ?>
     <div class="alert alert-danger">
-        <strong>❌ Tidak Tersedia:</strong> Untuk tanggal <?= date('d/m/Y', strtotime($tanggal)) ?> sudah ada bus yang dipesan. 
-        <br><small>Hanya satu bus yang boleh berangkat per tanggal sesuai aturan sistem.</small>
+        <strong>❌ Tidak Tersedia:</strong> Semua bus sudah dipesan pada tanggal <?= date('d/m/Y', strtotime($tanggal)) ?>.
+        <br><small>Bus yang sudah memiliki jadwal tidak ditampilkan. Pilih tanggal lain atau bus yang masih tersedia.</small>
     </div>
 <?php endif; ?>
