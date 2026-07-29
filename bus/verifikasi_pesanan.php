@@ -252,20 +252,20 @@ include '../templates/header.php';
                     Tidak ada data pemesanan yang ditemukan.
                 </div>
             <?php else: ?>
-                <div class="table-responsive">
-                    <table class="table table-striped table-hover">
+                <div class="table-responsive pesanan-table-wrap">
+                    <table class="table table-striped table-hover pesanan-table mb-0">
                         <thead>
                             <tr>
+                                <th class="pesanan-col-aksi">Aksi</th>
                                 <th>No</th>
                                 <th>ID</th>
-                                <th>Tanggal Pemesanan</th>
+                                <th class="d-none d-xl-table-cell">Tanggal Pemesanan</th>
                                 <th>Pemesan</th>
-                                <th>Bus</th>
+                                <th class="d-none d-lg-table-cell">Bus</th>
                                 <th>Rute</th>
                                 <th>Tanggal Berangkat</th>
                                 <th>Total Harga</th>
                                 <th>Status</th>
-                                <th>Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -274,14 +274,40 @@ include '../templates/header.php';
                             foreach ($pemesanan_list as $pemesanan):
                             ?>
                                 <tr>
+                                    <td class="pesanan-col-aksi">
+                                        <div class="pesanan-action-wrap">
+                                            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#detailModal<?php echo $pemesanan['id']; ?>" title="Detail">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <?php if (pemesananCanEdit($pemesanan['status'])): ?>
+                                                <a href="edit_pesanan.php?id=<?= (int) $pemesanan['id'] ?>&redirect=<?= urlencode('verifikasi_pesanan.php') ?>" class="btn btn-sm btn-outline-secondary" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            <?php endif; ?>
+                                            <?php if (pemesananCanCancel($pemesanan['status'])): ?>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#batalModalAdmin<?= (int) $pemesanan['id'] ?>" title="Batalkan">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                            <?php if ($is_staff && pemesananCanDelete($pemesanan['status'], true)): ?>
+                                                <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#hapusModal<?= (int) $pemesanan['id'] ?>" title="Hapus">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                        </div>
+                                    </td>
                                     <td><?php echo $no++; ?></td>
                                     <td><?php echo $pemesanan['id']; ?></td>
-                                    <td><?php echo date('d/m/Y', strtotime($pemesanan['tanggal_pemesanan'])); ?></td>
+                                    <td class="d-none d-xl-table-cell"><?php echo date('d/m/Y', strtotime($pemesanan['tanggal_pemesanan'])); ?></td>
                                     <td><?php echo htmlspecialchars($pemesanan['nama_pemesan']); ?></td>
-                                    <td><?php echo htmlspecialchars($pemesanan['nama_bus']); ?> (<?php echo htmlspecialchars($pemesanan['nomor_polisi']); ?>)</td>
-                                    <td><?php echo htmlspecialchars($pemesanan['kota_asal']); ?> - <?php echo htmlspecialchars($pemesanan['kota_tujuan']); ?></td>
+                                    <td class="d-none d-lg-table-cell text-truncate" style="max-width: 140px;" title="<?php echo htmlspecialchars($pemesanan['nama_bus'] . ' (' . $pemesanan['nomor_polisi'] . ')'); ?>">
+                                        <?php echo htmlspecialchars($pemesanan['nama_bus']); ?>
+                                    </td>
+                                    <td class="text-truncate" style="max-width: 160px;" title="<?php echo htmlspecialchars($pemesanan['kota_asal'] . ' - ' . $pemesanan['kota_tujuan']); ?>">
+                                        <?php echo htmlspecialchars($pemesanan['kota_asal']); ?> - <?php echo htmlspecialchars($pemesanan['kota_tujuan']); ?>
+                                    </td>
                                     <td><?php echo date('d/m/Y', strtotime($pemesanan['tanggal_berangkat'])); ?></td>
-                                    <td><?php echo formatRupiah($pemesanan['total_harga']); ?></td>
+                                    <td class="text-nowrap"><?php echo formatRupiah($pemesanan['total_harga']); ?></td>
                                     <td>
                                         <span class="badge <?php
                                                             switch ($pemesanan['status']) {
@@ -320,28 +346,6 @@ include '../templates/header.php';
                                             }
                                             ?>
                                         </span>
-                                    </td>
-                                    <td>
-                                        <div class="btn-group btn-group-sm" role="group">
-                                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#detailModal<?php echo $pemesanan['id']; ?>">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                            <?php if (pemesananCanEdit($pemesanan['status'])): ?>
-                                                <a href="edit_pesanan.php?id=<?= (int) $pemesanan['id'] ?>&redirect=<?= urlencode('verifikasi_pesanan.php') ?>" class="btn btn-outline-secondary" title="Edit">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                            <?php endif; ?>
-                                            <?php if (pemesananCanCancel($pemesanan['status'])): ?>
-                                                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#batalModalAdmin<?= (int) $pemesanan['id'] ?>" title="Batalkan">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                            <?php endif; ?>
-                                            <?php if ($is_staff && pemesananCanDelete($pemesanan['status'], true)): ?>
-                                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#hapusModal<?= (int) $pemesanan['id'] ?>" title="Hapus">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            <?php endif; ?>
-                                        </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

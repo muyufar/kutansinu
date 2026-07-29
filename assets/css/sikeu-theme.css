@@ -318,7 +318,34 @@ body.sikeu-app {
 .sikeu-app .table-responsive {
     border-radius: var(--sikeu-radius);
     border: 1px solid var(--sikeu-border);
-    overflow: hidden;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.sikeu-app .pesanan-table .pesanan-col-aksi {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    min-width: 11rem;
+    background: var(--sikeu-surface, #fff);
+    box-shadow: 4px 0 8px rgba(15, 23, 42, 0.06);
+}
+
+.sikeu-app .pesanan-table thead .pesanan-col-aksi {
+    z-index: 3;
+    background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+}
+
+.sikeu-app .pesanan-action-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+}
+
+.sikeu-app .pesanan-action-wrap .btn {
+    min-width: 2rem;
+    padding: 0.25rem 0.45rem;
 }
 
 .sikeu-app .table {
