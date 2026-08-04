@@ -15,7 +15,10 @@ $idPerusahaan = getNugoCompanyId($db);
 $userId = (int) $_SESSION['user_id'];
 $tanggalAwal = date('Y-m-01', strtotime($bulan . '-01'));
 $tanggalAkhir = date('Y-m-t', strtotime($bulan . '-01'));
-$autoSync = !isset($_POST['skip_sync']);
+// Secara default laporan operasional hanya disimpan. Form mengirim penanda
+// preferensi agar melepas ceklis dapat secara eksplisit mengaktifkan sinkronisasi.
+$skipSync = !isset($_POST['sync_preference_present']) || isset($_POST['skip_sync']);
+$autoSync = !$skipSync;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -306,8 +309,9 @@ include '../templates/header.php';
                         <div class="col-md-4"><label class="form-label">Parkir</label><input type="number" name="parkir" class="form-control" min="0" step="1"></div>
                         <div class="col-md-4"><label class="form-label">P.Ogah</label><input type="number" name="pogah" class="form-control" min="0" step="1"></div>
                         <div class="col-12">
+                            <input type="hidden" name="sync_preference_present" value="1">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="skip_sync" id="skip_sync">
+                                <input class="form-check-input" type="checkbox" name="skip_sync" id="skip_sync" value="1" checked>
                                 <label class="form-check-label" for="skip_sync">Simpan saja, jangan sinkronkan ke transaksi</label>
                             </div>
                         </div>
@@ -335,8 +339,9 @@ include '../templates/header.php';
                         <div class="col-md-6"><label class="form-label">Biaya</label><input type="number" name="biaya" class="form-control" min="0" step="1" required></div>
                         <div class="col-12"><label class="form-label">Keterangan</label><textarea name="keterangan" class="form-control" rows="3" placeholder="oli mesin, filter solar, semir ban, ..."></textarea></div>
                         <div class="col-12">
+                            <input type="hidden" name="sync_preference_present" value="1">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="skip_sync" id="skip_sync_m">
+                                <input class="form-check-input" type="checkbox" name="skip_sync" id="skip_sync_m" value="1" checked>
                                 <label class="form-check-label" for="skip_sync_m">Simpan saja, jangan sinkronkan ke transaksi</label>
                             </div>
                         </div>
