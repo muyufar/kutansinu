@@ -102,6 +102,7 @@ $akun_json = json_encode($akun_list);
 // Header
 include '../templates/header.php';
 ?>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css">
 
 <div class="container mt-4">
     <div class="row">
@@ -181,9 +182,9 @@ include '../templates/header.php';
                         </div>
 
                         <div class="mb-3">
-                            <label for="file_lampiran" class="form-label">File Lampiran</label>
+                            <label for="file_lampiran" class="form-label">File Lampiran <span class="text-muted fw-normal">(opsional)</span></label>
                             <input type="file" class="form-control" id="file_lampiran" name="file_lampiran" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
-                            <small class="text-muted">Format yang diizinkan: PDF, JPG, JPEG, PNG, DOC, DOCX</small>
+                            <small class="text-muted">Tidak wajib diisi. Format: PDF, JPG, JPEG, PNG, DOC, DOCX</small>
                         </div>
 
                         <div class="mb-3">
@@ -315,6 +316,7 @@ include '../templates/header.php';
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 <script>
     // Fungsi untuk menghitung total
     function hitungTotal() {
@@ -389,12 +391,8 @@ include '../templates/header.php';
         document.getElementById('konfirmasi-nilai-debit').textContent = formattedTotal;
         document.getElementById('konfirmasi-nilai-kredit').textContent = formattedTotal;
 
-        // Tampilkan tag jika ada
-
-        if (tag) {
-            const tag = document.getElementById('tag').value;
-            document.getElementById('konfirmasi-tag').textContent = tag;
-        }
+        const tag = document.getElementById('tag').value;
+        document.getElementById('konfirmasi-tag').textContent = tag ? tag : '-';
 
         // Tampilkan nama file lampiran jika ada
         if (fileLampiran) {
@@ -454,10 +452,45 @@ include '../templates/header.php';
         }
     }
 
+    let tomSelectDebit = null;
+    let tomSelectKredit = null;
+
+    function destroyAkunSelectSearch() {
+        if (tomSelectDebit) {
+            tomSelectDebit.destroy();
+            tomSelectDebit = null;
+        }
+        if (tomSelectKredit) {
+            tomSelectKredit.destroy();
+            tomSelectKredit = null;
+        }
+    }
+
+    function initAkunSelectSearch() {
+        destroyAkunSelectSearch();
+        const commonOptions = {
+            create: false,
+            allowEmptyOption: true,
+            maxOptions: null,
+            placeholder: 'Ketik kode atau nama akun...',
+            sortField: [{ field: '$order' }, { field: '$score' }],
+            searchField: ['text'],
+            render: {
+                option: function(data, escape) {
+                    return '<div>' + escape(data.text) + '</div>';
+                }
+            }
+        };
+        tomSelectDebit = new TomSelect('#id_akun_debit', commonOptions);
+        tomSelectKredit = new TomSelect('#id_akun_kredit', commonOptions);
+    }
+
     function filterAkunList(jenisTransaksi) {
         const akunList = JSON.parse(document.getElementById('akun_list_json').value);
         const selectDebit = document.getElementById('id_akun_debit');
         const selectKredit = document.getElementById('id_akun_kredit');
+
+        destroyAkunSelectSearch();
 
         selectDebit.innerHTML = '<option value="">Pilih Akun Debit</option>';
         selectKredit.innerHTML = '<option value="">Pilih Akun Kredit</option>';
@@ -477,6 +510,8 @@ include '../templates/header.php';
             optionKredit.textContent = label;
             selectKredit.appendChild(optionKredit);
         });
+
+        initAkunSelectSearch();
     }
 
     document.getElementById('jenis').addEventListener('change', function() {
