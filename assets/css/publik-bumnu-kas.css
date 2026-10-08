@@ -1,198 +1,450 @@
-/* Laporan publik Kas BUMNU — gaya dokumen, bukan dashboard generik */
+/* Laporan publik Kas BUMNU — ringkas, institusional, mudah dibaca */
 
 .bumnu-publik {
-    --bumnu-paper: #f6f3ec;
-    --bumnu-ink: #1a1814;
-    --bumnu-muted: #5c574f;
-    --bumnu-line: #c9c2b5;
-    --bumnu-accent: #0b4a3e;
-    --bumnu-accent-soft: #e8f0ed;
-    --bumnu-masuk: #14532d;
-    --bumnu-keluar: #7f1d1d;
+    --bg: #eef1ef;
+    --surface: #ffffff;
+    --ink: #141816;
+    --muted: #5a635e;
+    --line: #d4dbd6;
+    --brand: #0a5c48;
+    --brand-dark: #064636;
+    --in: #146c43;
+    --out: #9f1239;
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(20, 24, 22, 0.06), 0 8px 24px rgba(20, 24, 22, 0.05);
 
-    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
     font-size: 15px;
-    line-height: 1.55;
-    color: var(--bumnu-ink);
-    background: var(--bumnu-paper);
-    min-height: 100vh;
+    line-height: 1.5;
+    color: var(--ink);
+    background: var(--bg);
     margin: 0;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
 }
 
 .bumnu-publik * {
     box-sizing: border-box;
 }
 
-.bumnu-wrap {
-    max-width: 920px;
+.bumnu-shell {
+    max-width: 880px;
     margin: 0 auto;
-    padding: 2rem 1.25rem 3rem;
+    padding: 1.25rem 1rem 2.5rem;
 }
 
-.bumnu-masthead {
-    border-bottom: 2px solid var(--bumnu-accent);
-    padding-bottom: 1.25rem;
-    margin-bottom: 1.75rem;
-    display: flex;
-    gap: 1.25rem;
-    align-items: flex-start;
-}
-
-.bumnu-logo {
-    width: 72px;
-    height: 72px;
-    object-fit: contain;
-    flex-shrink: 0;
-}
-
-.bumnu-masthead h1 {
-    font-family: 'Libre Baskerville', Georgia, serif;
-    font-size: 1.65rem;
-    font-weight: 700;
-    margin: 0 0 0.35rem;
-    letter-spacing: -0.02em;
-    color: var(--bumnu-accent);
-}
-
-.bumnu-org {
-    margin: 0;
-    color: var(--bumnu-muted);
-    font-size: 0.95rem;
-}
-
-.bumnu-period-form {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    align-items: flex-end;
-    margin-bottom: 1.5rem;
-    padding: 1rem;
-    background: #fff;
-    border: 1px solid var(--bumnu-line);
-}
-
-.bumnu-period-form label {
-    display: block;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--bumnu-muted);
-    margin-bottom: 0.25rem;
-}
-
-.bumnu-period-form input[type="month"] {
-    font: inherit;
-    padding: 0.45rem 0.6rem;
-    border: 1px solid var(--bumnu-line);
-    background: #fff;
-}
-
-.bumnu-period-form button {
-    font: inherit;
-    padding: 0.5rem 1rem;
-    background: var(--bumnu-accent);
-    color: #fff;
-    border: none;
-    cursor: pointer;
-}
-
-.bumnu-period-form button:hover {
-    background: #083830;
-}
-
-.bumnu-lead {
-    background: #fff;
-    border: 1px solid var(--bumnu-line);
-    padding: 1.25rem 1.5rem;
-    margin-bottom: 1.5rem;
-}
-
-.bumnu-lead p {
-    margin: 0 0 0.5rem;
-    color: var(--bumnu-muted);
-    font-size: 0.9rem;
-}
-
-.bumnu-lead .bumnu-big {
-    font-family: 'Libre Baskerville', Georgia, serif;
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--bumnu-accent);
-    margin: 0;
-}
-
-.bumnu-stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.75rem;
-    margin-bottom: 1.5rem;
-}
-
-@media (max-width: 640px) {
-    .bumnu-stats {
-        grid-template-columns: 1fr;
+@media (min-width: 640px) {
+    .bumnu-shell {
+        padding: 2rem 1.5rem 3rem;
     }
 }
 
-.bumnu-stat {
-    background: #fff;
-    border: 1px solid var(--bumnu-line);
-    padding: 1rem;
+/* Header */
+.bumnu-top {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
 }
 
-.bumnu-stat dt {
+.bumnu-brand {
+    display: flex;
+    gap: 0.85rem;
+    align-items: center;
+}
+
+.bumnu-logo {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+}
+
+.bumnu-logo-fallback {
+    width: 56px;
+    height: 56px;
+    display: grid;
+    place-items: center;
+    font-weight: 700;
     font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    color: var(--brand);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+}
+
+.bumnu-brand h1 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--brand-dark);
+}
+
+.bumnu-brand p {
+    margin: 0.15rem 0 0;
+    font-size: 0.875rem;
+    color: var(--muted);
+}
+
+.bumnu-updated {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-align: right;
+}
+
+/* Filter */
+.bumnu-filter {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1rem 1.1rem;
+    margin-bottom: 1.25rem;
+}
+
+.bumnu-filter-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+}
+
+.bumnu-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.85rem;
+}
+
+.bumnu-preset {
+    display: inline-block;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--ink);
+    text-decoration: none;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    transition: background 0.12s, border-color 0.12s;
+}
+
+.bumnu-preset:hover {
+    border-color: var(--brand);
+    color: var(--brand-dark);
+}
+
+.bumnu-preset.is-active {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: #fff;
+}
+
+.bumnu-filter-advanced {
+    border-top: 1px solid var(--line);
+    padding-top: 0.75rem;
+}
+
+.bumnu-filter-advanced summary {
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--brand);
+    list-style: none;
+}
+
+.bumnu-filter-advanced summary::-webkit-details-marker {
+    display: none;
+}
+
+.bumnu-filter-advanced summary::after {
+    content: ' ▾';
+    font-size: 0.75rem;
+}
+
+.bumnu-filter-advanced[open] summary::after {
+    content: ' ▴';
+}
+
+.bumnu-filter-form {
+    margin-top: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.bumnu-field label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 0.25rem;
+}
+
+.bumnu-field select,
+.bumnu-field input[type="month"],
+.bumnu-field input[type="date"] {
+    width: 100%;
+    font: inherit;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--ink);
+}
+
+.bumnu-field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+}
+
+.bumnu-filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.bumnu-btn-primary {
+    font: inherit;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    background: var(--brand);
+    color: #fff;
+    cursor: pointer;
+}
+
+.bumnu-btn-primary:hover {
+    background: var(--brand-dark);
+}
+
+.bumnu-btn-ghost {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 0.45rem 0.65rem;
+}
+
+.bumnu-btn-ghost:hover {
+    color: var(--brand);
+}
+
+.bumnu-period-active {
+    margin: 0.85rem 0 0;
+    padding-top: 0.85rem;
+    border-top: 1px dashed var(--line);
+    font-size: 0.875rem;
+    color: var(--muted);
+}
+
+.bumnu-period-active strong {
+    color: var(--ink);
+    font-weight: 600;
+}
+
+.bumnu-period-range {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Hero saldo */
+.bumnu-hero {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    background: linear-gradient(135deg, var(--brand-dark) 0%, var(--brand) 100%);
+    color: #fff;
+    border-radius: var(--radius);
+    padding: 1.25rem 1.35rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow);
+}
+
+.bumnu-hero h2 {
+    margin: 0 0 0.25rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    opacity: 0.95;
+}
+
+.bumnu-hero-text p {
+    margin: 0;
+    font-size: 0.8125rem;
+    opacity: 0.85;
+}
+
+.bumnu-hero-amount {
+    margin: 0;
+    font-size: clamp(1.65rem, 5vw, 2.15rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Flow equation */
+.bumnu-flow {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+    gap: 0.35rem 0.25rem;
+    align-items: stretch;
+    margin-bottom: 0.5rem;
+}
+
+@media (max-width: 720px) {
+    .bumnu-flow {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+    .bumnu-flow-op {
+        display: none;
+    }
+    .bumnu-flow-item.is-result {
+        grid-column: 1 / -1;
+    }
+}
+
+.bumnu-flow-item {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.65rem 0.75rem;
+    min-width: 0;
+}
+
+.bumnu-flow-k {
+    display: block;
+    font-size: 0.68rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: var(--bumnu-muted);
-    margin: 0 0 0.35rem;
+    color: var(--muted);
+    margin-bottom: 0.2rem;
 }
 
-.bumnu-stat dd {
-    margin: 0;
+.bumnu-flow-v {
+    display: block;
+    font-size: 0.92rem;
     font-weight: 600;
-    font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+    word-break: break-word;
 }
 
-.bumnu-section {
-    margin-bottom: 2rem;
+.bumnu-flow-item.is-in .bumnu-flow-v {
+    color: var(--in);
 }
 
-.bumnu-section h2 {
-    font-family: 'Libre Baskerville', Georgia, serif;
-    font-size: 1.15rem;
-    margin: 0 0 0.75rem;
-    color: var(--bumnu-accent);
+.bumnu-flow-item.is-out .bumnu-flow-v {
+    color: var(--out);
 }
 
-.bumnu-note {
-    font-size: 0.85rem;
-    color: var(--bumnu-muted);
-    margin: 0 0 0.75rem;
+.bumnu-flow-item.is-result {
+    border-color: var(--brand);
+    background: #f4faf7;
+}
+
+.bumnu-flow-item.is-result .bumnu-flow-v {
+    color: var(--brand-dark);
+}
+
+.bumnu-flow-op {
+    align-self: center;
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 1.1rem;
+    text-align: center;
+}
+
+.bumnu-flow-note {
+    margin: 0 0 1.25rem;
+    font-size: 0.8125rem;
+    color: var(--muted);
+}
+
+/* Blocks */
+.bumnu-block {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1rem 1.1rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow);
+}
+
+.bumnu-block-head h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--brand-dark);
+}
+
+.bumnu-block-head p {
+    margin: 0.25rem 0 0.75rem;
+    font-size: 0.8125rem;
+    color: var(--muted);
+}
+
+.bumnu-rek-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.bumnu-rek-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.9375rem;
+}
+
+.bumnu-rek-list li:last-child {
+    border-bottom: none;
+}
+
+.bumnu-rek-list strong {
+    font-variant-numeric: tabular-nums;
+}
+
+.bumnu-table-wrap {
+    overflow-x: auto;
+    margin: 0 -0.25rem;
 }
 
 .bumnu-table {
     width: 100%;
     border-collapse: collapse;
-    background: #fff;
-    border: 1px solid var(--bumnu-line);
-    font-size: 0.92rem;
+    font-size: 0.875rem;
 }
 
 .bumnu-table th,
 .bumnu-table td {
-    padding: 0.55rem 0.65rem;
+    padding: 0.5rem 0.45rem;
     text-align: left;
-    border-bottom: 1px solid var(--bumnu-line);
-    vertical-align: top;
+    border-bottom: 1px solid var(--line);
 }
 
 .bumnu-table th {
-    background: var(--bumnu-accent-soft);
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--bumnu-muted);
+    color: var(--muted);
     font-weight: 600;
 }
 
@@ -202,51 +454,136 @@
     font-variant-numeric: tabular-nums;
 }
 
-.bumnu-table tr:last-child td {
-    border-bottom: none;
+.bumnu-table .is-in {
+    color: var(--in);
 }
 
-.bumnu-masuk {
-    color: var(--bumnu-masuk);
+.bumnu-table .is-out {
+    color: var(--out);
 }
 
-.bumnu-keluar {
-    color: var(--bumnu-keluar);
+/* Transaction cards */
+.bumnu-tx-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.bumnu-tx {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.65rem 0.75rem;
+    background: #fafbfa;
+}
+
+.bumnu-tx-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.65rem;
+    align-items: center;
+    margin-bottom: 0.35rem;
+}
+
+.bumnu-tx-meta time {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.bumnu-tx-tag {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.12rem 0.4rem;
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--muted);
+}
+
+.bumnu-tx-desc {
+    margin: 0 0 0.35rem;
+    font-size: 0.875rem;
+    line-height: 1.45;
+}
+
+.bumnu-tx-amt {
+    margin: 0;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.bumnu-tx-amt.is-in {
+    color: var(--in);
+}
+
+.bumnu-tx-amt.is-out {
+    color: var(--out);
+}
+
+.bumnu-empty,
+.bumnu-alert {
+    padding: 1rem;
+    border-radius: var(--radius);
+    background: var(--surface);
+    border: 1px dashed var(--line);
+    color: var(--muted);
+}
+
+.bumnu-alert {
+    border-style: solid;
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+.bumnu-foot,
+.bumnu-footnote {
+    font-size: 0.8125rem;
+    color: var(--muted);
 }
 
 .bumnu-foot {
-    margin-top: 2.5rem;
+    margin-top: 1.5rem;
     padding-top: 1rem;
-    border-top: 1px solid var(--bumnu-line);
-    font-size: 0.82rem;
-    color: var(--bumnu-muted);
+    border-top: 1px solid var(--line);
+}
+
+.bumnu-foot p {
+    margin: 0.35rem 0;
 }
 
 .bumnu-denied {
-    max-width: 420px;
+    max-width: 400px;
     margin: 4rem auto;
     padding: 2rem;
-    background: #fff;
-    border: 1px solid var(--bumnu-line);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
     text-align: center;
 }
 
-.bumnu-empty {
-    padding: 1rem;
-    background: #fff;
-    border: 1px dashed var(--bumnu-line);
-    color: var(--bumnu-muted);
-}
-
 @media print {
-    .bumnu-period-form {
+    .bumnu-filter,
+    .bumnu-filter-advanced {
         display: none;
     }
     .bumnu-publik {
         background: #fff;
     }
-    .bumnu-wrap {
+    .bumnu-shell {
         max-width: none;
         padding: 0;
+    }
+    .bumnu-hero {
+        background: none;
+        color: var(--ink);
+        border: 1px solid var(--line);
+    }
+    .bumnu-tx {
+        break-inside: avoid;
     }
 }

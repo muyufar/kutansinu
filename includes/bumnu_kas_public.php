@@ -193,6 +193,25 @@ function bumnuKasMutasiPeriode(PDO $db, array $kasIds, int $id_perusahaan, strin
     return ['masuk' => $masuk, 'keluar' => $keluar, 'by_jenis' => $by_jenis];
 }
 
+function bumnuKasTransaksiCount(PDO $db, array $kasIds, int $id_perusahaan, string $tanggal_awal, string $tanggal_akhir): int
+{
+    if ($kasIds === []) {
+        return 0;
+    }
+    $ph = implode(',', array_fill(0, count($kasIds), '?'));
+    $params = array_merge([$id_perusahaan, $tanggal_awal, $tanggal_akhir], $kasIds, $kasIds);
+    $sql = "
+        SELECT COUNT(*) FROM transaksi t
+        WHERE t.id_perusahaan = ?
+          AND t.tanggal BETWEEN ? AND ?
+          AND (t.id_akun_debit IN ($ph) OR t.id_akun_kredit IN ($ph))
+    ";
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+
+    return (int) $stmt->fetchColumn();
+}
+
 function bumnuKasTransaksiList(PDO $db, array $kasIds, int $id_perusahaan, string $tanggal_awal, string $tanggal_akhir, int $limit): array
 {
     if ($kasIds === []) {
@@ -221,6 +240,171 @@ function bumnuKasTransaksiList(PDO $db, array $kasIds, int $id_perusahaan, strin
     }
     unset($row);
     return $rows;
+}
+
+/**
+ * @return array{
+ *   mode: string,
+ *   tanggal_awal: string,
+ *   tanggal_akhir: string,
+ *   label: string,
+ *   hari_sebelum_awal: string,
+ *   form: array<string, string>
+ * }
+ */
+function bumnuResolvePeriode(array $query): array
+{
+    $today = date('Y-m-d');
+    $mode = isset($query['mode']) ? trim((string) $query['mode']) : 'bulan';
+    $allowedModes = ['bulan', 'triwulan', 'semester', 'tahun', 'rentang', 'preset'];
+    if (!in_array($mode, $allowedModes, true)) {
+        $mode = 'bulan';
+    }
+
+    $form = ['mode' => $mode];
+    $tanggal_awal = date('Y-m-01');
+    $tanggal_akhir = $today;
+    $label = '';
+
+    $clampEnd = static function (string $end) use ($today): string {
+        return $end > $today ? $today : $end;
+    };
+
+    $validDate = static function (string $d): bool {
+        return (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) && strtotime($d) !== false;
+    };
+
+    if ($mode === 'preset') {
+        $preset = isset($query['preset']) ? trim((string) $query['preset']) : 'bulan_ini';
+        $form['preset'] = $preset;
+        switch ($preset) {
+            case 'bulan_lalu':
+                $tanggal_awal = date('Y-m-01', strtotime('first day of last month'));
+                $tanggal_akhir = date('Y-m-t', strtotime('last day of last month'));
+                $label = 'Bulan lalu (' . bumnuFormatBulanIndonesia(date('Y-m', strtotime($tanggal_awal))) . ')';
+                break;
+            case 'kuartal_ini':
+                $m = (int) date('n');
+                $qStartMonth = (int) (floor(($m - 1) / 3) * 3 + 1);
+                $tanggal_awal = sprintf('%d-%02d-01', (int) date('Y'), $qStartMonth);
+                $tanggal_akhir = $clampEnd($today);
+                $qNum = (int) ceil($m / 3);
+                $label = 'Triwulan ' . $qNum . ' ' . date('Y') . ' (s/d ' . bumnuFormatTanggalIndonesia($tanggal_akhir) . ')';
+                break;
+            case 'tahun_ini':
+                $tanggal_awal = date('Y') . '-01-01';
+                $tanggal_akhir = $clampEnd($today);
+                $label = 'Tahun ' . date('Y') . ' (s/d ' . bumnuFormatTanggalIndonesia($tanggal_akhir) . ')';
+                break;
+            case '12_bulan':
+                $tanggal_awal = date('Y-m-d', strtotime('-11 months', strtotime(date('Y-m-01'))));
+                $tanggal_akhir = $clampEnd($today);
+                $label = bumnuFormatTanggalIndonesia($tanggal_awal) . ' – ' . bumnuFormatTanggalIndonesia($tanggal_akhir);
+                break;
+            case 'semua':
+                $tanggal_awal = '2020-01-01';
+                $tanggal_akhir = $clampEnd($today);
+                $label = 'Semua pencatatan (s/d ' . bumnuFormatTanggalIndonesia($tanggal_akhir) . ')';
+                break;
+            case 'bulan_ini':
+            default:
+                $form['preset'] = 'bulan_ini';
+                $tanggal_awal = date('Y-m-01');
+                $tanggal_akhir = $clampEnd($today);
+                $label = bumnuFormatBulanIndonesia(date('Y-m')) . ' (s/d ' . bumnuFormatTanggalIndonesia($tanggal_akhir) . ')';
+                break;
+        }
+    } elseif ($mode === 'triwulan') {
+        $tahun = isset($query['tahun']) ? (int) $query['tahun'] : (int) date('Y');
+        if ($tahun < 2020 || $tahun > (int) date('Y') + 1) {
+            $tahun = (int) date('Y');
+        }
+        $triwulan = isset($query['triwulan']) ? (int) $query['triwulan'] : (int) ceil((int) date('n') / 3);
+        if ($triwulan < 1 || $triwulan > 4) {
+            $triwulan = 1;
+        }
+        $startMonth = ($triwulan - 1) * 3 + 1;
+        $tanggal_awal = sprintf('%04d-%02d-01', $tahun, $startMonth);
+        $endMonth = $startMonth + 2;
+        $tanggal_akhir = $clampEnd(date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $tahun, $endMonth))));
+        $form['tahun'] = (string) $tahun;
+        $form['triwulan'] = (string) $triwulan;
+        $label = 'Triwulan ' . $triwulan . ' ' . $tahun;
+    } elseif ($mode === 'semester') {
+        $tahun = isset($query['tahun']) ? (int) $query['tahun'] : (int) date('Y');
+        if ($tahun < 2020 || $tahun > (int) date('Y') + 1) {
+            $tahun = (int) date('Y');
+        }
+        $semester = isset($query['semester']) ? (int) $query['semester'] : (((int) date('n') <= 6) ? 1 : 2);
+        if ($semester !== 1 && $semester !== 2) {
+            $semester = 1;
+        }
+        $tanggal_awal = $semester === 1 ? sprintf('%04d-01-01', $tahun) : sprintf('%04d-07-01', $tahun);
+        $tanggal_akhir = $clampEnd(
+            $semester === 1 ? sprintf('%04d-06-30', $tahun) : sprintf('%04d-12-31', $tahun)
+        );
+        $form['tahun'] = (string) $tahun;
+        $form['semester'] = (string) $semester;
+        $label = 'Semester ' . $semester . ' ' . $tahun;
+    } elseif ($mode === 'tahun') {
+        $tahun = isset($query['tahun']) ? (int) $query['tahun'] : (int) date('Y');
+        if ($tahun < 2020 || $tahun > (int) date('Y') + 1) {
+            $tahun = (int) date('Y');
+        }
+        $tanggal_awal = sprintf('%04d-01-01', $tahun);
+        $tanggal_akhir = $clampEnd(sprintf('%04d-12-31', $tahun));
+        $form['tahun'] = (string) $tahun;
+        $label = 'Tahun ' . $tahun;
+    } elseif ($mode === 'rentang') {
+        $dari = isset($query['dari']) ? trim((string) $query['dari']) : date('Y-m-01');
+        $sampai = isset($query['sampai']) ? trim((string) $query['sampai']) : $today;
+        if (!$validDate($dari)) {
+            $dari = date('Y-m-01');
+        }
+        if (!$validDate($sampai)) {
+            $sampai = $today;
+        }
+        if ($dari > $sampai) {
+            [$dari, $sampai] = [$sampai, $dari];
+        }
+        $tanggal_awal = $dari;
+        $tanggal_akhir = $clampEnd($sampai);
+        $form['dari'] = $dari;
+        $form['sampai'] = $sampai;
+        $label = bumnuFormatTanggalIndonesia($tanggal_awal) . ' – ' . bumnuFormatTanggalIndonesia($tanggal_akhir);
+    } else {
+        $bulan = isset($query['bulan']) ? trim((string) $query['bulan']) : date('Y-m');
+        if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $bulan)) {
+            $bulan = date('Y-m');
+        }
+        $form['bulan'] = $bulan;
+        $tanggal_awal = $bulan . '-01';
+        $endMonth = date('Y-m-t', strtotime($tanggal_awal));
+        $tanggal_akhir = $clampEnd($endMonth);
+        $label = bumnuFormatBulanIndonesia($bulan);
+        if ($tanggal_akhir < $endMonth) {
+            $label .= ' (s/d ' . bumnuFormatTanggalIndonesia($tanggal_akhir) . ')';
+        }
+    }
+
+    $hari_sebelum_awal = date('Y-m-d', strtotime($tanggal_awal . ' -1 day'));
+
+    return [
+        'mode' => $mode,
+        'tanggal_awal' => $tanggal_awal,
+        'tanggal_akhir' => $tanggal_akhir,
+        'label' => $label,
+        'hari_sebelum_awal' => $hari_sebelum_awal,
+        'form' => $form,
+    ];
+}
+
+function bumnuPublicQueryString(array $params, string $token = ''): string
+{
+    if ($token !== '') {
+        $params['token'] = $token;
+    }
+    return http_build_query($params);
 }
 
 function bumnuFormatBulanIndonesia(string $yyyy_mm): string

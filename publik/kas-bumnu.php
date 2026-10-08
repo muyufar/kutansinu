@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+date_default_timezone_set('Asia/Jakarta');
+
 $bumnuHelper = __DIR__ . '/../includes/bumnu_kas_public.php';
 $bumnuConfigFile = __DIR__ . '/../config/public_report.php';
 
@@ -29,6 +31,7 @@ try {
     echo '<p>Laporan sementara tidak dapat dimuat. Periksa konfigurasi server.</p>';
     exit;
 }
+
 $cssVer = @filemtime(__DIR__ . '/../assets/css/publik-bumnu-kas.css') ?: time();
 
 if (!bumnuPublicCheckToken()) {
@@ -54,19 +57,15 @@ if (!bumnuPublicCheckToken()) {
     exit;
 }
 
-$bulan = isset($_GET['bulan']) ? trim($_GET['bulan']) : date('Y-m');
-if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $bulan)) {
-    $bulan = date('Y-m');
-}
+$periode = bumnuResolvePeriode($_GET);
+$tanggal_awal = $periode['tanggal_awal'];
+$tanggal_akhir = $periode['tanggal_akhir'];
+$hari_sebelum_awal = $periode['hari_sebelum_awal'];
+$periode_label = $periode['label'];
+$filter_mode = $periode['mode'];
+$filter_form = $periode['form'];
 
-$tanggal_awal = $bulan . '-01';
-$tanggal_akhir = date('Y-m-t', strtotime($tanggal_awal));
-$hari_sebelum_awal = date('Y-m-d', strtotime($tanggal_awal . ' -1 day'));
-
-$token_hidden = '';
-if (!empty($config['access_token'])) {
-    $token_hidden = (string) ($_GET['token'] ?? '');
-}
+$token_hidden = !empty($config['access_token']) ? trim((string) ($_GET['token'] ?? '')) : '';
 
 $perusahaan = null;
 $error = null;
@@ -75,6 +74,7 @@ $saldo_awal = 0.0;
 $mutasi = ['masuk' => 0.0, 'keluar' => 0.0, 'by_jenis' => []];
 $rekening = [];
 $transaksi = [];
+$tx_count = 0;
 $logo_url = null;
 
 try {
@@ -90,6 +90,7 @@ try {
         $saldo_akhir = bumnuTotalSaldoKas($db, $kasAccounts, $tanggal_akhir, $id_perusahaan);
         $rekening = bumnuSaldoPerRekening($db, $kasAccounts, $tanggal_akhir, $id_perusahaan);
         $mutasi = bumnuKasMutasiPeriode($db, $kasIds, $id_perusahaan, $tanggal_awal, $tanggal_akhir);
+        $tx_count = bumnuKasTransaksiCount($db, $kasIds, $id_perusahaan, $tanggal_awal, $tanggal_akhir);
         $transaksi = bumnuKasTransaksiList(
             $db,
             $kasIds,
@@ -107,8 +108,21 @@ try {
     $error = 'Gagal memuat data laporan. Pastikan database dan file aplikasi sudah lengkap.';
 }
 
-$bulan_label = bumnuFormatBulanIndonesia($bulan);
+$net_periode = $mutasi['masuk'] - $mutasi['keluar'];
 $generated_at = date('d/m/Y H:i');
+$tahun_min = 2024;
+$tahun_max = (int) date('Y');
+$tahun_pilih = (int) ($filter_form['tahun'] ?? date('Y'));
+
+$presets = [
+    'bulan_ini' => 'Bulan ini',
+    'bulan_lalu' => 'Bulan lalu',
+    'kuartal_ini' => 'Kuartal berjalan',
+    'tahun_ini' => 'Tahun ini',
+    '12_bulan' => '12 bulan',
+    'semua' => 'Semua data',
+];
+$active_preset = ($filter_mode === 'preset' && isset($filter_form['preset'])) ? $filter_form['preset'] : '';
 
 ?>
 <!DOCTYPE html>
@@ -118,139 +132,256 @@ $generated_at = date('d/m/Y H:i');
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <meta name="description" content="Laporan kas BUMNU PCNU Kabupaten Magelang — ringkasan untuk mitra dan masyarakat.">
-    <title><?= htmlspecialchars($config['page_title'] ?? 'Laporan Kas BUMNU') ?> — <?= htmlspecialchars($bulan_label) ?></title>
+    <title><?= htmlspecialchars($config['page_title'] ?? 'Laporan Kas BUMNU') ?> — <?= htmlspecialchars($periode_label) ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Libre+Baskerville:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/publik-bumnu-kas.css?v=<?= (int) $cssVer ?>">
 </head>
 <body class="bumnu-publik">
-<div class="bumnu-wrap">
+<div class="bumnu-shell">
 
-    <header class="bumnu-masthead">
-        <?php if ($logo_url): ?>
-            <img src="<?= htmlspecialchars($logo_url) ?>" alt="" class="bumnu-logo" width="72" height="72">
-        <?php endif; ?>
-        <div>
-            <h1><?= htmlspecialchars($config['page_title'] ?? 'Laporan Kas BUMNU') ?></h1>
-            <p class="bumnu-org"><?= htmlspecialchars($config['org_line'] ?? '') ?></p>
+    <header class="bumnu-top">
+        <div class="bumnu-brand">
+            <?php if ($logo_url): ?>
+                <img src="<?= htmlspecialchars($logo_url) ?>" alt="" class="bumnu-logo" width="56" height="56">
+            <?php else: ?>
+                <span class="bumnu-logo-fallback" aria-hidden="true">BNU</span>
+            <?php endif; ?>
+            <div>
+                <h1><?= htmlspecialchars($config['page_title'] ?? 'Laporan Kas BUMNU') ?></h1>
+                <p><?= htmlspecialchars($config['org_line'] ?? '') ?></p>
+            </div>
         </div>
+        <p class="bumnu-updated">Diperbarui <?= htmlspecialchars($generated_at) ?> WIB</p>
     </header>
 
-    <form class="bumnu-period-form" method="get" action="">
-        <?php if ($token_hidden !== ''): ?>
-            <input type="hidden" name="token" value="<?= htmlspecialchars($token_hidden) ?>">
-        <?php endif; ?>
-        <div>
-            <label for="bulan">Periode laporan</label>
-            <input type="month" id="bulan" name="bulan" value="<?= htmlspecialchars($bulan) ?>" max="<?= date('Y-m') ?>">
-        </div>
-        <button type="submit">Tampilkan</button>
-    </form>
+    <section class="bumnu-filter" aria-labelledby="filter-heading">
+        <h2 id="filter-heading" class="bumnu-filter-title">Periode laporan</h2>
+
+        <nav class="bumnu-presets" aria-label="Periode cepat">
+            <?php foreach ($presets as $key => $label): ?>
+                <?php
+                $qs = bumnuPublicQueryString(['mode' => 'preset', 'preset' => $key], $token_hidden);
+                $isActive = $active_preset === $key;
+                ?>
+                <a class="bumnu-preset<?= $isActive ? ' is-active' : '' ?>" href="?<?= htmlspecialchars($qs) ?>"><?= htmlspecialchars($label) ?></a>
+            <?php endforeach; ?>
+        </nav>
+
+        <details class="bumnu-filter-advanced" <?= in_array($filter_mode, ['bulan', 'triwulan', 'semester', 'tahun', 'rentang'], true) ? 'open' : '' ?>>
+            <summary>Atur periode manual</summary>
+            <form class="bumnu-filter-form" method="get" action="">
+                <?php if ($token_hidden !== ''): ?>
+                    <input type="hidden" name="token" value="<?= htmlspecialchars($token_hidden) ?>">
+                <?php endif; ?>
+
+                <div class="bumnu-field">
+                    <label for="mode">Jenis periode</label>
+                    <select id="mode" name="mode" data-bumnu-mode-select>
+                        <option value="bulan"<?= $filter_mode === 'bulan' ? ' selected' : '' ?>>Per bulan</option>
+                        <option value="triwulan"<?= $filter_mode === 'triwulan' ? ' selected' : '' ?>>Triwulan (3 bulan)</option>
+                        <option value="semester"<?= $filter_mode === 'semester' ? ' selected' : '' ?>>Semester</option>
+                        <option value="tahun"<?= $filter_mode === 'tahun' ? ' selected' : '' ?>>Tahun penuh</option>
+                        <option value="rentang"<?= $filter_mode === 'rentang' ? ' selected' : '' ?>>Tanggal mulai – selesai</option>
+                    </select>
+                </div>
+
+                <div class="bumnu-mode-panel" data-mode-panel="bulan"<?= $filter_mode === 'bulan' ? '' : ' hidden' ?>>
+                    <div class="bumnu-field">
+                        <label for="bulan">Bulan</label>
+                        <input type="month" id="bulan" name="bulan" value="<?= htmlspecialchars($filter_form['bulan'] ?? date('Y-m')) ?>" max="<?= date('Y-m') ?>">
+                    </div>
+                </div>
+
+                <div class="bumnu-mode-panel" data-mode-panel="triwulan"<?= $filter_mode === 'triwulan' ? '' : ' hidden' ?>>
+                    <div class="bumnu-field-row">
+                        <div class="bumnu-field">
+                            <label for="triwulan">Triwulan</label>
+                            <select id="triwulan" name="triwulan">
+                                <?php for ($q = 1; $q <= 4; $q++): ?>
+                                    <option value="<?= $q ?>"<?= (int) ($filter_form['triwulan'] ?? 0) === $q ? ' selected' : '' ?>>TW <?= $q ?></option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+                        <div class="bumnu-field">
+                            <label for="tahun-tw">Tahun</label>
+                            <select id="tahun-tw" name="tahun">
+                                <?php for ($y = $tahun_max; $y >= $tahun_min; $y--): ?>
+                                    <option value="<?= $y ?>"<?= $tahun_pilih === $y ? ' selected' : '' ?>><?= $y ?></option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bumnu-mode-panel" data-mode-panel="semester"<?= $filter_mode === 'semester' ? '' : ' hidden' ?>>
+                    <div class="bumnu-field-row">
+                        <div class="bumnu-field">
+                            <label for="semester">Semester</label>
+                            <select id="semester" name="semester">
+                                <option value="1"<?= (int) ($filter_form['semester'] ?? 0) === 1 ? ' selected' : '' ?>>Semester 1 (Jan–Jun)</option>
+                                <option value="2"<?= (int) ($filter_form['semester'] ?? 0) === 2 ? ' selected' : '' ?>>Semester 2 (Jul–Des)</option>
+                            </select>
+                        </div>
+                        <div class="bumnu-field">
+                            <label for="tahun-sem">Tahun</label>
+                            <select id="tahun-sem" name="tahun">
+                                <?php for ($y = $tahun_max; $y >= $tahun_min; $y--): ?>
+                                    <option value="<?= $y ?>"<?= $tahun_pilih === $y ? ' selected' : '' ?>><?= $y ?></option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bumnu-mode-panel" data-mode-panel="tahun"<?= $filter_mode === 'tahun' ? '' : ' hidden' ?>>
+                    <div class="bumnu-field">
+                        <label for="tahun-full">Tahun</label>
+                        <select id="tahun-full" name="tahun">
+                            <?php for ($y = $tahun_max; $y >= $tahun_min; $y--): ?>
+                                <option value="<?= $y ?>"<?= $tahun_pilih === $y ? ' selected' : '' ?>><?= $y ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="bumnu-mode-panel" data-mode-panel="rentang"<?= $filter_mode === 'rentang' ? '' : ' hidden' ?>>
+                    <div class="bumnu-field-row">
+                        <div class="bumnu-field">
+                            <label for="dari">Dari tanggal</label>
+                            <input type="date" id="dari" name="dari" value="<?= htmlspecialchars($filter_form['dari'] ?? $tanggal_awal) ?>" max="<?= date('Y-m-d') ?>">
+                        </div>
+                        <div class="bumnu-field">
+                            <label for="sampai">Sampai tanggal</label>
+                            <input type="date" id="sampai" name="sampai" value="<?= htmlspecialchars($filter_form['sampai'] ?? $tanggal_akhir) ?>" max="<?= date('Y-m-d') ?>">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bumnu-filter-actions">
+                    <button type="submit" class="bumnu-btn-primary">Terapkan</button>
+                    <?php
+                    $resetQs = bumnuPublicQueryString(['mode' => 'preset', 'preset' => 'bulan_ini'], $token_hidden);
+                    ?>
+                    <a class="bumnu-btn-ghost" href="?<?= htmlspecialchars($resetQs) ?>">Reset</a>
+                </div>
+            </form>
+        </details>
+
+        <p class="bumnu-period-active">
+            <span class="bumnu-period-label">Menampilkan</span>
+            <strong><?= htmlspecialchars($periode_label) ?></strong>
+            <span class="bumnu-period-range"><?= htmlspecialchars(bumnuFormatTanggalIndonesia($tanggal_awal)) ?> – <?= htmlspecialchars(bumnuFormatTanggalIndonesia($tanggal_akhir)) ?></span>
+        </p>
+    </section>
 
     <?php if ($error): ?>
-        <p class="bumnu-empty"><?= htmlspecialchars($error) ?></p>
+        <p class="bumnu-alert"><?= htmlspecialchars($error) ?></p>
     <?php else: ?>
 
-        <section class="bumnu-lead" aria-labelledby="judul-ringkasan">
-            <p id="judul-ringkasan">Periode: <strong><?= htmlspecialchars($bulan_label) ?></strong></p>
-            <p class="bumnu-big"><?= htmlspecialchars(formatRupiah($saldo_akhir)) ?></p>
-            <p>Total uang tersedia di kas dan rekening bank BUMNU per akhir periode.</p>
+        <section class="bumnu-hero" aria-labelledby="saldo-heading">
+            <div class="bumnu-hero-text">
+                <h2 id="saldo-heading">Saldo kas &amp; bank</h2>
+                <p>Posisi uang tersedia per <strong><?= htmlspecialchars(bumnuFormatTanggalIndonesia($tanggal_akhir)) ?></strong></p>
+            </div>
+            <p class="bumnu-hero-amount"><?= htmlspecialchars(formatRupiah($saldo_akhir)) ?></p>
         </section>
 
-        <dl class="bumnu-stats">
-            <div class="bumnu-stat">
-                <dt>Saldo awal bulan</dt>
-                <dd><?= htmlspecialchars(formatRupiah($saldo_awal)) ?></dd>
-            </div>
-            <div class="bumnu-stat">
-                <dt>Uang masuk (periode ini)</dt>
-                <dd class="bumnu-masuk">+ <?= htmlspecialchars(formatRupiah($mutasi['masuk'])) ?></dd>
-            </div>
-            <div class="bumnu-stat">
-                <dt>Uang keluar (periode ini)</dt>
-                <dd class="bumnu-keluar">− <?= htmlspecialchars(formatRupiah($mutasi['keluar'])) ?></dd>
-            </div>
-        </dl>
+        <div class="bumnu-flow" role="group" aria-label="Pergerakan saldo periode">
+            <article class="bumnu-flow-item">
+                <span class="bumnu-flow-k">Saldo awal periode</span>
+                <span class="bumnu-flow-v"><?= htmlspecialchars(formatRupiah($saldo_awal)) ?></span>
+            </article>
+            <span class="bumnu-flow-op" aria-hidden="true">+</span>
+            <article class="bumnu-flow-item is-in">
+                <span class="bumnu-flow-k">Uang masuk</span>
+                <span class="bumnu-flow-v"><?= htmlspecialchars(formatRupiah($mutasi['masuk'])) ?></span>
+            </article>
+            <span class="bumnu-flow-op" aria-hidden="true">−</span>
+            <article class="bumnu-flow-item is-out">
+                <span class="bumnu-flow-k">Uang keluar</span>
+                <span class="bumnu-flow-v"><?= htmlspecialchars(formatRupiah($mutasi['keluar'])) ?></span>
+            </article>
+            <span class="bumnu-flow-op" aria-hidden="true">=</span>
+            <article class="bumnu-flow-item is-result">
+                <span class="bumnu-flow-k">Saldo akhir</span>
+                <span class="bumnu-flow-v"><?= htmlspecialchars(formatRupiah($saldo_akhir)) ?></span>
+            </article>
+        </div>
+        <p class="bumnu-flow-note">Netto periode (masuk − keluar): <strong><?= htmlspecialchars(formatRupiah($net_periode)) ?></strong>
+            · <?= (int) $tx_count ?> transaksi tercatat</p>
 
         <?php if ($rekening !== []): ?>
-        <section class="bumnu-section">
-            <h2>Posisi per rekening</h2>
-            <p class="bumnu-note">Rincian saldo di setiap tempat penyimpanan uang.</p>
-            <table class="bumnu-table">
-                <thead>
-                    <tr>
-                        <th>Rekening / kas</th>
-                        <th class="num">Saldo akhir</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($rekening as $r): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($r['nama']) ?></td>
-                        <td class="num"><?= htmlspecialchars(formatRupiah($r['saldo'])) ?></td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+        <section class="bumnu-block">
+            <header class="bumnu-block-head">
+                <h3>Per rekening</h3>
+                <p>Saldo akhir masing-masing rekening kas/bank.</p>
+            </header>
+            <ul class="bumnu-rek-list">
+                <?php foreach ($rekening as $r): ?>
+                <li>
+                    <span><?= htmlspecialchars($r['nama']) ?></span>
+                    <strong><?= htmlspecialchars(formatRupiah($r['saldo'])) ?></strong>
+                </li>
+                <?php endforeach; ?>
+            </ul>
         </section>
         <?php endif; ?>
 
         <?php if ($mutasi['by_jenis'] !== []): ?>
-        <section class="bumnu-section">
-            <h2>Ringkasan menurut jenis transaksi</h2>
-            <p class="bumnu-note">Pengelompokan sederhana agar mudah dibaca; angka hanya yang mempengaruhi kas.</p>
-            <table class="bumnu-table">
-                <thead>
-                    <tr>
-                        <th>Jenis</th>
-                        <th class="num">Masuk</th>
-                        <th class="num">Keluar</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($mutasi['by_jenis'] as $row): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($row['label']) ?></td>
-                        <td class="num bumnu-masuk"><?= $row['masuk'] > 0 ? htmlspecialchars(formatRupiah($row['masuk'])) : '—' ?></td>
-                        <td class="num bumnu-keluar"><?= $row['keluar'] > 0 ? htmlspecialchars(formatRupiah($row['keluar'])) : '—' ?></td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+        <section class="bumnu-block">
+            <header class="bumnu-block-head">
+                <h3>Menurut jenis transaksi</h3>
+                <p>Hanya transaksi yang memengaruhi kas/rekening.</p>
+            </header>
+            <div class="bumnu-table-wrap">
+                <table class="bumnu-table">
+                    <thead>
+                        <tr>
+                            <th>Jenis</th>
+                            <th class="num">Masuk</th>
+                            <th class="num">Keluar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($mutasi['by_jenis'] as $row): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($row['label']) ?></td>
+                            <td class="num is-in"><?= $row['masuk'] > 0 ? htmlspecialchars(formatRupiah($row['masuk'])) : '—' ?></td>
+                            <td class="num is-out"><?= $row['keluar'] > 0 ? htmlspecialchars(formatRupiah($row['keluar'])) : '—' ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
         </section>
         <?php endif; ?>
 
-        <section class="bumnu-section">
-            <h2>Riwayat transaksi kas</h2>
-            <p class="bumnu-note">Daftar pergerakan uang yang tercatat masuk atau keluar dari kas/rekening BUMNU.</p>
+        <section class="bumnu-block">
+            <header class="bumnu-block-head">
+                <h3>Riwayat transaksi</h3>
+                <p>Urutan terbaru · maks. <?= (int) ($config['max_transaksi_rows'] ?? 120) ?> baris</p>
+            </header>
             <?php if ($transaksi === []): ?>
-                <p class="bumnu-empty">Belum ada transaksi kas pada periode ini.</p>
+                <p class="bumnu-empty">Tidak ada pergerakan kas pada periode ini.</p>
             <?php else: ?>
-            <table class="bumnu-table">
-                <thead>
-                    <tr>
-                        <th>Tanggal</th>
-                        <th>Uraian</th>
-                        <th>Jenis</th>
-                        <th class="num">Masuk</th>
-                        <th class="num">Keluar</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($transaksi as $t): ?>
-                    <tr>
-                        <td><?= htmlspecialchars(bumnuFormatTanggalIndonesia($t['tanggal'])) ?></td>
-                        <td><?= htmlspecialchars($t['keterangan']) ?></td>
-                        <td><?= htmlspecialchars($t['jenis_label']) ?></td>
-                        <td class="num bumnu-masuk"><?= $t['arah'] === 'masuk' ? htmlspecialchars(formatRupiah($t['total'])) : '—' ?></td>
-                        <td class="num bumnu-keluar"><?= $t['arah'] === 'keluar' ? htmlspecialchars(formatRupiah($t['total'])) : '—' ?></td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-            <?php if (count($transaksi) >= (int) ($config['max_transaksi_rows'] ?? 120)): ?>
-                <p class="bumnu-note">Menampilkan <?= (int) $config['max_transaksi_rows'] ?> transaksi terbaru. Untuk periode penuh, hubungi pengurus.</p>
+            <div class="bumnu-tx-list">
+                <?php foreach ($transaksi as $t): ?>
+                <article class="bumnu-tx">
+                    <div class="bumnu-tx-meta">
+                        <time datetime="<?= htmlspecialchars($t['tanggal']) ?>"><?= htmlspecialchars(bumnuFormatTanggalIndonesia($t['tanggal'])) ?></time>
+                        <span class="bumnu-tx-tag"><?= htmlspecialchars($t['jenis_label']) ?></span>
+                    </div>
+                    <p class="bumnu-tx-desc"><?= htmlspecialchars($t['keterangan']) ?></p>
+                    <p class="bumnu-tx-amt <?= $t['arah'] === 'masuk' ? 'is-in' : 'is-out' ?>">
+                        <?= $t['arah'] === 'masuk' ? '+' : '−' ?> <?= htmlspecialchars(formatRupiah($t['total'])) ?>
+                    </p>
+                </article>
+                <?php endforeach; ?>
+            </div>
+            <?php if ($tx_count > count($transaksi)): ?>
+                <p class="bumnu-footnote">Menampilkan <?= count($transaksi) ?> dari <?= (int) $tx_count ?> transaksi. Hubungi pengurus untuk ekspor lengkap.</p>
             <?php endif; ?>
             <?php endif; ?>
         </section>
@@ -259,9 +390,28 @@ $generated_at = date('d/m/Y H:i');
 
     <footer class="bumnu-foot">
         <p><?= htmlspecialchars($config['footnote'] ?? '') ?></p>
-        <p>Halaman dimuat: <?= htmlspecialchars($generated_at) ?> WIB · Sumber: sistem pelaporan keuangan internal.</p>
+        <p>Sumber: sistem pelaporan keuangan internal BUMNU.</p>
     </footer>
 
 </div>
+<script>
+(function () {
+    var sel = document.querySelector('[data-bumnu-mode-select]');
+    if (!sel) return;
+    var panels = document.querySelectorAll('[data-mode-panel]');
+    function sync() {
+        var mode = sel.value;
+        panels.forEach(function (p) {
+            var show = p.getAttribute('data-mode-panel') === mode;
+            p.hidden = !show;
+            p.querySelectorAll('input, select').forEach(function (el) {
+                el.disabled = !show;
+            });
+        });
+    }
+    sel.addEventListener('change', sync);
+    sync();
+})();
+</script>
 </body>
 </html>
