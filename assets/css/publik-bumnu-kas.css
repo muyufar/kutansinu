@@ -1,0 +1,252 @@
+/* Laporan publik Kas BUMNU — gaya dokumen, bukan dashboard generik */
+
+.bumnu-publik {
+    --bumnu-paper: #f6f3ec;
+    --bumnu-ink: #1a1814;
+    --bumnu-muted: #5c574f;
+    --bumnu-line: #c9c2b5;
+    --bumnu-accent: #0b4a3e;
+    --bumnu-accent-soft: #e8f0ed;
+    --bumnu-masuk: #14532d;
+    --bumnu-keluar: #7f1d1d;
+
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--bumnu-ink);
+    background: var(--bumnu-paper);
+    min-height: 100vh;
+    margin: 0;
+}
+
+.bumnu-publik * {
+    box-sizing: border-box;
+}
+
+.bumnu-wrap {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 3rem;
+}
+
+.bumnu-masthead {
+    border-bottom: 2px solid var(--bumnu-accent);
+    padding-bottom: 1.25rem;
+    margin-bottom: 1.75rem;
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+}
+
+.bumnu-logo {
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.bumnu-masthead h1 {
+    font-family: 'Libre Baskerville', Georgia, serif;
+    font-size: 1.65rem;
+    font-weight: 700;
+    margin: 0 0 0.35rem;
+    letter-spacing: -0.02em;
+    color: var(--bumnu-accent);
+}
+
+.bumnu-org {
+    margin: 0;
+    color: var(--bumnu-muted);
+    font-size: 0.95rem;
+}
+
+.bumnu-period-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-end;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #fff;
+    border: 1px solid var(--bumnu-line);
+}
+
+.bumnu-period-form label {
+    display: block;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--bumnu-muted);
+    margin-bottom: 0.25rem;
+}
+
+.bumnu-period-form input[type="month"] {
+    font: inherit;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--bumnu-line);
+    background: #fff;
+}
+
+.bumnu-period-form button {
+    font: inherit;
+    padding: 0.5rem 1rem;
+    background: var(--bumnu-accent);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+
+.bumnu-period-form button:hover {
+    background: #083830;
+}
+
+.bumnu-lead {
+    background: #fff;
+    border: 1px solid var(--bumnu-line);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.bumnu-lead p {
+    margin: 0 0 0.5rem;
+    color: var(--bumnu-muted);
+    font-size: 0.9rem;
+}
+
+.bumnu-lead .bumnu-big {
+    font-family: 'Libre Baskerville', Georgia, serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--bumnu-accent);
+    margin: 0;
+}
+
+.bumnu-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 640px) {
+    .bumnu-stats {
+        grid-template-columns: 1fr;
+    }
+}
+
+.bumnu-stat {
+    background: #fff;
+    border: 1px solid var(--bumnu-line);
+    padding: 1rem;
+}
+
+.bumnu-stat dt {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--bumnu-muted);
+    margin: 0 0 0.35rem;
+}
+
+.bumnu-stat dd {
+    margin: 0;
+    font-weight: 600;
+    font-size: 1.05rem;
+}
+
+.bumnu-section {
+    margin-bottom: 2rem;
+}
+
+.bumnu-section h2 {
+    font-family: 'Libre Baskerville', Georgia, serif;
+    font-size: 1.15rem;
+    margin: 0 0 0.75rem;
+    color: var(--bumnu-accent);
+}
+
+.bumnu-note {
+    font-size: 0.85rem;
+    color: var(--bumnu-muted);
+    margin: 0 0 0.75rem;
+}
+
+.bumnu-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border: 1px solid var(--bumnu-line);
+    font-size: 0.92rem;
+}
+
+.bumnu-table th,
+.bumnu-table td {
+    padding: 0.55rem 0.65rem;
+    text-align: left;
+    border-bottom: 1px solid var(--bumnu-line);
+    vertical-align: top;
+}
+
+.bumnu-table th {
+    background: var(--bumnu-accent-soft);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--bumnu-muted);
+    font-weight: 600;
+}
+
+.bumnu-table .num {
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.bumnu-table tr:last-child td {
+    border-bottom: none;
+}
+
+.bumnu-masuk {
+    color: var(--bumnu-masuk);
+}
+
+.bumnu-keluar {
+    color: var(--bumnu-keluar);
+}
+
+.bumnu-foot {
+    margin-top: 2.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--bumnu-line);
+    font-size: 0.82rem;
+    color: var(--bumnu-muted);
+}
+
+.bumnu-denied {
+    max-width: 420px;
+    margin: 4rem auto;
+    padding: 2rem;
+    background: #fff;
+    border: 1px solid var(--bumnu-line);
+    text-align: center;
+}
+
+.bumnu-empty {
+    padding: 1rem;
+    background: #fff;
+    border: 1px dashed var(--bumnu-line);
+    color: var(--bumnu-muted);
+}
+
+@media print {
+    .bumnu-period-form {
+        display: none;
+    }
+    .bumnu-publik {
+        background: #fff;
+    }
+    .bumnu-wrap {
+        max-width: none;
+        padding: 0;
+    }
+}
