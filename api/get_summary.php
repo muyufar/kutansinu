@@ -31,19 +31,21 @@ try {
     $total_pengeluaran = $stmt_pengeluaran->fetch()['total'];
 
 
-    // Hitung saldo
-    $saldo = $total_pemasukan - $total_pengeluaran;
+    $saldo_kas_bank = getTotalSaldoKasBank($db, (int) $id_perusahaan);
+    $saldo_jenis = $total_pemasukan - $total_pengeluaran;
 
     // Format angka ke format rupiah
     $formatted_pemasukan = 'Rp ' . number_format($total_pemasukan, 0, ',', '.');
     $formatted_pengeluaran = 'Rp ' . number_format($total_pengeluaran, 0, ',', '.');
-    $formatted_saldo = 'Rp ' . number_format($saldo, 0, ',', '.');
+    $formatted_saldo = 'Rp ' . number_format($saldo_kas_bank, 0, ',', '.');
+    $formatted_saldo_jenis = 'Rp ' . number_format($saldo_jenis, 0, ',', '.');
 
     // Kirim response
     echo json_encode([
         'total_pemasukan' => $formatted_pemasukan,
         'total_pengeluaran' => $formatted_pengeluaran,
-        'saldo' => $formatted_saldo
+        'saldo' => $formatted_saldo,
+        'saldo_jenis' => $formatted_saldo_jenis,
     ]);
 } catch (PDOException $e) {
     http_response_code(500);

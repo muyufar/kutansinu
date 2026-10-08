@@ -226,6 +226,41 @@ function getSaldoAkunSampaiTanggal($db, $id_akun, $tanggal_akhir, $id_perusahaan
     return hitungMutasiAkun($row['total_debit'], $row['total_kredit'], $tipe_akun);
 }
 
+function getKasBankAccounts($db, $id_perusahaan)
+{
+    $stmt = $db->prepare("
+        SELECT id, kode_akun, nama_akun, tipe_akun
+        FROM akun
+        WHERE id_perusahaan = ?
+          AND kategori = 'aktiva'
+          AND sub_kategori = 'Kas & Bank'
+        ORDER BY kode_akun ASC
+    ");
+    $stmt->execute([$id_perusahaan]);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function getTotalSaldoKasBank($db, $id_perusahaan, $tanggal_akhir = null)
+{
+    if ($tanggal_akhir === null || $tanggal_akhir === '') {
+        $tanggal_akhir = date('Y-m-d');
+    }
+
+    $total = 0.0;
+    foreach (getKasBankAccounts($db, $id_perusahaan) as $akun) {
+        $total += getSaldoAkunSampaiTanggal(
+            $db,
+            (int) $akun['id'],
+            $tanggal_akhir,
+            (int) $id_perusahaan,
+            $akun['tipe_akun']
+        );
+    }
+
+    return $total;
+}
+
 function getLabaRugiPeriode($db, $tanggal_awal, $tanggal_akhir, $id_perusahaan)
 {
     $sql_mutasi = "SELECT

@@ -288,7 +288,8 @@ $totals_bulan_lalu = dashboardPeriodTotals($db, (int)$id_perusahaan, $bulan_lalu
 
 $summary_pemasukan = $totals_all['masuk'];
 $summary_pengeluaran = $totals_all['keluar'];
-$summary_saldo = $summary_pemasukan - $summary_pengeluaran;
+$summary_saldo_jenis = $summary_pemasukan - $summary_pengeluaran;
+$summary_saldo = getTotalSaldoKasBank($db, (int) $id_perusahaan);
 $net_bulan_ini = $totals_bulan_ini['masuk'] - $totals_bulan_ini['keluar'];
 
 $trend_pemasukan = dashboardTrendPct($totals_bulan_ini['masuk'], $totals_bulan_lalu['masuk']);
@@ -382,9 +383,12 @@ include 'templates/header.php';
                     <div class="dashboard-kpi-icon"><i class="fas fa-wallet"></i></div>
                     <span class="dashboard-kpi-chip"><?= $tx_bulan_ini ?> transaksi</span>
                 </div>
-                <div class="dashboard-kpi-label">Saldo Bersih</div>
+                <div class="dashboard-kpi-label">Saldo Kas &amp; Bank</div>
                 <div class="dashboard-kpi-value" id="saldo"><?= fmtRp($summary_saldo) ?></div>
-                <div class="dashboard-kpi-meta">Net bulan ini: <strong class="<?= $net_bulan_ini >= 0 ? 'text-success' : 'text-danger' ?>"><?= fmtRp($net_bulan_ini) ?></strong></div>
+                <div class="dashboard-kpi-meta">
+                    Net jenis (masuk−keluar): <strong><?= fmtRp($summary_saldo_jenis) ?></strong>
+                    · Bulan ini: <strong class="<?= $net_bulan_ini >= 0 ? 'text-success' : 'text-danger' ?>"><?= fmtRp($net_bulan_ini) ?></strong>
+                </div>
             </div>
         </div>
     </div>
