@@ -305,6 +305,54 @@
     color: var(--brand-dark);
 }
 
+.bumnu-tag-total {
+    margin-top: 1rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #f4faf7;
+}
+
+.bumnu-tag-total-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.875rem;
+    color: var(--ink);
+}
+
+.bumnu-tag-total-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem 1rem;
+    margin: 0;
+}
+
+.bumnu-tag-total-grid .bumnu-tag-total-net {
+    grid-column: 1 / -1;
+    padding-top: 0.65rem;
+    border-top: 1px solid var(--line);
+}
+
+.bumnu-tag-total-grid dt {
+    margin: 0;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+}
+
+.bumnu-tag-total-grid dd {
+    margin: 0.15rem 0 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.bumnu-tag-total-note {
+    margin: 0.75rem 0 0;
+    font-size: 0.75rem;
+    color: var(--muted);
+}
+
 /* Hero saldo */
 .bumnu-hero {
     display: flex;

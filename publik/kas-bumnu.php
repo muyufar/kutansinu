@@ -79,6 +79,7 @@ $tx_count_all = 0;
 $tag_options = [];
 $tag_filter = bumnuParseTagFilter($_GET);
 $tag_filter_label = null;
+$mutasi_tag = null;
 $logo_url = null;
 
 try {
@@ -110,6 +111,14 @@ try {
         );
 
         if ($tag_filter !== null) {
+            $mutasi_tag = bumnuKasMutasiPeriode(
+                $db,
+                $kasIds,
+                $id_perusahaan,
+                $tanggal_awal,
+                $tanggal_akhir,
+                $tag_filter
+            );
             foreach ($tag_options as $opt) {
                 if ($opt['key'] === $tag_filter || ($tag_filter !== '__kosong__' && $opt['key'] === $tag_filter)) {
                     $tag_filter_label = $opt['label'];
@@ -459,6 +468,34 @@ $tag_query_param = static function (?string $filter): array {
             <?php elseif ($tx_count > 0 && count($transaksi) === $tx_count): ?>
                 <p class="bumnu-footnote"><?= (int) $tx_count ?> transaksi ditampilkan.</p>
             <?php endif; ?>
+            <?php endif; ?>
+            <?php if ($tag_filter !== null && $mutasi_tag !== null): ?>
+                <?php
+                $tag_masuk = (float) $mutasi_tag['masuk'];
+                $tag_keluar = (float) $mutasi_tag['keluar'];
+                $tag_net = $tag_masuk - $tag_keluar;
+                ?>
+                <div class="bumnu-tag-total" aria-label="Total transaksi untuk tag terpilih">
+                    <p class="bumnu-tag-total-title">
+                        Total tag <strong><?= htmlspecialchars($tag_filter_label ?? '') ?></strong>
+                        · <?= (int) $tx_count ?> transaksi
+                    </p>
+                    <dl class="bumnu-tag-total-grid">
+                        <div>
+                            <dt>Uang masuk</dt>
+                            <dd class="is-in">+ <?= htmlspecialchars(formatRupiah($tag_masuk)) ?></dd>
+                        </div>
+                        <div>
+                            <dt>Uang keluar</dt>
+                            <dd class="is-out">− <?= htmlspecialchars(formatRupiah($tag_keluar)) ?></dd>
+                        </div>
+                        <div class="bumnu-tag-total-net">
+                            <dt>Netto (masuk − keluar)</dt>
+                            <dd class="<?= $tag_net >= 0 ? 'is-in' : 'is-out' ?>"><?= htmlspecialchars(formatRupiah($tag_net)) ?></dd>
+                        </div>
+                    </dl>
+                    <p class="bumnu-tag-total-note">Dihitung dari semua transaksi tag ini dalam periode laporan (bukan hanya baris yang tampil di layar).</p>
+                </div>
             <?php endif; ?>
         </section>
 
