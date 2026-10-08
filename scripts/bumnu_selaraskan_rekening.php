@@ -2,24 +2,54 @@
 /**
  * Selaraskan jurnal KAS BUMNU (perusahaan 6) dengan rekening koran Bank BNU.
  *
- * Usage:
- *   php scripts/bumnu_selaraskan_rekening.php                    # dry-run, laporan saja
- *   php scripts/bumnu_selaraskan_rekening.php --apply            # jalankan koreksi COA
- *   php scripts/bumnu_selaraskan_rekening.php --apply --saldo-koran=55345807 --per=2026-10-08
- *   php scripts/bumnu_selaraskan_rekening.php --apply --saldo-awal=552084689 --tanggal-awal=2025-12-14
+ * PENTING production:
+ * - Baris 1 file ini WAJIB "<?php" (bukan "k?php" — bug editor Hostinger).
+ * - JANGAN require config/database.production.php langsung (hanya return array).
+ *   Pakai config/database.php — di server live otomatis memuat database.production.php.
  *
- * Koreksi:
- * 1. Pemasukan yang salah arah (kredit Bank BNU) → tukar debit/kredit
- * 2. Pelunasan RK: Beban Bank (866) → Hutang BNU (834) / Hutang NUGO (827)
- * 3. Opsional jurnal saldo awal rekening (785 ↔ Saldo Awal 849)
- * 4. Opsional neraca hutang RK awal (849 ↔ 834/827, tidak mengubah saldo bank)
- * 5. Penyesuaian selisih kecil ke rekening koran (785 ↔ 849)
+ * CLI:
+ *   php scripts/bumnu_selaraskan_rekening.php
+ *   php scripts/bumnu_selaraskan_rekening.php --apply --saldo-koran=55345807 --per=2026-10-08
+ *
+ * Browser (harus login SiKeu; apply hanya jika ?apply=1):
+ *   .../scripts/bumnu_selaraskan_rekening.php?per=2026-10-08&saldo_koran=55345807
+ *   .../scripts/bumnu_selaraskan_rekening.php?apply=1&saldo_koran=55345807&per=2026-10-08
  */
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/functions.php';
+if (PHP_SAPI !== 'cli') {
+    header('Content-Type: text/plain; charset=utf-8');
+}
+
+try {
+    require_once __DIR__ . '/../config/database.php';
+    require_once __DIR__ . '/../config/functions.php';
+
+    if (PHP_SAPI !== 'cli') {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
+        requireLogin();
+    }
+
+    if (!isset($db) || !$db instanceof PDO) {
+        throw new RuntimeException(
+            'Variabel $db tidak tersedia. Gunakan require config/database.php, bukan database.production.php.'
+        );
+    }
+} catch (Throwable $e) {
+    if (PHP_SAPI !== 'cli') {
+        http_response_code(500);
+        echo "Error: " . $e->getMessage() . "\n";
+        if (function_exists('appEnvironment') && appEnvironment() !== 'production') {
+            echo $e->getTraceAsString();
+        }
+    } else {
+        fwrite(STDERR, $e->getMessage() . PHP_EOL);
+    }
+    exit(1);
+}
 
 const BUMNU_PERUSAHAAN = 6;
 const AKUN_BANK_BNU = 785;
@@ -47,6 +77,46 @@ function argValue(string $name, array $argv): ?string
 function hasFlag(string $name, array $argv): bool
 {
     return in_array($name, $argv, true);
+}
+
+/** CLI ($argv) atau query string browser (?apply=1&saldo_koran=...). */
+function buildRuntimeArgv(): array
+{
+    if (PHP_SAPI === 'cli') {
+        global $argv;
+
+        return is_array($argv) ? $argv : ['scripts/bumnu_selaraskan_rekening.php'];
+    }
+
+    $args = ['scripts/bumnu_selaraskan_rekening.php'];
+    $g = $_GET;
+
+    if (!empty($g['apply']) && (string) $g['apply'] !== '0') {
+        $args[] = '--apply';
+    }
+    if (!empty($g['catat_hutang_rk_awal'])) {
+        $args[] = '--catat-hutang-rk-awal';
+    }
+    if (!empty($g['hapus_transaksi_2166'])) {
+        $args[] = '--hapus-transaksi-2166';
+    }
+
+    $map = [
+        'saldo_koran' => '--saldo-koran',
+        'saldo-koran' => '--saldo-koran',
+        'per' => '--per',
+        'saldo_awal' => '--saldo-awal',
+        'saldo-awal' => '--saldo-awal',
+        'tanggal_awal' => '--tanggal-awal',
+        'tanggal-awal' => '--tanggal-awal',
+    ];
+    foreach ($map as $key => $flag) {
+        if (isset($g[$key]) && (string) $g[$key] !== '') {
+            $args[] = $flag . '=' . rawurlencode((string) $g[$key]);
+        }
+    }
+
+    return $args;
 }
 
 function saldoBank(PDO $db, int $idPerusahaan, int $bankId, string $tanggal): float
@@ -98,15 +168,20 @@ function insertTransaksi(
     }
 }
 
-$apply = hasFlag('--apply', $argv);
-$saldoKoran = argValue('--saldo-koran', $argv);
-$perKoran = argValue('--per', $argv) ?? date('Y-m-d');
-$saldoAwal = argValue('--saldo-awal', $argv);
-$tanggalAwal = argValue('--tanggal-awal', $argv) ?? '2025-12-14';
-$catatHutangAwal = hasFlag('--catat-hutang-rk-awal', $argv);
-$hapusDuplikat2166 = hasFlag('--hapus-transaksi-2166', $argv);
+$runtimeArgv = buildRuntimeArgv();
+$apply = hasFlag('--apply', $runtimeArgv);
+$saldoKoran = argValue('--saldo-koran', $runtimeArgv);
+$perKoran = argValue('--per', $runtimeArgv) ?? date('Y-m-d');
+$saldoAwal = argValue('--saldo-awal', $runtimeArgv);
+$tanggalAwal = argValue('--tanggal-awal', $runtimeArgv) ?? '2025-12-14';
+$catatHutangAwal = hasFlag('--catat-hutang-rk-awal', $runtimeArgv);
+$hapusDuplikat2166 = hasFlag('--hapus-transaksi-2166', $runtimeArgv);
 
-echo $apply ? "MODE: APPLY (perubahan ditulis ke DB)\n\n" : "MODE: DRY-RUN (tambahkan --apply untuk eksekusi)\n\n";
+if (PHP_SAPI !== 'cli') {
+    echo "Environment: " . appEnvironment() . " (config: database." . appEnvironment() . ".php)\n\n";
+}
+
+echo $apply ? "MODE: APPLY (perubahan ditulis ke DB)\n\n" : "MODE: DRY-RUN (tambahkan --apply atau ?apply=1 untuk eksekusi)\n\n";
 
 $saldoSebelum = saldoBank($db, BUMNU_PERUSAHAAN, AKUN_BANK_BNU, $perKoran);
 echo 'Saldo jurnal Bank BNU per ' . $perKoran . ': ' . number_format($saldoSebelum, 0, ',', '.') . "\n\n";
@@ -301,3 +376,9 @@ echo "\n--- Catatan RK ---\n";
 echo "Basil MBG dari BNU = pemasukan (Dr Bank, Cr Pendapatan). Angsuran = Dr Hutang pokok + Dr Beban basil/margin, Cr Bank.\n";
 echo "Pelunasan pokok sudah dipetakan ke akun 834/827, bukan Beban Bank.\n";
 echo "Isi --saldo-koran=<angka di koran> --per=<tanggal koran> setelah cek mutasi.\n";
+
+if (PHP_SAPI !== 'cli') {
+    echo "\n--- URL contoh (sudah login) ---\n";
+    echo "?per=2026-10-08&saldo_koran=55345807\n";
+    echo "?apply=1&per=2026-10-08&saldo_koran=55345807\n";
+}
