@@ -220,15 +220,11 @@ function bumnuPublicTransaksiFetchLimit(array $config, array $periode, int $txCo
     $preset = $periode['form']['preset'] ?? '';
     $fullList = $periode['mode'] === 'preset' && $preset === 'semua';
 
-    if ($fullList) {
-        $limit = min($fullCap, max($txCount, 1));
-        $order = 'asc';
-    } else {
-        $limit = min($normal, max($txCount, 1));
-        $order = 'desc';
-    }
+    $limit = $fullList
+        ? min($fullCap, max($txCount, 1))
+        : min($normal, max($txCount, 1));
 
-    return ['limit' => $limit, 'order' => $order, 'full_list' => $fullList, 'cap' => $fullCap];
+    return ['limit' => $limit, 'order' => 'desc', 'full_list' => $fullList, 'cap' => $fullCap];
 }
 
 function bumnuKasTransaksiList(

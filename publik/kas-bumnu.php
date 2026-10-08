@@ -365,7 +365,7 @@ $tx_fetch = $tx_fetch ?? ['limit' => 120, 'order' => 'desc', 'full_list' => fals
             <header class="bumnu-block-head">
                 <h3>Riwayat transaksi</h3>
                 <?php if (!empty($tx_fetch['full_list'])): ?>
-                    <p>Urutan kronologis (lama → baru) · semua <?= (int) $tx_count ?> transaksi periode ini</p>
+                    <p>Urutan terbaru → terlama · semua <?= (int) $tx_count ?> transaksi periode ini</p>
                 <?php else: ?>
                     <p>Urutan terbaru · maks. <?= (int) ($config['max_transaksi_rows'] ?? 120) ?> baris (pilih preset <strong>Semua data</strong> untuk riwayat lengkap)</p>
                 <?php endif; ?>
