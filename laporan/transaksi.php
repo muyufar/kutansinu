@@ -141,7 +141,7 @@ $transaksi_list = $stmt->fetchAll();
 // Hitung total pemasukan dan pengeluaran berdasarkan filter
 $sql_total = "SELECT 
     SUM(CASE WHEN jenis = 'pemasukan' THEN jumlah ELSE 0 END) as total_pemasukan,
-    SUM(CASE WHEN jenis = 'pengeluaran' THEN jumlah ELSE 0 END) as total_pengeluaran
+    SUM(CASE WHEN jenis IN ('pengeluaran', 'transfer_hutang') THEN jumlah ELSE 0 END) as total_pengeluaran
     FROM transaksi
     WHERE tanggal BETWEEN :tanggal_awal AND :tanggal_akhir
     AND id_perusahaan = :id_perusahaan_total";

@@ -240,11 +240,33 @@ foreach ($modalMap as $tid => $cfg) {
         echo "  #$tid akun debit bukan 866 (Dr {$t['id_akun_debit']}), skip manual\n";
         continue;
     }
-    echo "  #$tid UPDATE Dr {$cfg['debit']} jenis=transfer_hutang | {$cfg['label']}\n";
+    echo "  #$tid UPDATE Dr {$cfg['debit']} jenis=pengeluaran | {$cfg['label']}\n";
     if ($apply) {
-        $u = $db->prepare("UPDATE transaksi SET id_akun_debit = ?, jenis = 'transfer_hutang' WHERE id = ? AND id_perusahaan = ?");
+        $u = $db->prepare("UPDATE transaksi SET id_akun_debit = ?, jenis = 'pengeluaran' WHERE id = ? AND id_perusahaan = ?");
         $u->execute([$cfg['debit'], $tid, BUMNU_PERUSAHAAN]);
     }
+}
+
+// Pelunasan hutang yang sudah transfer_hutang → pengeluaran (tampilan dashboard)
+echo "=== 2a. Bayar hutang = pengeluaran (jenis) ===\n";
+$stmtTh = $db->prepare("
+    SELECT id FROM transaksi
+    WHERE id_perusahaan = ?
+      AND jenis = 'transfer_hutang'
+      AND id_akun_kredit = ?
+      AND id_akun_debit IN (?, ?, ?)
+");
+$stmtTh->execute([BUMNU_PERUSAHAAN, AKUN_BANK_BNU, AKUN_HUTANG_BNU, AKUN_HUTANG_NUGO, AKUN_BEBAN_BANK]);
+$thIds = $stmtTh->fetchAll(PDO::FETCH_COLUMN);
+if ($thIds) {
+    echo '  UPDATE jenis pengeluaran untuk ID: ' . implode(', ', $thIds) . "\n";
+    if ($apply) {
+        $placeholders = implode(',', array_fill(0, count($thIds), '?'));
+        $params = array_merge(['pengeluaran', BUMNU_PERUSAHAAN], array_map('intval', $thIds));
+        $db->prepare("UPDATE transaksi SET jenis = ? WHERE id_perusahaan = ? AND id IN ($placeholders)")->execute($params);
+    }
+} else {
+    echo "  (tidak ada transfer_hutang ke Bank BNU yang perlu diubah)\n";
 }
 
 // Beban adm bank #699 — tetap 866, perbaiki total
@@ -327,8 +349,15 @@ if (!$apply) {
 echo 'Saldo jurnal Bank BNU (setelah koreksi di atas): ' . number_format($saldoSetelah, 0, ',', '.') . "\n";
 
 // --- 5. Penyesuaian ke saldo koran ---
-if ($saldoKoran !== null) {
-    $target = (float) str_replace(['.', ','], ['', '.'], $saldoKoran);
+$saldoKoranTrim = $saldoKoran !== null ? trim((string) $saldoKoran) : '';
+if ($saldoKoranTrim !== '') {
+    $target = (float) str_replace(['.', ','], ['', '.'], $saldoKoranTrim);
+    if ($target <= 0 && !hasFlag('--izinkan-saldo-koran-nol', $runtimeArgv)) {
+        echo "\n=== 5. Penyesuaian rekening koran ===\n";
+        echo "  DIBATALKAN: saldo_koran <= 0 (sering karena parameter kosong/salah).\n";
+        echo "  Isi saldo ASLI dari rekening koran BNU, contoh: saldo_koran=55345807\n";
+        echo "  Jangan samakan dengan 'Net jenis' di dashboard.\n\n";
+    } else {
     $selisih = $target - $saldoSetelah;
     echo "\n=== 5. Penyesuaian rekening koran target " . number_format($target, 0, ',', '.') . " ===\n";
     echo 'Selisih: ' . number_format($selisih, 0, ',', '.') . "\n";
@@ -370,6 +399,10 @@ if ($saldoKoran !== null) {
         $final = saldoBank($db, BUMNU_PERUSAHAAN, AKUN_BANK_BNU, $perKoran);
         echo "\nSaldo akhir Bank BNU: " . number_format($final, 0, ',', '.') . "\n";
     }
+    }
+} else {
+    echo "\n=== 5. Penyesuaian rekening koran ===\n";
+    echo "  Lewati (parameter saldo_koran tidak diisi).\n";
 }
 
 echo "\n--- Catatan RK ---\n";

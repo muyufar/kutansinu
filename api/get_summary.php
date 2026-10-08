@@ -25,7 +25,7 @@ try {
     $total_pemasukan = $stmt_pemasukan->fetch()['total'];
 
     // Query untuk mendapatkan total pengeluaran dengan filter perusahaan
-    $sql_pengeluaran = "SELECT COALESCE(SUM(jumlah), 0) as total FROM transaksi WHERE jenis = 'pengeluaran' AND id_perusahaan = ?";
+    $sql_pengeluaran = 'SELECT COALESCE(SUM(jumlah), 0) as total FROM transaksi WHERE jenis ' . jenisPengeluaranDashboardSqlIn() . ' AND id_perusahaan = ?';
     $stmt_pengeluaran = $db->prepare($sql_pengeluaran);
     $stmt_pengeluaran->execute([$id_perusahaan]);
     $total_pengeluaran = $stmt_pengeluaran->fetch()['total'];

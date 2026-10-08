@@ -35,7 +35,7 @@ if ($is_admin) {
         $stmt_in->execute([$pid]);
         $pemasukan = $stmt_in->fetch()['total'] ?? 0;
         // Total pengeluaran
-        $stmt_out = $db->prepare("SELECT SUM(jumlah) as total FROM transaksi WHERE jenis = 'pengeluaran' AND id_perusahaan = ?");
+        $stmt_out = $db->prepare('SELECT SUM(jumlah) as total FROM transaksi WHERE jenis ' . jenisPengeluaranDashboardSqlIn() . ' AND id_perusahaan = ?');
         $stmt_out->execute([$pid]);
         $pengeluaran = $stmt_out->fetch()['total'] ?? 0;
         // Saldo akhir
@@ -130,7 +130,7 @@ function buildCashFlowSeries(PDO $db, int $idPerusahaan, string $mode): array
             if ($row['tanggal'] >= $p['start'] && $row['tanggal'] <= $p['end']) {
                 if ($row['jenis'] === 'pemasukan') {
                     $masuk += (int)$row['jumlah'];
-                } else {
+                } elseif (isJenisPengeluaranDashboard($row['jenis'])) {
                     $keluar += (int)$row['jumlah'];
                 }
             }
@@ -171,7 +171,7 @@ $kas_bersih_json = json_encode($cf['kas_bersih']);
 $cashflow_all_json = json_encode($cashflow_series);
 
 // Query distribusi pengeluaran per akun debit
-$stmt = $db->prepare("SELECT ad.nama_akun as kategori, SUM(t.jumlah) as total FROM transaksi t LEFT JOIN akun ad ON t.id_akun_debit = ad.id WHERE t.jenis = 'pengeluaran' AND t.id_perusahaan = ? GROUP BY ad.nama_akun ORDER BY total DESC");
+$stmt = $db->prepare('SELECT ad.nama_akun as kategori, SUM(t.jumlah) as total FROM transaksi t LEFT JOIN akun ad ON t.id_akun_debit = ad.id WHERE t.jenis ' . jenisPengeluaranDashboardSqlIn() . ' AND t.id_perusahaan = ? GROUP BY ad.nama_akun ORDER BY total DESC');
 $stmt->execute([$id_perusahaan]);
 $pengeluaran_kategori = $stmt->fetchAll();
 
@@ -250,7 +250,7 @@ function dashboardPeriodTotals(PDO $db, int $pid, string $start, ?string $end = 
 {
     $sql = "SELECT
         COALESCE(SUM(CASE WHEN jenis = 'pemasukan' THEN jumlah ELSE 0 END), 0) AS masuk,
-        COALESCE(SUM(CASE WHEN jenis = 'pengeluaran' THEN jumlah ELSE 0 END), 0) AS keluar
+        COALESCE(SUM(CASE WHEN jenis IN ('pengeluaran', 'transfer_hutang') THEN jumlah ELSE 0 END), 0) AS keluar
         FROM transaksi WHERE id_perusahaan = ? AND tanggal >= ?";
     $params = [$pid, $start];
     if ($end !== null) {
@@ -374,7 +374,7 @@ include 'templates/header.php';
                 </div>
                 <div class="dashboard-kpi-label">Total Pengeluaran</div>
                 <div class="dashboard-kpi-value" id="total-pengeluaran"><?= fmtRp($summary_pengeluaran) ?></div>
-                <div class="dashboard-kpi-meta">Bulan ini: <strong><?= fmtRp($totals_bulan_ini['keluar']) ?></strong></div>
+                <div class="dashboard-kpi-meta">Termasuk bayar hutang · Bulan ini: <strong><?= fmtRp($totals_bulan_ini['keluar']) ?></strong></div>
             </div>
         </div>
         <div class="col-md-4">

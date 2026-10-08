@@ -48,10 +48,29 @@ function getTotalPemasukan($db)
 // Mendapatkan total pengeluaran
 function getTotalPengeluaran($db)
 {
-    $stmt = $db->prepare("SELECT SUM(jumlah) as total FROM transaksi WHERE jenis = 'pengeluaran'");
+    $stmt = $db->prepare('SELECT SUM(jumlah) as total FROM transaksi WHERE jenis ' . jenisPengeluaranDashboardSqlIn());
     $stmt->execute();
     $result = $stmt->fetch();
     return $result['total'] ?? 0;
+}
+
+/**
+ * Jenis yang di dashboard/laporan ringkas dihitung sebagai pengeluaran (uang keluar).
+ * Pembayaran hutang (transfer_hutang) ikut agar selaras dengan rekening koran.
+ */
+function jenisPengeluaranDashboardList(): array
+{
+    return ['pengeluaran', 'transfer_hutang'];
+}
+
+function jenisPengeluaranDashboardSqlIn(): string
+{
+    return "IN ('pengeluaran', 'transfer_hutang')";
+}
+
+function isJenisPengeluaranDashboard(string $jenis): bool
+{
+    return in_array($jenis, jenisPengeluaranDashboardList(), true);
 }
 
 // Mendapatkan saldo
