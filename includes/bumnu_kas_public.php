@@ -146,12 +146,102 @@ function bumnuJenisLabel(string $jenis): string
     return $map[$jenis] ?? ucfirst(str_replace('_', ' ', $jenis));
 }
 
-function bumnuKasMutasiPeriode(PDO $db, array $kasIds, int $id_perusahaan, string $tanggal_awal, string $tanggal_akhir): array
+/** @return array{0: string, 1: array<int, mixed>} SQL AND-fragment + bind params (after kas CASE placeholders) */
+function bumnuKasTagSqlFragment(?string $tagFilter): array
 {
+    if ($tagFilter === null || $tagFilter === '') {
+        return ['', []];
+    }
+    if ($tagFilter === '__kosong__') {
+        return [' AND (t.tag IS NULL OR TRIM(t.tag) = \'\')', []];
+    }
+
+    return [' AND TRIM(t.tag) = ?', [$tagFilter]];
+}
+
+function bumnuParseTagFilter(array $query): ?string
+{
+    if (!isset($query['tag'])) {
+        return null;
+    }
+    $tag = trim((string) $query['tag']);
+    if ($tag === '' || $tag === '__all__') {
+        return null;
+    }
+    if ($tag === '__kosong__') {
+        return '__kosong__';
+    }
+    if (strlen($tag) > 80) {
+        return null;
+    }
+
+    return $tag;
+}
+
+function bumnuKasTagsInPeriode(
+    PDO $db,
+    array $kasIds,
+    int $id_perusahaan,
+    string $tanggal_awal,
+    string $tanggal_akhir
+): array {
+    if ($kasIds === []) {
+        return [];
+    }
+    $ph = implode(',', array_fill(0, count($kasIds), '?'));
+    $params = array_merge([$id_perusahaan, $tanggal_awal, $tanggal_akhir], $kasIds, $kasIds);
+    $sql = "
+        SELECT TRIM(t.tag) AS tag_label, COUNT(*) AS cnt
+        FROM transaksi t
+        WHERE t.id_perusahaan = ?
+          AND t.tanggal BETWEEN ? AND ?
+          AND (t.id_akun_debit IN ($ph) OR t.id_akun_kredit IN ($ph))
+        GROUP BY tag_label
+        ORDER BY cnt DESC, tag_label ASC
+    ";
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+    $rows = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $label = (string) $row['tag_label'];
+        $key = $label === '' ? '__kosong__' : $label;
+        $display = $label === '' ? '(Tanpa tag)' : $label;
+        $rows[] = [
+            'key' => $key,
+            'label' => $display,
+            'count' => (int) $row['cnt'],
+        ];
+    }
+
+    return $rows;
+}
+
+/** Query params periode untuk dipertahankan saat ganti tag / preset */
+function bumnuPublicPeriodQueryParams(array $periode): array
+{
+    $params = ['mode' => $periode['mode']];
+    foreach ($periode['form'] as $k => $v) {
+        if ($v !== '') {
+            $params[$k] = $v;
+        }
+    }
+
+    return $params;
+}
+
+function bumnuKasMutasiPeriode(
+    PDO $db,
+    array $kasIds,
+    int $id_perusahaan,
+    string $tanggal_awal,
+    string $tanggal_akhir,
+    ?string $tagFilter = null
+): array {
     if ($kasIds === []) {
         return ['masuk' => 0.0, 'keluar' => 0.0, 'by_jenis' => []];
     }
     $ph = implode(',', array_fill(0, count($kasIds), '?'));
+    [$tagSql, $tagParams] = bumnuKasTagSqlFragment($tagFilter);
     $sql = "
         SELECT
             t.jenis,
@@ -161,9 +251,10 @@ function bumnuKasMutasiPeriode(PDO $db, array $kasIds, int $id_perusahaan, strin
         WHERE t.id_perusahaan = ?
           AND t.tanggal BETWEEN ? AND ?
           AND (t.id_akun_debit IN ($ph) OR t.id_akun_kredit IN ($ph))
+          {$tagSql}
         GROUP BY t.jenis
     ";
-    $params = array_merge($kasIds, $kasIds, [$id_perusahaan, $tanggal_awal, $tanggal_akhir], $kasIds, $kasIds);
+    $params = array_merge($kasIds, $kasIds, [$id_perusahaan, $tanggal_awal, $tanggal_akhir], $kasIds, $kasIds, $tagParams);
 
     $stmt = $db->prepare($sql);
     $stmt->execute($params);
@@ -193,18 +284,26 @@ function bumnuKasMutasiPeriode(PDO $db, array $kasIds, int $id_perusahaan, strin
     return ['masuk' => $masuk, 'keluar' => $keluar, 'by_jenis' => $by_jenis];
 }
 
-function bumnuKasTransaksiCount(PDO $db, array $kasIds, int $id_perusahaan, string $tanggal_awal, string $tanggal_akhir): int
-{
+function bumnuKasTransaksiCount(
+    PDO $db,
+    array $kasIds,
+    int $id_perusahaan,
+    string $tanggal_awal,
+    string $tanggal_akhir,
+    ?string $tagFilter = null
+): int {
     if ($kasIds === []) {
         return 0;
     }
     $ph = implode(',', array_fill(0, count($kasIds), '?'));
-    $params = array_merge([$id_perusahaan, $tanggal_awal, $tanggal_akhir], $kasIds, $kasIds);
+    [$tagSql, $tagParams] = bumnuKasTagSqlFragment($tagFilter);
+    $params = array_merge([$id_perusahaan, $tanggal_awal, $tanggal_akhir], $kasIds, $kasIds, $tagParams);
     $sql = "
         SELECT COUNT(*) FROM transaksi t
         WHERE t.id_perusahaan = ?
           AND t.tanggal BETWEEN ? AND ?
           AND (t.id_akun_debit IN ($ph) OR t.id_akun_kredit IN ($ph))
+          {$tagSql}
     ";
     $stmt = $db->prepare($sql);
     $stmt->execute($params);
@@ -234,23 +333,26 @@ function bumnuKasTransaksiList(
     string $tanggal_awal,
     string $tanggal_akhir,
     int $limit,
-    string $order = 'desc'
+    string $order = 'desc',
+    ?string $tagFilter = null
 ): array {
     if ($kasIds === []) {
         return [];
     }
     $ph = implode(',', array_fill(0, count($kasIds), '?'));
+    [$tagSql, $tagParams] = bumnuKasTagSqlFragment($tagFilter);
     $limit = max(1, min(2000, (int) $limit));
     $order = strtolower($order) === 'asc' ? 'ASC' : 'DESC';
-    $params = array_merge($kasIds, [$id_perusahaan, $tanggal_awal, $tanggal_akhir], $kasIds, $kasIds);
+    $params = array_merge($kasIds, [$id_perusahaan, $tanggal_awal, $tanggal_akhir], $kasIds, $kasIds, $tagParams);
 
     $sql = "
-        SELECT t.tanggal, t.keterangan, t.jenis, t.total,
+        SELECT t.tanggal, t.keterangan, t.jenis, t.tag, t.total,
             CASE WHEN t.id_akun_debit IN ($ph) THEN 'masuk' ELSE 'keluar' END AS arah
         FROM transaksi t
         WHERE t.id_perusahaan = ?
           AND t.tanggal BETWEEN ? AND ?
           AND (t.id_akun_debit IN ($ph) OR t.id_akun_kredit IN ($ph))
+          {$tagSql}
         ORDER BY t.tanggal {$order}, t.id {$order}
         LIMIT {$limit}
     ";

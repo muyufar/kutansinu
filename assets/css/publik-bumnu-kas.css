@@ -262,6 +262,49 @@
     font-variant-numeric: tabular-nums;
 }
 
+.bumnu-tag-form {
+    margin-top: 0.85rem;
+    padding-top: 0.85rem;
+    border-top: 1px dashed var(--line);
+}
+
+.bumnu-tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: stretch;
+}
+
+.bumnu-field-tag select {
+    flex: 1 1 12rem;
+    min-width: 0;
+    font: inherit;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+}
+
+.bumnu-tag-row .bumnu-btn-primary {
+    flex: 0 0 auto;
+}
+
+.bumnu-tag-active {
+    margin: 0.5rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--muted);
+}
+
+.bumnu-tag-active a {
+    color: var(--brand);
+    font-weight: 500;
+}
+
+.bumnu-tx-tag.is-label {
+    background: #e8f0ed;
+    color: var(--brand-dark);
+}
+
 /* Hero saldo */
 .bumnu-hero {
     display: flex;

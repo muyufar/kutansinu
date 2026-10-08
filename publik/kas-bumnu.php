@@ -75,6 +75,10 @@ $mutasi = ['masuk' => 0.0, 'keluar' => 0.0, 'by_jenis' => []];
 $rekening = [];
 $transaksi = [];
 $tx_count = 0;
+$tx_count_all = 0;
+$tag_options = [];
+$tag_filter = bumnuParseTagFilter($_GET);
+$tag_filter_label = null;
 $logo_url = null;
 
 try {
@@ -89,8 +93,10 @@ try {
         $saldo_awal = bumnuTotalSaldoKas($db, $kasAccounts, $hari_sebelum_awal, $id_perusahaan);
         $saldo_akhir = bumnuTotalSaldoKas($db, $kasAccounts, $tanggal_akhir, $id_perusahaan);
         $rekening = bumnuSaldoPerRekening($db, $kasAccounts, $tanggal_akhir, $id_perusahaan);
-        $mutasi = bumnuKasMutasiPeriode($db, $kasIds, $id_perusahaan, $tanggal_awal, $tanggal_akhir);
-        $tx_count = bumnuKasTransaksiCount($db, $kasIds, $id_perusahaan, $tanggal_awal, $tanggal_akhir);
+        $mutasi = bumnuKasMutasiPeriode($db, $kasIds, $id_perusahaan, $tanggal_awal, $tanggal_akhir, null);
+        $tag_options = bumnuKasTagsInPeriode($db, $kasIds, $id_perusahaan, $tanggal_awal, $tanggal_akhir);
+        $tx_count_all = bumnuKasTransaksiCount($db, $kasIds, $id_perusahaan, $tanggal_awal, $tanggal_akhir, null);
+        $tx_count = bumnuKasTransaksiCount($db, $kasIds, $id_perusahaan, $tanggal_awal, $tanggal_akhir, $tag_filter);
         $tx_fetch = bumnuPublicTransaksiFetchLimit($config, $periode, $tx_count);
         $transaksi = bumnuKasTransaksiList(
             $db,
@@ -99,8 +105,21 @@ try {
             $tanggal_awal,
             $tanggal_akhir,
             $tx_fetch['limit'],
-            $tx_fetch['order']
+            $tx_fetch['order'],
+            $tag_filter
         );
+
+        if ($tag_filter !== null) {
+            foreach ($tag_options as $opt) {
+                if ($opt['key'] === $tag_filter || ($tag_filter !== '__kosong__' && $opt['key'] === $tag_filter)) {
+                    $tag_filter_label = $opt['label'];
+                    break;
+                }
+            }
+            if ($tag_filter_label === null) {
+                $tag_filter_label = $tag_filter === '__kosong__' ? '(Tanpa tag)' : $tag_filter;
+            }
+        }
 
         if (!empty($perusahaan['logo']) && is_file(__DIR__ . '/../' . $perusahaan['logo'])) {
             $logo_url = '/' . ltrim($perusahaan['logo'], '/');
@@ -126,6 +145,14 @@ $presets = [
 ];
 $active_preset = ($filter_mode === 'preset' && isset($filter_form['preset'])) ? $filter_form['preset'] : '';
 $tx_fetch = $tx_fetch ?? ['limit' => 120, 'order' => 'desc', 'full_list' => false, 'cap' => 500];
+$period_query = bumnuPublicPeriodQueryParams($periode);
+$tag_query_param = static function (?string $filter): array {
+    if ($filter === null) {
+        return [];
+    }
+
+    return ['tag' => $filter === '__kosong__' ? '__kosong__' : $filter];
+};
 
 ?>
 <!DOCTYPE html>
@@ -165,7 +192,7 @@ $tx_fetch = $tx_fetch ?? ['limit' => 120, 'order' => 'desc', 'full_list' => fals
         <nav class="bumnu-presets" aria-label="Periode cepat">
             <?php foreach ($presets as $key => $label): ?>
                 <?php
-                $qs = bumnuPublicQueryString(['mode' => 'preset', 'preset' => $key], $token_hidden);
+                $qs = bumnuPublicQueryString(array_merge(['mode' => 'preset', 'preset' => $key], $tag_query_param($tag_filter)), $token_hidden);
                 $isActive = $active_preset === $key;
                 ?>
                 <a class="bumnu-preset<?= $isActive ? ' is-active' : '' ?>" href="?<?= htmlspecialchars($qs) ?>"><?= htmlspecialchars($label) ?></a>
@@ -177,6 +204,9 @@ $tx_fetch = $tx_fetch ?? ['limit' => 120, 'order' => 'desc', 'full_list' => fals
             <form class="bumnu-filter-form" method="get" action="">
                 <?php if ($token_hidden !== ''): ?>
                     <input type="hidden" name="token" value="<?= htmlspecialchars($token_hidden) ?>">
+                <?php endif; ?>
+                <?php if ($tag_filter !== null): ?>
+                    <input type="hidden" name="tag" value="<?= htmlspecialchars($tag_filter === '__kosong__' ? '__kosong__' : $tag_filter) ?>">
                 <?php endif; ?>
 
                 <div class="bumnu-field">
@@ -277,6 +307,38 @@ $tx_fetch = $tx_fetch ?? ['limit' => 120, 'order' => 'desc', 'full_list' => fals
             <strong><?= htmlspecialchars($periode_label) ?></strong>
             <span class="bumnu-period-range"><?= htmlspecialchars(bumnuFormatTanggalIndonesia($tanggal_awal)) ?> – <?= htmlspecialchars(bumnuFormatTanggalIndonesia($tanggal_akhir)) ?></span>
         </p>
+
+        <?php if (!$error && $tag_options !== []): ?>
+        <form class="bumnu-tag-form" method="get" action="">
+            <?php if ($token_hidden !== ''): ?>
+                <input type="hidden" name="token" value="<?= htmlspecialchars($token_hidden) ?>">
+            <?php endif; ?>
+            <?php foreach ($period_query as $pk => $pv): ?>
+                <input type="hidden" name="<?= htmlspecialchars($pk) ?>" value="<?= htmlspecialchars((string) $pv) ?>">
+            <?php endforeach; ?>
+            <div class="bumnu-field bumnu-field-tag">
+                <label for="tag">Filter tag transaksi</label>
+                <div class="bumnu-tag-row">
+                    <select id="tag" name="tag">
+                        <option value="__all__"<?= $tag_filter === null ? ' selected' : '' ?>>Semua tag (<?= (int) $tx_count_all ?>)</option>
+                        <?php foreach ($tag_options as $opt): ?>
+                            <option value="<?= htmlspecialchars($opt['key']) ?>"<?= $tag_filter === $opt['key'] ? ' selected' : '' ?>>
+                                <?= htmlspecialchars($opt['label']) ?> (<?= (int) $opt['count'] ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <button type="submit" class="bumnu-btn-primary">Filter</button>
+                </div>
+            </div>
+            <?php if ($tag_filter !== null): ?>
+                <?php
+                $clearTagQs = bumnuPublicQueryString(array_merge($period_query, ['tag' => '__all__']), $token_hidden);
+                ?>
+                <p class="bumnu-tag-active">Tag aktif: <strong><?= htmlspecialchars($tag_filter_label ?? '') ?></strong>
+                    · <a href="?<?= htmlspecialchars($clearTagQs) ?>">Hapus filter tag</a></p>
+            <?php endif; ?>
+        </form>
+        <?php endif; ?>
     </section>
 
     <?php if ($error): ?>
@@ -313,7 +375,7 @@ $tx_fetch = $tx_fetch ?? ['limit' => 120, 'order' => 'desc', 'full_list' => fals
             </article>
         </div>
         <p class="bumnu-flow-note">Netto periode (masuk − keluar): <strong><?= htmlspecialchars(formatRupiah($net_periode)) ?></strong>
-            · <?= (int) $tx_count ?> transaksi tercatat</p>
+            · <?= (int) $tx_count_all ?> transaksi kas<?= $tag_filter !== null ? ' · riwayat difilter: ' . (int) $tx_count : '' ?></p>
 
         <?php if ($rekening !== []): ?>
         <section class="bumnu-block">
@@ -364,7 +426,9 @@ $tx_fetch = $tx_fetch ?? ['limit' => 120, 'order' => 'desc', 'full_list' => fals
         <section class="bumnu-block">
             <header class="bumnu-block-head">
                 <h3>Riwayat transaksi</h3>
-                <?php if (!empty($tx_fetch['full_list'])): ?>
+                <?php if ($tag_filter !== null): ?>
+                    <p>Tag: <strong><?= htmlspecialchars($tag_filter_label ?? '') ?></strong> · urutan terbaru → terlama</p>
+                <?php elseif (!empty($tx_fetch['full_list'])): ?>
                     <p>Urutan terbaru → terlama · semua <?= (int) $tx_count ?> transaksi periode ini</p>
                 <?php else: ?>
                     <p>Urutan terbaru · maks. <?= (int) ($config['max_transaksi_rows'] ?? 120) ?> baris (pilih preset <strong>Semua data</strong> untuk riwayat lengkap)</p>
@@ -379,6 +443,9 @@ $tx_fetch = $tx_fetch ?? ['limit' => 120, 'order' => 'desc', 'full_list' => fals
                     <div class="bumnu-tx-meta">
                         <time datetime="<?= htmlspecialchars($t['tanggal']) ?>"><?= htmlspecialchars(bumnuFormatTanggalIndonesia($t['tanggal'])) ?></time>
                         <span class="bumnu-tx-tag"><?= htmlspecialchars($t['jenis_label']) ?></span>
+                        <?php if (trim((string) ($t['tag'] ?? '')) !== ''): ?>
+                            <span class="bumnu-tx-tag is-label"><?= htmlspecialchars(trim((string) $t['tag'])) ?></span>
+                        <?php endif; ?>
                     </div>
                     <p class="bumnu-tx-desc"><?= htmlspecialchars($t['keterangan']) ?></p>
                     <p class="bumnu-tx-amt <?= $t['arah'] === 'masuk' ? 'is-in' : 'is-out' ?>">
