@@ -51,6 +51,14 @@ function loadDatabaseConfig(): array
         throw new RuntimeException($message);
     }
 
+    $head = (string) file_get_contents($configFile, false, null, 0, 32);
+    if (strpos($head, '<?php') !== 0) {
+        throw new RuntimeException(
+            'File ' . basename($configFile) . ' tidak valid: baris pertama harus persis <?php '
+            . '(editor online Hostinger sering mengubahnya menjadi k?php — ketik ulang tanda < di awal file).'
+        );
+    }
+
     $config = require $configFile;
 
     foreach (['host', 'dbname', 'username', 'password'] as $key) {
