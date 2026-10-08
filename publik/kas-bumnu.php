@@ -1,10 +1,34 @@
 <?php
 
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/functions.php';
-require_once __DIR__ . '/../includes/bumnu_kas_public.php';
+declare(strict_types=1);
 
-$config = bumnuPublicConfig();
+$bumnuHelper = __DIR__ . '/../includes/bumnu_kas_public.php';
+$bumnuConfigFile = __DIR__ . '/../config/public_report.php';
+
+if (!is_file($bumnuHelper)) {
+    http_response_code(500);
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<p>File <code>includes/bumnu_kas_public.php</code> belum ada di server. Upload folder <code>includes/</code> dari project lokal.</p>';
+    exit;
+}
+if (!is_file($bumnuConfigFile)) {
+    http_response_code(500);
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<p>File <code>config/public_report.php</code> belum ada di server.</p>';
+    exit;
+}
+
+try {
+    require_once __DIR__ . '/../config/database.php';
+    require_once __DIR__ . '/../config/functions.php';
+    require_once $bumnuHelper;
+    $config = bumnuPublicConfig();
+} catch (Throwable $e) {
+    http_response_code(500);
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<p>Laporan sementara tidak dapat dimuat. Periksa konfigurasi server.</p>';
+    exit;
+}
 $cssVer = @filemtime(__DIR__ . '/../assets/css/publik-bumnu-kas.css') ?: time();
 
 if (!bumnuPublicCheckToken()) {
@@ -39,7 +63,12 @@ $tanggal_awal = $bulan . '-01';
 $tanggal_akhir = date('Y-m-t', strtotime($tanggal_awal));
 $hari_sebelum_awal = date('Y-m-d', strtotime($tanggal_awal . ' -1 day'));
 
-$perusahaan = bumnuResolveCompany($db);
+$token_hidden = '';
+if (!empty($config['access_token'])) {
+    $token_hidden = (string) ($_GET['token'] ?? '');
+}
+
+$perusahaan = null;
 $error = null;
 $saldo_akhir = 0.0;
 $saldo_awal = 0.0;
@@ -48,29 +77,34 @@ $rekening = [];
 $transaksi = [];
 $logo_url = null;
 
-if (!$perusahaan) {
-    $error = 'Data perusahaan Kas BUMNU belum ditemukan di sistem.';
-} else {
-    $id_perusahaan = (int) $perusahaan['id'];
-    $kasAccounts = bumnuGetKasAccounts($db, $id_perusahaan);
-    $kasIds = array_map(static fn ($a) => (int) $a['id'], $kasAccounts);
+try {
+    $perusahaan = bumnuResolveCompany($db);
+    if (!$perusahaan) {
+        $error = 'Data perusahaan Kas BUMNU belum ditemukan di sistem.';
+    } else {
+        $id_perusahaan = (int) $perusahaan['id'];
+        $kasAccounts = bumnuGetKasAccounts($db, $id_perusahaan);
+        $kasIds = array_map(static fn ($a) => (int) $a['id'], $kasAccounts);
 
-    $saldo_awal = bumnuTotalSaldoKas($db, $kasAccounts, $hari_sebelum_awal, $id_perusahaan);
-    $saldo_akhir = bumnuTotalSaldoKas($db, $kasAccounts, $tanggal_akhir, $id_perusahaan);
-    $rekening = bumnuSaldoPerRekening($db, $kasAccounts, $tanggal_akhir, $id_perusahaan);
-    $mutasi = bumnuKasMutasiPeriode($db, $kasIds, $id_perusahaan, $tanggal_awal, $tanggal_akhir);
-    $transaksi = bumnuKasTransaksiList(
-        $db,
-        $kasIds,
-        $id_perusahaan,
-        $tanggal_awal,
-        $tanggal_akhir,
-        (int) ($config['max_transaksi_rows'] ?? 120)
-    );
+        $saldo_awal = bumnuTotalSaldoKas($db, $kasAccounts, $hari_sebelum_awal, $id_perusahaan);
+        $saldo_akhir = bumnuTotalSaldoKas($db, $kasAccounts, $tanggal_akhir, $id_perusahaan);
+        $rekening = bumnuSaldoPerRekening($db, $kasAccounts, $tanggal_akhir, $id_perusahaan);
+        $mutasi = bumnuKasMutasiPeriode($db, $kasIds, $id_perusahaan, $tanggal_awal, $tanggal_akhir);
+        $transaksi = bumnuKasTransaksiList(
+            $db,
+            $kasIds,
+            $id_perusahaan,
+            $tanggal_awal,
+            $tanggal_akhir,
+            (int) ($config['max_transaksi_rows'] ?? 120)
+        );
 
-    if (!empty($perusahaan['logo']) && is_file(__DIR__ . '/../' . $perusahaan['logo'])) {
-        $logo_url = '/' . ltrim($perusahaan['logo'], '/');
+        if (!empty($perusahaan['logo']) && is_file(__DIR__ . '/../' . $perusahaan['logo'])) {
+            $logo_url = '/' . ltrim($perusahaan['logo'], '/');
+        }
     }
+} catch (Throwable $e) {
+    $error = 'Gagal memuat data laporan. Pastikan database dan file aplikasi sudah lengkap.';
 }
 
 $bulan_label = bumnuFormatBulanIndonesia($bulan);
@@ -104,8 +138,8 @@ $generated_at = date('d/m/Y H:i');
     </header>
 
     <form class="bumnu-period-form" method="get" action="">
-        <?php if ($token_qs !== ''): ?>
-            <input type="hidden" name="token" value="<?= htmlspecialchars((string) $_GET['token']) ?>">
+        <?php if ($token_hidden !== ''): ?>
+            <input type="hidden" name="token" value="<?= htmlspecialchars($token_hidden) ?>">
         <?php endif; ?>
         <div>
             <label for="bulan">Periode laporan</label>

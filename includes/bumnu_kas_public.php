@@ -1,10 +1,53 @@
 <?php
 
+/** Fallback jika functions.php di server belum terbaru (login bisa jalan, laporan publik butuh ini). */
+if (!function_exists('hitungMutasiAkun')) {
+    function hitungMutasiAkun($total_debit, $total_kredit, $tipe_akun)
+    {
+        $total_debit = (float) $total_debit;
+        $total_kredit = (float) $total_kredit;
+        if ($tipe_akun === 'debit') {
+            return $total_debit - $total_kredit;
+        }
+        return $total_kredit - $total_debit;
+    }
+}
+
+if (!function_exists('getSaldoAkunSampaiTanggal')) {
+    function getSaldoAkunSampaiTanggal($db, $id_akun, $tanggal_akhir, $id_perusahaan, $tipe_akun)
+    {
+        $stmt = $db->prepare('
+            SELECT
+                COALESCE(SUM(CASE WHEN t.id_akun_debit = ? THEN t.jumlah ELSE 0 END), 0) AS total_debit,
+                COALESCE(SUM(CASE WHEN t.id_akun_kredit = ? THEN t.jumlah ELSE 0 END), 0) AS total_kredit
+            FROM transaksi t
+            WHERE t.id_perusahaan = ?
+              AND t.tanggal <= ?
+              AND (t.id_akun_debit = ? OR t.id_akun_kredit = ?)
+        ');
+        $stmt->execute([$id_akun, $id_akun, $id_perusahaan, $tanggal_akhir, $id_akun, $id_akun]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return hitungMutasiAkun($row['total_debit'], $row['total_kredit'], $tipe_akun);
+    }
+}
+
+if (!function_exists('formatRupiah')) {
+    function formatRupiah($angka)
+    {
+        return 'Rp ' . number_format((float) $angka, 0, ',', '.');
+    }
+}
+
 function bumnuPublicConfig(): array
 {
     static $config = null;
     if ($config === null) {
-        $config = require __DIR__ . '/../config/public_report.php';
+        $path = __DIR__ . '/../config/public_report.php';
+        $head = (string) file_get_contents($path, false, null, 0, 32);
+        if (strpos($head, '<?php') !== 0) {
+            throw new RuntimeException('config/public_report.php rusak: baris pertama harus <?php');
+        }
+        $config = require $path;
     }
     return $config;
 }
@@ -156,7 +199,8 @@ function bumnuKasTransaksiList(PDO $db, array $kasIds, int $id_perusahaan, strin
         return [];
     }
     $ph = implode(',', array_fill(0, count($kasIds), '?'));
-    $params = array_merge($kasIds, [$id_perusahaan, $tanggal_awal, $tanggal_akhir], $kasIds, $kasIds, [$limit]);
+    $limit = max(1, min(500, (int) $limit));
+    $params = array_merge($kasIds, [$id_perusahaan, $tanggal_awal, $tanggal_akhir], $kasIds, $kasIds);
 
     $sql = "
         SELECT t.tanggal, t.keterangan, t.jenis, t.total,
@@ -166,7 +210,7 @@ function bumnuKasTransaksiList(PDO $db, array $kasIds, int $id_perusahaan, strin
           AND t.tanggal BETWEEN ? AND ?
           AND (t.id_akun_debit IN ($ph) OR t.id_akun_kredit IN ($ph))
         ORDER BY t.tanggal DESC, t.id DESC
-        LIMIT ?
+        LIMIT {$limit}
     ";
     $stmt = $db->prepare($sql);
     $stmt->execute($params);
