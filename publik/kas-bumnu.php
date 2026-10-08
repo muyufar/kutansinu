@@ -91,13 +91,15 @@ try {
         $rekening = bumnuSaldoPerRekening($db, $kasAccounts, $tanggal_akhir, $id_perusahaan);
         $mutasi = bumnuKasMutasiPeriode($db, $kasIds, $id_perusahaan, $tanggal_awal, $tanggal_akhir);
         $tx_count = bumnuKasTransaksiCount($db, $kasIds, $id_perusahaan, $tanggal_awal, $tanggal_akhir);
+        $tx_fetch = bumnuPublicTransaksiFetchLimit($config, $periode, $tx_count);
         $transaksi = bumnuKasTransaksiList(
             $db,
             $kasIds,
             $id_perusahaan,
             $tanggal_awal,
             $tanggal_akhir,
-            (int) ($config['max_transaksi_rows'] ?? 120)
+            $tx_fetch['limit'],
+            $tx_fetch['order']
         );
 
         if (!empty($perusahaan['logo']) && is_file(__DIR__ . '/../' . $perusahaan['logo'])) {
@@ -123,6 +125,7 @@ $presets = [
     'semua' => 'Semua data',
 ];
 $active_preset = ($filter_mode === 'preset' && isset($filter_form['preset'])) ? $filter_form['preset'] : '';
+$tx_fetch = $tx_fetch ?? ['limit' => 120, 'order' => 'desc', 'full_list' => false, 'cap' => 500];
 
 ?>
 <!DOCTYPE html>
@@ -361,7 +364,11 @@ $active_preset = ($filter_mode === 'preset' && isset($filter_form['preset'])) ? 
         <section class="bumnu-block">
             <header class="bumnu-block-head">
                 <h3>Riwayat transaksi</h3>
-                <p>Urutan terbaru · maks. <?= (int) ($config['max_transaksi_rows'] ?? 120) ?> baris</p>
+                <?php if (!empty($tx_fetch['full_list'])): ?>
+                    <p>Urutan kronologis (lama → baru) · semua <?= (int) $tx_count ?> transaksi periode ini</p>
+                <?php else: ?>
+                    <p>Urutan terbaru · maks. <?= (int) ($config['max_transaksi_rows'] ?? 120) ?> baris (pilih preset <strong>Semua data</strong> untuk riwayat lengkap)</p>
+                <?php endif; ?>
             </header>
             <?php if ($transaksi === []): ?>
                 <p class="bumnu-empty">Tidak ada pergerakan kas pada periode ini.</p>
@@ -381,7 +388,9 @@ $active_preset = ($filter_mode === 'preset' && isset($filter_form['preset'])) ? 
                 <?php endforeach; ?>
             </div>
             <?php if ($tx_count > count($transaksi)): ?>
-                <p class="bumnu-footnote">Menampilkan <?= count($transaksi) ?> dari <?= (int) $tx_count ?> transaksi. Hubungi pengurus untuk ekspor lengkap.</p>
+                <p class="bumnu-footnote">Menampilkan <?= count($transaksi) ?> dari <?= (int) $tx_count ?> transaksi (batas <?= (int) $tx_fetch['cap'] ?> baris). Hubungi pengurus untuk ekspor lengkap.</p>
+            <?php elseif ($tx_count > 0 && count($transaksi) === $tx_count): ?>
+                <p class="bumnu-footnote"><?= (int) $tx_count ?> transaksi ditampilkan.</p>
             <?php endif; ?>
             <?php endif; ?>
         </section>

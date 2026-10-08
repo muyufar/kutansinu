@@ -212,13 +212,40 @@ function bumnuKasTransaksiCount(PDO $db, array $kasIds, int $id_perusahaan, stri
     return (int) $stmt->fetchColumn();
 }
 
-function bumnuKasTransaksiList(PDO $db, array $kasIds, int $id_perusahaan, string $tanggal_awal, string $tanggal_akhir, int $limit): array
+function bumnuPublicTransaksiFetchLimit(array $config, array $periode, int $txCount): array
 {
+    $normal = max(1, (int) ($config['max_transaksi_rows'] ?? 120));
+    $fullCap = max($normal, (int) ($config['max_transaksi_rows_semua'] ?? 500));
+
+    $preset = $periode['form']['preset'] ?? '';
+    $fullList = $periode['mode'] === 'preset' && $preset === 'semua';
+
+    if ($fullList) {
+        $limit = min($fullCap, max($txCount, 1));
+        $order = 'asc';
+    } else {
+        $limit = min($normal, max($txCount, 1));
+        $order = 'desc';
+    }
+
+    return ['limit' => $limit, 'order' => $order, 'full_list' => $fullList, 'cap' => $fullCap];
+}
+
+function bumnuKasTransaksiList(
+    PDO $db,
+    array $kasIds,
+    int $id_perusahaan,
+    string $tanggal_awal,
+    string $tanggal_akhir,
+    int $limit,
+    string $order = 'desc'
+): array {
     if ($kasIds === []) {
         return [];
     }
     $ph = implode(',', array_fill(0, count($kasIds), '?'));
-    $limit = max(1, min(500, (int) $limit));
+    $limit = max(1, min(2000, (int) $limit));
+    $order = strtolower($order) === 'asc' ? 'ASC' : 'DESC';
     $params = array_merge($kasIds, [$id_perusahaan, $tanggal_awal, $tanggal_akhir], $kasIds, $kasIds);
 
     $sql = "
@@ -228,7 +255,7 @@ function bumnuKasTransaksiList(PDO $db, array $kasIds, int $id_perusahaan, strin
         WHERE t.id_perusahaan = ?
           AND t.tanggal BETWEEN ? AND ?
           AND (t.id_akun_debit IN ($ph) OR t.id_akun_kredit IN ($ph))
-        ORDER BY t.tanggal DESC, t.id DESC
+        ORDER BY t.tanggal {$order}, t.id {$order}
         LIMIT {$limit}
     ";
     $stmt = $db->prepare($sql);

@@ -9,6 +9,8 @@ return [
     'bumnu_company_names' => ['KAS BUMNU'],
     'access_token' => getenv('BUMNU_PUBLIC_REPORT_TOKEN') ?: '',
     'max_transaksi_rows' => 120,
+    /** Batas saat preset "Semua data" (riwayat lengkap periode) */
+    'max_transaksi_rows_semua' => 500,
     'page_title' => 'Laporan Kas BUMNU',
     'org_line' => 'PCNU Kabupaten Magelang',
     'footnote' => 'Angka dihitung dari pencatatan transaksi resmi. Untuk rincian teknis lengkap, hubungi pengurus BUMNU.',
