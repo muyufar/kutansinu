@@ -63,3 +63,40 @@ function loadDatabaseConfig(): array
 
     return $config;
 }
+
+function buildMysqlPdoDsn(array $dbConfig, string $hostOverride = null): string
+{
+    $host = $hostOverride ?? $dbConfig['host'];
+    $dbname = $dbConfig['dbname'];
+    $charset = $dbConfig['charset'] ?? 'utf8mb4';
+
+    if (!empty($dbConfig['socket'])) {
+        return 'mysql:unix_socket=' . $dbConfig['socket'] . ';dbname=' . $dbname . ';charset=' . $charset;
+    }
+
+    $dsn = 'mysql:host=' . $host . ';dbname=' . $dbname . ';charset=' . $charset;
+    if (!empty($dbConfig['port'])) {
+        $dsn .= ';port=' . (int) $dbConfig['port'];
+    }
+
+    return $dsn;
+}
+
+/**
+ * Beberapa hosting (mis. Hostinger) menolak koneksi socket "localhost" (SQLSTATE 2002).
+ */
+function mysqlPdoHostCandidates(array $dbConfig): array
+{
+    $host = trim((string) $dbConfig['host']);
+    if ($host === '') {
+        return ['127.0.0.1'];
+    }
+    if (!empty($dbConfig['socket'])) {
+        return [$host];
+    }
+    if (strtolower($host) === 'localhost') {
+        return ['127.0.0.1', 'localhost'];
+    }
+
+    return [$host];
+}
