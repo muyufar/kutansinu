@@ -680,6 +680,26 @@ function bumnuKasSumKeluarOperasionalMbg(
     return (float) $stmt->fetchColumn();
 }
 
+/** Nominal tampilan tasyaruf: realisasi jurnal, atau acuan 20% (mengikuti nominal LP bila sudah ada). */
+function bumnuMbgTasyarufTampilan(
+    float $realisasi,
+    float $labaBersih,
+    float $share,
+    float $lpRealisasi
+): float {
+    if ($realisasi > 0.005) {
+        return $realisasi;
+    }
+    if ($lpRealisasi > 0.005) {
+        return $lpRealisasi;
+    }
+    if ($labaBersih > 0.005) {
+        return $labaBersih * $share;
+    }
+
+    return 0.0;
+}
+
 /**
  * @return array{
  *   saldo_awal: float,
@@ -787,6 +807,11 @@ function bumnuBuildMbgSimpleReport(
     $tasyaruf_total = $lp_maarif + $pcnu + $bumnu + $penerima + $cadangan;
     $sisa_belum_tasyaruf = max(0.0, $laba_bersih - $tasyaruf_total);
 
+    $sharePenerima = (float) ($shares['penerima_manfaat'] ?? 0.2);
+    $shareCadangan = (float) ($shares['cadangan'] ?? 0.2);
+    $penerimaTampil = bumnuMbgTasyarufTampilan($penerima, $laba_bersih, $sharePenerima, $lp_maarif);
+    $cadanganTampil = bumnuMbgTasyarufTampilan($cadangan, $laba_bersih, $shareCadangan, $lp_maarif);
+
     return [
         'saldo_awal' => $saldo_awal,
         'pemasukan' => $pemasukan,
@@ -800,8 +825,8 @@ function bumnuBuildMbgSimpleReport(
             'lp_maarif' => $lp_maarif,
             'pcnu' => $pcnu,
             'bumnu' => $bumnu,
-            'penerima_manfaat' => $penerima,
-            'cadangan' => $cadangan,
+            'penerima_manfaat' => $penerimaTampil,
+            'cadangan' => $cadanganTampil,
         ],
         'tasyaruf_total' => $tasyaruf_total,
         'sisa_belum_tasyaruf' => $sisa_belum_tasyaruf,

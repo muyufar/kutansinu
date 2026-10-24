@@ -453,7 +453,7 @@ $laporan_query_param = static function (string $view): array {
                 <span class="bumnu-mbg-k">Saldo akhir</span>
                 <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah($mbg_report['saldo_akhir'])) ?></span>
             </p>
-            <p class="bumnu-mbg-note">Berdasarkan tanggal transaksi dalam periode. Pemasukan: tag <em>PENDAPATAN DAPUR</em> dan <em>PENDAPATAN SEWA MOBIL</em>. Tasyaruf = uang keluar kas sesuai pencatatan (PCNU/BUMNU dapat satu transfer gabungan).</p>
+            <p class="bumnu-mbg-note">Berdasarkan tanggal transaksi dalam periode. Pemasukan: tag <em>PENDAPATAN DAPUR</em> dan <em>PENDAPATAN SEWA MOBIL</em>. Tasyaruf LP/PCNU/BUMNU dari pencatatan kas; penerima manfaat &amp; cadangan menampilkan alokasi 20% (acuan sama LP bila belum disetor).</p>
         </section>
         <?php endif; ?>
 

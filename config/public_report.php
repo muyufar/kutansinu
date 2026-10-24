@@ -68,5 +68,10 @@ return [
         /** Pengurangan dari kuota gabungan PCNU+BUMNU saat rencana transfer (branding mobil) */
         'pcnu_bumnu_branding_deduct' => 6000000,
         'pcnu_bumnu_gabungan_note' => 'Transfer PCNU dan BUMNU digabung satu kali; setelah alokasi branding mobil Rp 6 jt, nominal dibulatkan (mis. Rp 50 jt).',
+        /**
+         * Penerima manfaat & cadangan: jika belum ada transaksi, tampilkan acuan 20%
+         * (mengikuti nominal tasyaruf LP Ma\'arif bulan itu bila sudah dibayar).
+         */
+        'tasyaruf_tampilan_belum_dari_lp' => ['penerima_manfaat', 'cadangan'],
     ],
 ];
