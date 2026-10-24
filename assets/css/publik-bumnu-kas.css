@@ -788,6 +788,53 @@
     color: var(--ink);
 }
 
+.bumnu-mbg-table-wrap {
+    overflow-x: auto;
+    margin-top: 0.5rem;
+}
+
+.bumnu-mbg-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.bumnu-mbg-table th,
+.bumnu-mbg-table td {
+    padding: 0.45rem 0.35rem;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+}
+
+.bumnu-mbg-table th.num,
+.bumnu-mbg-table td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.bumnu-mbg-table thead th {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--muted);
+    border-bottom: 2px solid var(--line);
+}
+
+.bumnu-mbg-pct {
+    font-weight: 400;
+    color: var(--muted);
+    font-size: 0.85em;
+}
+
+.bumnu-mbg-gabungan,
+.bumnu-mbg-sisa {
+    margin: 0.65rem 0 0;
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.45;
+}
+
 .bumnu-mbg-final {
     margin: 1rem 0 0;
     padding: 0.85rem 0 0;

@@ -687,8 +687,12 @@ function bumnuKasSumKeluarOperasionalMbg(
  *   pemasukan_lain: float,
  *   pengeluaran_operasional: float,
  *   laba_bersih: float,
+ *   bagi_hasil: array<string, array{kuota: float, realisasi: float, belum: float, share: float}>,
+ *   pcnu_bumnu_gabungan: float,
+ *   rencana_transfer_pcnu_bumnu: float,
  *   tasyaruf: array{pcnu: float, lp_maarif: float, bumnu: float, penerima_manfaat: float, cadangan: float},
  *   tasyaruf_total: float,
+ *   sisa_belum_tasyaruf: float,
  *   saldo_akhir: float
  * }
  */
@@ -748,15 +752,40 @@ function bumnuBuildMbgSimpleReport(
     $bumnu += $gabungan * $bumnuShare;
 
     $cadangan = $cadanganTagged;
-    if (!empty($mbgCfg['cadangan_is_sisa_laba'])) {
-        $distributed = $pcnu + $lp_maarif + $bumnu + $penerima;
-        $sisa = $laba_bersih - $distributed;
-        if ($sisa > 0.005) {
-            $cadangan += $sisa;
-        }
+
+    $shares = $mbgCfg['bagi_hasil_shares'] ?? [
+        'lp_maarif' => 0.2,
+        'pcnu' => 0.2,
+        'bumnu' => 0.2,
+        'penerima_manfaat' => 0.2,
+        'cadangan' => 0.2,
+    ];
+    $realisasiMap = [
+        'lp_maarif' => $lp_maarif,
+        'pcnu' => $pcnu,
+        'bumnu' => $bumnu,
+        'penerima_manfaat' => $penerima,
+        'cadangan' => $cadangan,
+    ];
+    $bagi_hasil = [];
+    foreach ($shares as $key => $share) {
+        $share = (float) $share;
+        $kuota = $laba_bersih > 0 ? $laba_bersih * $share : 0.0;
+        $realisasi = (float) ($realisasiMap[$key] ?? 0.0);
+        $bagi_hasil[$key] = [
+            'share' => $share,
+            'kuota' => $kuota,
+            'realisasi' => $realisasi,
+            'belum' => max(0.0, $kuota - $realisasi),
+        ];
     }
 
-    $tasyaruf_total = $pcnu + $lp_maarif + $bumnu + $penerima + $cadangan;
+    $brandingDeduct = (float) ($mbgCfg['pcnu_bumnu_branding_deduct'] ?? 0);
+    $kuotaGabungan = ($bagi_hasil['pcnu']['kuota'] ?? 0) + ($bagi_hasil['bumnu']['kuota'] ?? 0);
+    $rencana_transfer_pcnu_bumnu = max(0.0, $kuotaGabungan - $brandingDeduct);
+
+    $tasyaruf_total = $lp_maarif + $pcnu + $bumnu + $penerima + $cadangan;
+    $sisa_belum_tasyaruf = max(0.0, $laba_bersih - $tasyaruf_total);
 
     return [
         'saldo_awal' => $saldo_awal,
@@ -764,14 +793,18 @@ function bumnuBuildMbgSimpleReport(
         'pemasukan_lain' => $pemasukan_lain,
         'pengeluaran_operasional' => $pengeluaran_operasional,
         'laba_bersih' => $laba_bersih,
+        'bagi_hasil' => $bagi_hasil,
+        'pcnu_bumnu_gabungan' => $gabungan,
+        'rencana_transfer_pcnu_bumnu' => $rencana_transfer_pcnu_bumnu,
         'tasyaruf' => [
-            'pcnu' => $pcnu,
             'lp_maarif' => $lp_maarif,
+            'pcnu' => $pcnu,
             'bumnu' => $bumnu,
             'penerima_manfaat' => $penerima,
             'cadangan' => $cadangan,
         ],
         'tasyaruf_total' => $tasyaruf_total,
+        'sisa_belum_tasyaruf' => $sisa_belum_tasyaruf,
         'saldo_akhir' => $saldo_akhir,
     ];
 }

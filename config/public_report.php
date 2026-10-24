@@ -45,20 +45,29 @@ return [
             'piutang',
             'pemasukan_piutang',
         ],
+        /** Akad pembagian bagi hasil (% dari laba bersih per bulan) */
+        'bagi_hasil_shares' => [
+            'lp_maarif' => 0.20,
+            'pcnu' => 0.20,
+            'bumnu' => 0.20,
+            'penerima_manfaat' => 0.20,
+            'cadangan' => 0.20,
+        ],
         'tasyaruf_tags' => [
-            'pcnu' => ['BASIL PCNU'],
             'lp_maarif' => ['BASIL LP MAARIF'],
+            'pcnu' => ['BASIL PCNU'],
             'bumnu' => ['BASIL BUMNU'],
             'penerima_manfaat' => [],
             'cadangan' => [],
         ],
-        /** Pembagian tag gabungan BASIL PCNU DAN BUMNU (harus total 1.0) */
+        /** Realisasi transfer gabungan PCNU+BUMNU (untuk tampilan per baris: dibagi 50–50) */
         'split_pcnu_bumnu_gabungan' => [
             'pcnu' => 0.5,
             'bumnu' => 0.5,
         ],
         'tags_pcnu_bumnu_gabungan' => ['BASIL PCNU DAN BUMNU'],
-        /** Jika true: baris Cadangan = laba bersih − tasyaruf PCNU/LP/BUMNU/Penerima (min 0) */
-        'cadangan_is_sisa_laba' => true,
+        /** Pengurangan dari kuota gabungan PCNU+BUMNU saat rencana transfer (branding mobil) */
+        'pcnu_bumnu_branding_deduct' => 6000000,
+        'pcnu_bumnu_gabungan_note' => 'Transfer PCNU dan BUMNU digabung satu kali; setelah alokasi branding mobil Rp 6 jt, nominal dibulatkan (mis. Rp 50 jt).',
     ],
 ];
