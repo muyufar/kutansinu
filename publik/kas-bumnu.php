@@ -81,6 +81,9 @@ $tag_filter = bumnuParseTagFilter($_GET);
 $tag_filter_label = null;
 $mutasi_tag = null;
 $logo_url = null;
+$laporan_view = (isset($_GET['laporan']) && $_GET['laporan'] === 'mbg') ? 'mbg' : 'detail';
+$mbg_report = null;
+$mbg_cfg = bumnuMbgReportConfig();
 
 try {
     $perusahaan = bumnuResolveCompany($db);
@@ -108,6 +111,17 @@ try {
             $tx_fetch['limit'],
             $tx_fetch['order'],
             $tag_filter
+        );
+
+        $mbg_report = bumnuBuildMbgSimpleReport(
+            $db,
+            $kasIds,
+            $id_perusahaan,
+            $tanggal_awal,
+            $tanggal_akhir,
+            $hari_sebelum_awal,
+            $kasAccounts,
+            $mbg_cfg
         );
 
         if ($tag_filter !== null) {
@@ -162,6 +176,9 @@ $tag_query_param = static function (?string $filter): array {
 
     return ['tag' => $filter === '__kosong__' ? '__kosong__' : $filter];
 };
+$laporan_query_param = static function (string $view): array {
+    return $view === 'mbg' ? ['laporan' => 'mbg'] : [];
+};
 
 ?>
 <!DOCTYPE html>
@@ -177,7 +194,7 @@ $tag_query_param = static function (?string $filter): array {
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/publik-bumnu-kas.css?v=<?= (int) $cssVer ?>">
 </head>
-<body class="bumnu-publik">
+<body class="bumnu-publik<?= $laporan_view === 'mbg' ? ' is-mbg-view' : '' ?>">
 <div class="bumnu-shell">
 
     <header class="bumnu-top">
@@ -195,13 +212,28 @@ $tag_query_param = static function (?string $filter): array {
         <p class="bumnu-updated">Diperbarui <?= htmlspecialchars($generated_at) ?> WIB</p>
     </header>
 
+    <nav class="bumnu-view-nav" aria-label="Jenis laporan">
+        <?php
+        $qsDetail = bumnuPublicQueryString(array_merge($period_query, $tag_query_param($tag_filter)), $token_hidden);
+        $qsMbg = bumnuPublicQueryString(
+            array_merge($period_query, $tag_query_param($tag_filter), ['laporan' => 'mbg']),
+            $token_hidden
+        );
+        ?>
+        <a class="bumnu-view-link<?= $laporan_view === 'detail' ? ' is-active' : '' ?>" href="?<?= htmlspecialchars($qsDetail) ?>">Detail transaksi</a>
+        <a class="bumnu-view-link<?= $laporan_view === 'mbg' ? ' is-active' : '' ?>" href="?<?= htmlspecialchars($qsMbg) ?>">Laporan MBG (ringkas)</a>
+    </nav>
+
     <section class="bumnu-filter" aria-labelledby="filter-heading">
         <h2 id="filter-heading" class="bumnu-filter-title">Periode laporan</h2>
 
         <nav class="bumnu-presets" aria-label="Periode cepat">
             <?php foreach ($presets as $key => $label): ?>
                 <?php
-                $qs = bumnuPublicQueryString(array_merge(['mode' => 'preset', 'preset' => $key], $tag_query_param($tag_filter)), $token_hidden);
+                $qs = bumnuPublicQueryString(
+                    array_merge(['mode' => 'preset', 'preset' => $key], $tag_query_param($tag_filter), $laporan_query_param($laporan_view)),
+                    $token_hidden
+                );
                 $isActive = $active_preset === $key;
                 ?>
                 <a class="bumnu-preset<?= $isActive ? ' is-active' : '' ?>" href="?<?= htmlspecialchars($qs) ?>"><?= htmlspecialchars($label) ?></a>
@@ -216,6 +248,9 @@ $tag_query_param = static function (?string $filter): array {
                 <?php endif; ?>
                 <?php if ($tag_filter !== null): ?>
                     <input type="hidden" name="tag" value="<?= htmlspecialchars($tag_filter === '__kosong__' ? '__kosong__' : $tag_filter) ?>">
+                <?php endif; ?>
+                <?php if ($laporan_view === 'mbg'): ?>
+                    <input type="hidden" name="laporan" value="mbg">
                 <?php endif; ?>
 
                 <div class="bumnu-field">
@@ -325,6 +360,9 @@ $tag_query_param = static function (?string $filter): array {
             <?php foreach ($period_query as $pk => $pv): ?>
                 <input type="hidden" name="<?= htmlspecialchars($pk) ?>" value="<?= htmlspecialchars((string) $pv) ?>">
             <?php endforeach; ?>
+            <?php if ($laporan_view === 'mbg'): ?>
+                <input type="hidden" name="laporan" value="mbg">
+            <?php endif; ?>
             <div class="bumnu-field bumnu-field-tag">
                 <label for="tag">Filter tag transaksi</label>
                 <div class="bumnu-tag-row">
@@ -354,6 +392,74 @@ $tag_query_param = static function (?string $filter): array {
         <p class="bumnu-alert"><?= htmlspecialchars($error) ?></p>
     <?php else: ?>
 
+        <?php if ($mbg_report !== null && $laporan_view === 'mbg'): ?>
+        <section class="bumnu-mbg-sheet" aria-labelledby="mbg-heading">
+            <header class="bumnu-mbg-head">
+                <div>
+                    <h2 id="mbg-heading"><?= htmlspecialchars($mbg_cfg['title'] ?? 'Laporan Kas BUMNU (MBG)') ?></h2>
+                    <p><?= htmlspecialchars($mbg_cfg['subtitle'] ?? '') ?></p>
+                    <p class="bumnu-mbg-period"><strong><?= htmlspecialchars($periode_label) ?></strong></p>
+                </div>
+                <button type="button" class="bumnu-btn-ghost bumnu-print-btn" onclick="window.print()">Cetak</button>
+            </header>
+            <ol class="bumnu-mbg-list">
+                <li class="bumnu-mbg-row">
+                    <span class="bumnu-mbg-k">Saldo awal periode</span>
+                    <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah($mbg_report['saldo_awal'])) ?></span>
+                </li>
+                <li class="bumnu-mbg-row is-in">
+                    <span class="bumnu-mbg-k">Pemasukan</span>
+                    <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah($mbg_report['pemasukan'])) ?></span>
+                </li>
+                <?php if ($mbg_report['pemasukan_lain'] > 0.005): ?>
+                <li class="bumnu-mbg-row is-in">
+                    <span class="bumnu-mbg-k">Pemasukan lain</span>
+                    <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah($mbg_report['pemasukan_lain'])) ?></span>
+                </li>
+                <?php endif; ?>
+                <li class="bumnu-mbg-row is-out">
+                    <span class="bumnu-mbg-k">Pengeluaran operasional</span>
+                    <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah($mbg_report['pengeluaran_operasional'])) ?></span>
+                </li>
+                <li class="bumnu-mbg-row is-result">
+                    <span class="bumnu-mbg-k">Pemasukan laba bersih</span>
+                    <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah($mbg_report['laba_bersih'])) ?></span>
+                </li>
+            </ol>
+            <div class="bumnu-mbg-tasyaruf">
+                <h3 class="bumnu-mbg-subtitle">Tasyaruf 5 bidang</h3>
+                <ol class="bumnu-mbg-list is-nested">
+                    <li class="bumnu-mbg-row is-out">
+                        <span class="bumnu-mbg-k">1. PCNU</span>
+                        <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah($mbg_report['tasyaruf']['pcnu'])) ?></span>
+                    </li>
+                    <li class="bumnu-mbg-row is-out">
+                        <span class="bumnu-mbg-k">2. LP Ma'arif</span>
+                        <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah($mbg_report['tasyaruf']['lp_maarif'])) ?></span>
+                    </li>
+                    <li class="bumnu-mbg-row is-out">
+                        <span class="bumnu-mbg-k">3. BUMNU</span>
+                        <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah($mbg_report['tasyaruf']['bumnu'])) ?></span>
+                    </li>
+                    <li class="bumnu-mbg-row is-out">
+                        <span class="bumnu-mbg-k">4. Penerima manfaat</span>
+                        <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah($mbg_report['tasyaruf']['penerima_manfaat'])) ?></span>
+                    </li>
+                    <li class="bumnu-mbg-row is-out">
+                        <span class="bumnu-mbg-k">5. Cadangan</span>
+                        <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah($mbg_report['tasyaruf']['cadangan'])) ?></span>
+                    </li>
+                </ol>
+            </div>
+            <p class="bumnu-mbg-row bumnu-mbg-final">
+                <span class="bumnu-mbg-k">Saldo akhir</span>
+                <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah($mbg_report['saldo_akhir'])) ?></span>
+            </p>
+            <p class="bumnu-mbg-note">Berdasarkan tanggal transaksi dalam periode laporan. Tag pemasukan: <em>PENDAPATAN DAPUR</em>. Pembagian tag <em>BASIL PCNU DAN BUMNU</em> mengikuti pengaturan di sistem.</p>
+        </section>
+        <?php endif; ?>
+
+        <?php if ($laporan_view === 'detail'): ?>
         <section class="bumnu-hero" aria-labelledby="saldo-heading">
             <div class="bumnu-hero-text">
                 <h2 id="saldo-heading">Saldo kas &amp; bank</h2>
@@ -498,6 +604,7 @@ $tag_query_param = static function (?string $filter): array {
                 </div>
             <?php endif; ?>
         </section>
+        <?php endif; ?>
 
     <?php endif; ?>
 

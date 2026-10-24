@@ -560,3 +560,218 @@ function bumnuFormatTanggalIndonesia(string $date): string
     ];
     return (int) date('j', $ts) . ' ' . ($bulan[(int) date('n', $ts)] ?? '') . ' ' . date('Y', $ts);
 }
+
+function bumnuMbgReportConfig(): array
+{
+    $cfg = bumnuPublicConfig();
+
+    return is_array($cfg['mbg_report'] ?? null) ? $cfg['mbg_report'] : [];
+}
+
+/** @param list<string> $tags */
+function bumnuKasSumMasukByTags(
+    PDO $db,
+    array $kasIds,
+    int $id_perusahaan,
+    string $tanggal_awal,
+    string $tanggal_akhir,
+    array $tags
+): float {
+    $tags = array_values(array_filter(array_map('trim', $tags)));
+    if ($kasIds === [] || $tags === []) {
+        return 0.0;
+    }
+    $phKas = implode(',', array_fill(0, count($kasIds), '?'));
+    $phTag = implode(',', array_fill(0, count($tags), '?'));
+    $params = array_merge($kasIds, [$id_perusahaan, $tanggal_awal, $tanggal_akhir], $tags);
+    $sql = "
+        SELECT COALESCE(SUM(t.total), 0)
+        FROM transaksi t
+        WHERE t.id_akun_debit IN ($phKas)
+          AND t.id_perusahaan = ?
+          AND t.tanggal BETWEEN ? AND ?
+          AND TRIM(t.tag) IN ($phTag)
+    ";
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+
+    return (float) $stmt->fetchColumn();
+}
+
+/** @param list<string> $tags */
+function bumnuKasSumKeluarByTags(
+    PDO $db,
+    array $kasIds,
+    int $id_perusahaan,
+    string $tanggal_awal,
+    string $tanggal_akhir,
+    array $tags
+): float {
+    $tags = array_values(array_filter(array_map('trim', $tags)));
+    if ($kasIds === [] || $tags === []) {
+        return 0.0;
+    }
+    $phKas = implode(',', array_fill(0, count($kasIds), '?'));
+    $phTag = implode(',', array_fill(0, count($tags), '?'));
+    $params = array_merge($kasIds, [$id_perusahaan, $tanggal_awal, $tanggal_akhir], $tags);
+    $sql = "
+        SELECT COALESCE(SUM(t.total), 0)
+        FROM transaksi t
+        WHERE t.id_akun_kredit IN ($phKas)
+          AND t.id_perusahaan = ?
+          AND t.tanggal BETWEEN ? AND ?
+          AND TRIM(t.tag) IN ($phTag)
+    ";
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+
+    return (float) $stmt->fetchColumn();
+}
+
+/**
+ * Total uang keluar kas (operasional MBG): keluar kas, tag/jenis tidak di daftar pengecualian.
+ *
+ * @param list<string> $excludeTags
+ * @param list<string> $excludeJenis
+ */
+function bumnuKasSumKeluarOperasionalMbg(
+    PDO $db,
+    array $kasIds,
+    int $id_perusahaan,
+    string $tanggal_awal,
+    string $tanggal_akhir,
+    array $excludeTags,
+    array $excludeJenis
+): float {
+    if ($kasIds === []) {
+        return 0.0;
+    }
+    $phKas = implode(',', array_fill(0, count($kasIds), '?'));
+    $params = array_merge($kasIds, [$id_perusahaan, $tanggal_awal, $tanggal_akhir]);
+
+    $tagSql = '';
+    $excludeTags = array_values(array_filter(array_map('trim', $excludeTags)));
+    if ($excludeTags !== []) {
+        $phTag = implode(',', array_fill(0, count($excludeTags), '?'));
+        $tagSql = " AND (t.tag IS NULL OR TRIM(t.tag) = '' OR TRIM(t.tag) NOT IN ($phTag))";
+        $params = array_merge($params, $excludeTags);
+    }
+
+    $jenisSql = '';
+    $excludeJenis = array_values(array_filter(array_map('trim', $excludeJenis)));
+    if ($excludeJenis !== []) {
+        $phJenis = implode(',', array_fill(0, count($excludeJenis), '?'));
+        $jenisSql = " AND t.jenis NOT IN ($phJenis)";
+        $params = array_merge($params, $excludeJenis);
+    }
+
+    $sql = "
+        SELECT COALESCE(SUM(t.total), 0)
+        FROM transaksi t
+        WHERE t.id_akun_kredit IN ($phKas)
+          AND t.id_perusahaan = ?
+          AND t.tanggal BETWEEN ? AND ?
+          {$tagSql}
+          {$jenisSql}
+    ";
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+
+    return (float) $stmt->fetchColumn();
+}
+
+/**
+ * @return array{
+ *   saldo_awal: float,
+ *   pemasukan: float,
+ *   pemasukan_lain: float,
+ *   pengeluaran_operasional: float,
+ *   laba_bersih: float,
+ *   tasyaruf: array{pcnu: float, lp_maarif: float, bumnu: float, penerima_manfaat: float, cadangan: float},
+ *   tasyaruf_total: float,
+ *   saldo_akhir: float
+ * }
+ */
+function bumnuBuildMbgSimpleReport(
+    PDO $db,
+    array $kasIds,
+    int $id_perusahaan,
+    string $tanggal_awal,
+    string $tanggal_akhir,
+    string $hari_sebelum_awal,
+    array $kasAccounts,
+    ?array $mbgCfg = null
+): array {
+    $mbgCfg = $mbgCfg ?? bumnuMbgReportConfig();
+    $pemasukanTags = $mbgCfg['pemasukan_tags'] ?? ['PENDAPATAN DAPUR'];
+    $pemasukanLainTags = $mbgCfg['pemasukan_lain_tags'] ?? [];
+    $excludeTags = $mbgCfg['operasional_exclude_tags'] ?? [];
+    $excludeJenis = $mbgCfg['operasional_exclude_jenis'] ?? [];
+    $tasyarufTags = $mbgCfg['tasyaruf_tags'] ?? [];
+    $gabunganTags = $mbgCfg['tags_pcnu_bumnu_gabungan'] ?? ['BASIL PCNU DAN BUMNU'];
+    $split = $mbgCfg['split_pcnu_bumnu_gabungan'] ?? ['pcnu' => 0.5, 'bumnu' => 0.5];
+    $pcnuShare = (float) ($split['pcnu'] ?? 0.5);
+    $bumnuShare = (float) ($split['bumnu'] ?? 0.5);
+    $shareSum = $pcnuShare + $bumnuShare;
+    if ($shareSum <= 0) {
+        $pcnuShare = 0.5;
+        $bumnuShare = 0.5;
+        $shareSum = 1.0;
+    }
+    $pcnuShare /= $shareSum;
+    $bumnuShare /= $shareSum;
+
+    $saldo_awal = bumnuTotalSaldoKas($db, $kasAccounts, $hari_sebelum_awal, $id_perusahaan);
+    $saldo_akhir = bumnuTotalSaldoKas($db, $kasAccounts, $tanggal_akhir, $id_perusahaan);
+
+    $pemasukan = bumnuKasSumMasukByTags($db, $kasIds, $id_perusahaan, $tanggal_awal, $tanggal_akhir, $pemasukanTags);
+    $pemasukan_lain = bumnuKasSumMasukByTags($db, $kasIds, $id_perusahaan, $tanggal_awal, $tanggal_akhir, $pemasukanLainTags);
+    $pengeluaran_operasional = bumnuKasSumKeluarOperasionalMbg(
+        $db,
+        $kasIds,
+        $id_perusahaan,
+        $tanggal_awal,
+        $tanggal_akhir,
+        $excludeTags,
+        $excludeJenis
+    );
+    $laba_bersih = $pemasukan + $pemasukan_lain - $pengeluaran_operasional;
+
+    $pcnu = bumnuKasSumKeluarByTags($db, $kasIds, $id_perusahaan, $tanggal_awal, $tanggal_akhir, $tasyarufTags['pcnu'] ?? []);
+    $lp_maarif = bumnuKasSumKeluarByTags($db, $kasIds, $id_perusahaan, $tanggal_awal, $tanggal_akhir, $tasyarufTags['lp_maarif'] ?? []);
+    $bumnu = bumnuKasSumKeluarByTags($db, $kasIds, $id_perusahaan, $tanggal_awal, $tanggal_akhir, $tasyarufTags['bumnu'] ?? []);
+    $penerima = bumnuKasSumKeluarByTags($db, $kasIds, $id_perusahaan, $tanggal_awal, $tanggal_akhir, $tasyarufTags['penerima_manfaat'] ?? []);
+    $cadanganTagged = bumnuKasSumKeluarByTags($db, $kasIds, $id_perusahaan, $tanggal_awal, $tanggal_akhir, $tasyarufTags['cadangan'] ?? []);
+
+    $gabungan = bumnuKasSumKeluarByTags($db, $kasIds, $id_perusahaan, $tanggal_awal, $tanggal_akhir, $gabunganTags);
+    $pcnu += $gabungan * $pcnuShare;
+    $bumnu += $gabungan * $bumnuShare;
+
+    $cadangan = $cadanganTagged;
+    if (!empty($mbgCfg['cadangan_is_sisa_laba'])) {
+        $distributed = $pcnu + $lp_maarif + $bumnu + $penerima;
+        $sisa = $laba_bersih - $distributed;
+        if ($sisa > 0.005) {
+            $cadangan += $sisa;
+        }
+    }
+
+    $tasyaruf_total = $pcnu + $lp_maarif + $bumnu + $penerima + $cadangan;
+
+    return [
+        'saldo_awal' => $saldo_awal,
+        'pemasukan' => $pemasukan,
+        'pemasukan_lain' => $pemasukan_lain,
+        'pengeluaran_operasional' => $pengeluaran_operasional,
+        'laba_bersih' => $laba_bersih,
+        'tasyaruf' => [
+            'pcnu' => $pcnu,
+            'lp_maarif' => $lp_maarif,
+            'bumnu' => $bumnu,
+            'penerima_manfaat' => $penerima,
+            'cadangan' => $cadangan,
+        ],
+        'tasyaruf_total' => $tasyaruf_total,
+        'saldo_akhir' => $saldo_akhir,
+    ];
+}

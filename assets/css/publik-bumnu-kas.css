@@ -657,9 +657,169 @@
     text-align: center;
 }
 
+/* Toggle laporan detail / MBG */
+.bumnu-view-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.bumnu-view-link {
+    display: inline-block;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--muted);
+    text-decoration: none;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+}
+
+.bumnu-view-link:hover {
+    color: var(--brand);
+    border-color: var(--brand);
+}
+
+.bumnu-view-link.is-active {
+    color: #fff;
+    background: var(--brand);
+    border-color: var(--brand);
+}
+
+/* Laporan MBG ringkas */
+.bumnu-mbg-sheet {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.25rem 1.35rem 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.bumnu-mbg-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--brand);
+}
+
+.bumnu-mbg-head h2 {
+    margin: 0 0 0.25rem;
+    font-size: 1.15rem;
+    color: var(--brand-dark);
+}
+
+.bumnu-mbg-head p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.bumnu-mbg-period {
+    margin-top: 0.5rem !important;
+    color: var(--ink) !important;
+}
+
+.bumnu-mbg-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.bumnu-mbg-list.is-nested {
+    margin-top: 0.35rem;
+}
+
+.bumnu-mbg-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.bumnu-mbg-row:last-child {
+    border-bottom: none;
+}
+
+.bumnu-mbg-k {
+    flex: 1;
+    font-weight: 500;
+}
+
+.bumnu-mbg-v {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.bumnu-mbg-row.is-in .bumnu-mbg-v {
+    color: var(--in);
+}
+
+.bumnu-mbg-row.is-out .bumnu-mbg-v {
+    color: var(--out);
+}
+
+.bumnu-mbg-row.is-result {
+    margin-top: 0.35rem;
+    padding-top: 0.75rem;
+    border-top: 2px dashed var(--line);
+    border-bottom: none;
+}
+
+.bumnu-mbg-row.is-result .bumnu-mbg-k,
+.bumnu-mbg-row.is-result .bumnu-mbg-v {
+    font-weight: 700;
+    color: var(--brand-dark);
+}
+
+.bumnu-mbg-subtitle {
+    margin: 1rem 0 0.35rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.bumnu-mbg-final {
+    margin: 1rem 0 0;
+    padding: 0.85rem 0 0;
+    border-top: 2px solid var(--brand);
+    font-size: 1.05rem;
+}
+
+.bumnu-mbg-final .bumnu-mbg-k,
+.bumnu-mbg-final .bumnu-mbg-v {
+    font-weight: 700;
+}
+
+.bumnu-mbg-note {
+    margin: 1rem 0 0;
+    font-size: 0.78rem;
+    color: var(--muted);
+    line-height: 1.45;
+}
+
+.bumnu-print-btn {
+    flex-shrink: 0;
+}
+
 @media print {
+    .bumnu-view-nav,
     .bumnu-filter,
-    .bumnu-filter-advanced {
+    .bumnu-filter-advanced,
+    .bumnu-tag-form,
+    .bumnu-print-btn {
+        display: none !important;
+    }
+    .bumnu-publik.is-mbg-view .bumnu-top .bumnu-updated {
         display: none;
     }
     .bumnu-publik {
