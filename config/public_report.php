@@ -22,9 +22,8 @@ return [
     'mbg_report' => [
         'title' => 'Laporan Kas BUMNU (MBG)',
         'subtitle' => 'Ringkasan pemasukan dapur, operasional, laba bersih, dan tasyaruf',
-        /** Uang masuk ke kas dengan tag ini dijumlahkan sebagai Pemasukan */
-        'pemasukan_tags' => ['PENDAPATAN DAPUR'],
-        /** Opsional: pemasukan lain (mis. sewa) — ditambah ke laba */
+        /** Uang masuk ke kas dengan tag ini dijumlahkan sebagai Pemasukan (dapur + sewa mobil) */
+        'pemasukan_tags' => ['PENDAPATAN DAPUR', 'PENDAPATAN SEWA MOBIL'],
         'pemasukan_lain_tags' => [],
         /**
          * Pengeluaran operasional = uang keluar kas periode ini, kecuali tag/jenis di bawah.

@@ -409,14 +409,8 @@ $laporan_query_param = static function (string $view): array {
                 </li>
                 <li class="bumnu-mbg-row is-in">
                     <span class="bumnu-mbg-k">Pemasukan</span>
-                    <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah($mbg_report['pemasukan'])) ?></span>
+                    <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah($mbg_report['pemasukan'] + $mbg_report['pemasukan_lain'])) ?></span>
                 </li>
-                <?php if ($mbg_report['pemasukan_lain'] > 0.005): ?>
-                <li class="bumnu-mbg-row is-in">
-                    <span class="bumnu-mbg-k">Pemasukan lain</span>
-                    <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah($mbg_report['pemasukan_lain'])) ?></span>
-                </li>
-                <?php endif; ?>
                 <li class="bumnu-mbg-row is-out">
                     <span class="bumnu-mbg-k">Pengeluaran operasional</span>
                     <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah($mbg_report['pengeluaran_operasional'])) ?></span>
@@ -426,58 +420,40 @@ $laporan_query_param = static function (string $view): array {
                     <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah($mbg_report['laba_bersih'])) ?></span>
                 </li>
             </ol>
-            <?php
-            $bh = $mbg_report['bagi_hasil'] ?? [];
-            $pct = static function (float $share): string {
-                return rtrim(rtrim(number_format($share * 100, 1, ',', '.'), '0'), ',') . '%';
-            };
-            $mbgRows = [
-                ['key' => 'lp_maarif', 'label' => '1. LP Ma\'arif'],
-                ['key' => 'pcnu', 'label' => '2. PCNU'],
-                ['key' => 'bumnu', 'label' => '3. BUMNU'],
-                ['key' => 'penerima_manfaat', 'label' => '4. Penerima manfaat'],
-                ['key' => 'cadangan', 'label' => '5. Cadangan'],
-            ];
-            ?>
+            <?php $ts = $mbg_report['tasyaruf']; ?>
             <div class="bumnu-mbg-tasyaruf">
-                <h3 class="bumnu-mbg-subtitle">Pembagian bagi hasil (dari laba bersih)</h3>
-                <div class="bumnu-mbg-table-wrap">
-                    <table class="bumnu-mbg-table">
-                        <thead>
-                            <tr>
-                                <th scope="col">Bidang</th>
-                                <th scope="col" class="num">Kuota</th>
-                                <th scope="col" class="num">Realisasi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($mbgRows as $row): ?>
-                                <?php $line = $bh[$row['key']] ?? ['share' => 0.2, 'kuota' => 0, 'realisasi' => 0, 'belum' => 0]; ?>
-                                <tr>
-                                    <td><?= htmlspecialchars($row['label']) ?> <span class="bumnu-mbg-pct">(<?= htmlspecialchars($pct((float) $line['share'])) ?>)</span></td>
-                                    <td class="num"><?= htmlspecialchars(formatRupiah((float) $line['kuota'])) ?></td>
-                                    <td class="num is-out"><?= htmlspecialchars(formatRupiah((float) $line['realisasi'])) ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
+                <h3 class="bumnu-mbg-subtitle">Tasyaruf 5 bidang</h3>
+                <ol class="bumnu-mbg-list is-nested">
+                    <li class="bumnu-mbg-row is-out">
+                        <span class="bumnu-mbg-k">1. LP Ma'arif</span>
+                        <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah((float) $ts['lp_maarif'])) ?></span>
+                    </li>
+                    <li class="bumnu-mbg-row is-out">
+                        <span class="bumnu-mbg-k">2. PCNU</span>
+                        <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah((float) $ts['pcnu'])) ?></span>
+                    </li>
+                    <li class="bumnu-mbg-row is-out">
+                        <span class="bumnu-mbg-k">3. BUMNU</span>
+                        <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah((float) $ts['bumnu'])) ?></span>
+                    </li>
+                    <li class="bumnu-mbg-row is-out">
+                        <span class="bumnu-mbg-k">4. Penerima manfaat</span>
+                        <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah((float) $ts['penerima_manfaat'])) ?></span>
+                    </li>
+                    <li class="bumnu-mbg-row is-out">
+                        <span class="bumnu-mbg-k">5. Cadangan</span>
+                        <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah((float) $ts['cadangan'])) ?></span>
+                    </li>
+                </ol>
                 <?php if (($mbg_report['pcnu_bumnu_gabungan'] ?? 0) > 0.005): ?>
-                    <p class="bumnu-mbg-gabungan">Transfer gabungan PCNU + BUMNU tercatat: <strong><?= htmlspecialchars(formatRupiah((float) $mbg_report['pcnu_bumnu_gabungan'])) ?></strong>
-                        (masing-masing <?= htmlspecialchars(formatRupiah((float) ($mbg_report['tasyaruf']['pcnu'] ?? 0))) ?> / <?= htmlspecialchars(formatRupiah((float) ($mbg_report['tasyaruf']['bumnu'] ?? 0))) ?> di kolom realisasi).</p>
-                <?php endif; ?>
-                <?php if (($mbg_report['rencana_transfer_pcnu_bumnu'] ?? 0) > 0.005): ?>
-                    <p class="bumnu-mbg-gabungan">Rencana kuota gabungan PCNU+BUMNU (40% laba − branding Rp 6 jt): <strong><?= htmlspecialchars(formatRupiah((float) $mbg_report['rencana_transfer_pcnu_bumnu'])) ?></strong>.</p>
-                <?php endif; ?>
-                <?php if (($mbg_report['sisa_belum_tasyaruf'] ?? 0) > 0.005): ?>
-                    <p class="bumnu-mbg-sisa">Kuota penerima manfaat &amp; cadangan (dan selisih kuota–realisasi lain) yang belum ditransfer: <strong><?= htmlspecialchars(formatRupiah((float) $mbg_report['sisa_belum_tasyaruf'])) ?></strong> — masih tercermin di saldo kas.</p>
+                    <p class="bumnu-mbg-gabungan">Transfer gabungan PCNU + BUMNU: <strong><?= htmlspecialchars(formatRupiah((float) $mbg_report['pcnu_bumnu_gabungan'])) ?></strong> (termasuk pembulatan; alokasi branding mobil Rp 6 jt).</p>
                 <?php endif; ?>
             </div>
             <p class="bumnu-mbg-row bumnu-mbg-final">
                 <span class="bumnu-mbg-k">Saldo akhir</span>
                 <span class="bumnu-mbg-v"><?= htmlspecialchars(formatRupiah($mbg_report['saldo_akhir'])) ?></span>
             </p>
-            <p class="bumnu-mbg-note">Berdasarkan tanggal transaksi dalam periode. Pemasukan: tag <em>PENDAPATAN DAPUR</em>. Kuota = <?= htmlspecialchars($pct(0.2)) ?> × laba bersih per bidang. <?= htmlspecialchars($mbg_cfg['pcnu_bumnu_gabungan_note'] ?? '') ?></p>
+            <p class="bumnu-mbg-note">Berdasarkan tanggal transaksi dalam periode. Pemasukan: tag <em>PENDAPATAN DAPUR</em> dan <em>PENDAPATAN SEWA MOBIL</em>. Tasyaruf = uang keluar kas sesuai pencatatan (PCNU/BUMNU dapat satu transfer gabungan).</p>
         </section>
         <?php endif; ?>
 
